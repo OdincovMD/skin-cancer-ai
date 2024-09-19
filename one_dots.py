@@ -9,7 +9,7 @@ from roboflow import Roboflow
 clf = load('weight/one_dots.joblib')
 
 
-def blob_detector(min_thresh, thresh_step=None, max_thresh=None, min_area=None):
+def blob_detector(min_thresh: int, thresh_step: int = None, max_thresh: int = None, min_area: int = None) -> cv2.SimpleBlobDetector:
     """
     Create a Blob Detector with specified parameters.
     :param min_thresh: minimal threshold
