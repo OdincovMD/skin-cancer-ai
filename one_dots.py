@@ -7,7 +7,7 @@ from joblib import load
 from roboflow import Roboflow
 from typing import Optional
 
-clf = load('weights/one_dots.joblib')
+clf = load('./weight/one_dots.joblib')
 
 def blob_detector(min_thresh: int,
                   thresh_step: Optional[int] = None,
@@ -194,23 +194,24 @@ def main(img: np.ndarray, mask: np.ndarray) -> str:
     return label
 
 
-if __name__ == '__main__':
-    image_path = "26.jpg"  # change to your image path
-    img = cv2.imread(image_path)
+# Deprecated since the mask is being passed by from the main.py
+# if __name__ == '__main__':
+#     image_path = "26.jpg"  # change to your image path
+#     img = cv2.imread(image_path)
 
-    rf = Roboflow(api_key="GmJT3lC4NInRGZJ2iEit")
-    project = rf.workspace("neo-dmsux").project("neo-v6wzn")
-    model = project.version(2).model
+#     rf = Roboflow(api_key="GmJT3lC4NInRGZJ2iEit")
+#     project = rf.workspace("neo-dmsux").project("neo-v6wzn")
+#     model = project.version(2).model
 
-    data = model.predict("26.jpg").json()
-    width = data['predictions'][0]['image']['width']
-    height = data['predictions'][0]['image']['height']
+#     data = model.predict("26.jpg").json()
+#     width = data['predictions'][0]['image']['width']
+#     height = data['predictions'][0]['image']['height']
 
-    encoded_mask = data['predictions'][0]['segmentation_mask']
-    mask_bytes = base64.b64decode(encoded_mask)
-    mask_array = np.frombuffer(mask_bytes, dtype=np.uint8)
-    mask_image = cv2.imdecode(mask_array, cv2.IMREAD_GRAYSCALE)
-    mask = np.where(mask_image == 1, 255, mask_image)
-    mask = cv2.resize(mask, (width, height), interpolation=cv2.INTER_LINEAR)
+#     encoded_mask = data['predictions'][0]['segmentation_mask']
+#     mask_bytes = base64.b64decode(encoded_mask)
+#     mask_array = np.frombuffer(mask_bytes, dtype=np.uint8)
+#     mask_image = cv2.imdecode(mask_array, cv2.IMREAD_GRAYSCALE)
+#     mask = np.where(mask_image == 1, 255, mask_image)
+#     mask = cv2.resize(mask, (width, height), interpolation=cv2.INTER_LINEAR)
 
-    print(main(img, mask))
+#     print(main(img, mask))
