@@ -5,48 +5,83 @@ import numpy as np
 import pandas as pd
 from joblib import load
 from roboflow import Roboflow
+from typing import Optional
 
-clf = load('weight/one_dots.joblib')
+clf = load('weights/one_dots.joblib')
 
-
-def blob_detector(min_thresh: int, thresh_step: int = None, max_thresh: int = None, min_area: int = None) -> cv2.SimpleBlobDetector:
-    """
+def blob_detector(min_thresh: int,
+                  thresh_step: Optional[int] = None,
+                  max_thresh: Optional[int] = None,
+                  min_area: Optional[int] = None) -> cv2.SimpleBlobDetector:
+    '''
     Create a Blob Detector with specified parameters.
-    :param min_thresh: minimal threshold
-    :param thresh_step: step of threshold
-    :param max_thresh: maximal threshold
-    :param min_area: minimal value of dot's area
-    :return: Resultant Blob Detector
-    """
+
+    Parameters
+    ----------
+    min_thresh : int
+        The lower bound of threshold.
+    thresh_step : Optional[int]
+        Step of threshold.
+    max_thresh : Optional[int]
+        The upper bound of threshold.
+    min_area : Optional[int]
+        Minimum value of dot's area.
+
+    Returns
+    -------
+    cv2.SimpleBlobDetector
+       Resultant Blob Detector.
+    '''
     params = cv2.SimpleBlobDetector_Params()
     params.minThreshold = min_thresh
-    params.thresholdStep = thresh_step if thresh_step is not None else params.thresholdStep
-    params.maxThreshold = max_thresh if max_thresh is not None else params.maxThreshold
-    params.filterByArea = min_area is not None
-    params.minArea = min_area if min_area is not None else params.minArea
+    if thresh_step:
+        params.thresholdStep = thresh_step
+    if max_thresh:
+        params.maxThreshold = max_thresh
+    if min_area:
+        params.minArea = min_area
+    params.filterByArea = bool(min_area)
     return cv2.SimpleBlobDetector_create(params)
 
 
-def apply_clahe(img, clip_limit, tile_grid_size):
-    """
+def apply_clahe(img: np.ndarray, clip_limit: float, tile_grid_size: tuple[int, int]) -> np.ndarray:
+    '''
     Apply Contrast Limited Adaptive Histogram Equalization (CLAHE) to the image.
-    :param img: input image
-    :param clip_limit: limit of the contrast
-    :param tile_grid_size: the number of tiles in the row and column
-    :return: result of CLAHE
-    """
+
+    Parameters
+    ----------
+    img : np.ndarray
+        Input image.
+    clip_limit : float
+        Limit of the contrast.
+     tile_grid_size : tuple[int, int]
+        The number of tiles in the row and column.
+
+    Returns
+    -------
+    np.ndarray
+       Result of CLAHE.
+    '''
     lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
     l_channel = cv2.split(lab)[0]
     clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=tile_grid_size)
     return clahe.apply(l_channel)
 
 
-def convert_dots_to_mask(im_with_keypoints):
-    """
+def convert_dots_to_mask(im_with_keypoints: np.ndarray) -> np.ndarray:
+    '''
     Convert white circles in the image to white rounds in the mask.
-    :param im_with_keypoints: image with white circles
-    :return: image with white rounds
-    """
+
+    Parameters
+    ----------
+    im_with_keypoints : np.ndarray
+        Iimage with white circles.
+
+    Returns
+    -------
+    np.ndarray
+       Image with white rounds.
+    '''
     contour_mask = cv2.cvtColor(im_with_keypoints, cv2.COLOR_BGR2GRAY)
     contours, _ = cv2.findContours(contour_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     res_mask = np.zeros_like(contour_mask, dtype=np.uint8)
@@ -54,13 +89,22 @@ def convert_dots_to_mask(im_with_keypoints):
     return res_mask
 
 
-def extract_features_from_image(img, mask_of_lesion):
-    """
+def extract_features_from_image(img: np.ndarray, mask_of_lesion: np.ndarray) -> list[int, ...]:
+    '''
     Extract features from the image.
-    :param img: input image
-    :param mask_of_lesion: mask of pigmented skin lesion
-    :return: list of features (value of green, blue, red, and gray color) for each dot in the image
-    """
+
+    Parameters
+    ----------
+    im_with_keypoints : np.ndarray
+        Image with white circles.
+    mask_of_lesion : np.ndarray
+        Mask of pigmented skin lesion.
+
+    Returns
+    -------
+    list[int, ...]
+       List of features (value of green, blue, red, and gray color) for each dot in the image
+    '''
     dots_features = []
     keypoints = []
     limit = 0.1
@@ -87,12 +131,20 @@ def extract_features_from_image(img, mask_of_lesion):
     return dots_features
 
 
-def calculate_result_features(dots_features):
-    """
+def calculate_result_features(dots_features: list[int, ...]) -> list[int, int, int, int, int, int, int, int]:
+    '''
     Calculate result features from the list of dot features.
-    :param dots_features: list of features from dots
-    :return: result features
-    """
+
+    Parameters
+    ----------
+    dots_features : list[int, ...]
+        List of features from dots.
+
+    Returns
+    -------
+    list[int, int, int, int, int, int, int, int]
+       Result features.
+    '''
     g, b, r, m = zip(*dots_features)
     return [
         np.mean(g), np.mean(b), np.mean(r), np.mean(m),
@@ -100,28 +152,44 @@ def calculate_result_features(dots_features):
     ]
 
 
-def classify_image(img, mask):
-    """
+def classify_image(img: np.ndarray, mask: np.ndarray) -> str:
+    '''
     Classify the image.
-    :param img: image to classify
-    :param mask: mask of pigmented skin lesion
-    :return: predicted label
-    """
+
+    Parameters
+    ----------
+    img : np.ndarray
+        Image to classify.
+    mask : np.ndarray
+        Mask of pigmented skin lesion
+
+    Returns
+    -------
+    str
+       Predicted label.
+    '''
     features = calculate_result_features(extract_features_from_image(img, mask))
     df = pd.DataFrame([features])
     pred = clf.predict(df)
     return 'brown' if pred[0] == 1 else 'gray'
 
-    return None
 
-
-def main(img: np.ndarray, mask: np.ndarray):
-    """
+def main(img: np.ndarray, mask: np.ndarray) -> str:
+    '''
     Print the label of the image by its path.
-    :param img: image to classify
-    :param mask: mask of pigmented skin lesion
-    """
 
+    Parameters
+    ----------
+    img : np.ndarray
+        Image to classify.
+    mask : np.ndarray
+        Mask of pigmented skin lesion
+
+    Returns
+    -------
+    str
+       Predicted label.
+    '''
     label = classify_image(img, mask)
     return label
 
