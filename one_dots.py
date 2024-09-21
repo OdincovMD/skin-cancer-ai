@@ -18,19 +18,19 @@ def blob_detector(min_thresh: int,
 
     Parameters
     ----------
-    min_thresh : int
-        The lower bound of threshold.
-    thresh_step : Optional[int]
-        Step of threshold.
-    max_thresh : Optional[int]
-        The upper bound of threshold.
-    min_area : Optional[int]
-        Minimum value of dot's area.
+        min_thresh : int
+            The lower bound of threshold.
+        thresh_step : Optional[int]
+            Step of threshold.
+        max_thresh : Optional[int]
+            The upper bound of threshold.
+        min_area : Optional[int]
+            Minimum value of dot's area.
 
     Returns
     -------
-    cv2.SimpleBlobDetector
-       Resultant Blob Detector.
+        cv2.SimpleBlobDetector
+            Resultant Blob Detector.
     '''
     params = cv2.SimpleBlobDetector_Params()
     params.minThreshold = min_thresh
@@ -50,17 +50,17 @@ def apply_clahe(img: np.ndarray, clip_limit: float, tile_grid_size: tuple[int, i
 
     Parameters
     ----------
-    img : np.ndarray
-        Input image.
-    clip_limit : float
-        Limit of the contrast.
-     tile_grid_size : tuple[int, int]
-        The number of tiles in the row and column.
+        img : np.ndarray
+            Input image.
+        clip_limit : float
+            Limit of the contrast.
+        tile_grid_size : tuple[int, int]
+            The number of tiles in the row and column.
 
     Returns
     -------
-    np.ndarray
-       Result of CLAHE.
+        np.ndarray
+            Image with applied CLAHE.
     '''
     lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
     l_channel = cv2.split(lab)[0]
@@ -74,13 +74,13 @@ def convert_dots_to_mask(im_with_keypoints: np.ndarray) -> np.ndarray:
 
     Parameters
     ----------
-    im_with_keypoints : np.ndarray
-        Iimage with white circles.
+        im_with_keypoints : np.ndarray
+            Iimage with white circles.
 
     Returns
     -------
-    np.ndarray
-       Image with white rounds.
+        np.ndarray
+            Mask that contains white rounds.    
     '''
     contour_mask = cv2.cvtColor(im_with_keypoints, cv2.COLOR_BGR2GRAY)
     contours, _ = cv2.findContours(contour_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -89,21 +89,21 @@ def convert_dots_to_mask(im_with_keypoints: np.ndarray) -> np.ndarray:
     return res_mask
 
 
-def extract_features_from_image(img: np.ndarray, mask_of_lesion: np.ndarray) -> list[int, ...]:
+def extract_features_from_image(img: np.ndarray, mask_of_lesion: np.ndarray) -> list[int]:
     '''
     Extract features from the image.
 
     Parameters
     ----------
-    im_with_keypoints : np.ndarray
-        Image with white circles.
-    mask_of_lesion : np.ndarray
-        Mask of pigmented skin lesion.
+        im_with_keypoints : np.ndarray
+            Image with white circles.
+        mask_of_lesion : np.ndarray
+            Mask of pigmented skin lesion.
 
     Returns
     -------
-    list[int, ...]
-       List of features (value of green, blue, red, and gray color) for each dot in the image
+        list[int]
+            List of features (value of green, blue, red, and gray color) for each dot in the image.
     '''
     dots_features = []
     keypoints = []
@@ -131,19 +131,19 @@ def extract_features_from_image(img: np.ndarray, mask_of_lesion: np.ndarray) -> 
     return dots_features
 
 
-def calculate_result_features(dots_features: list[int, ...]) -> list[int, int, int, int, int, int, int, int]:
+def calculate_result_features(dots_features: list[int]) -> list[int]:
     '''
     Calculate result features from the list of dot features.
 
     Parameters
     ----------
-    dots_features : list[int, ...]
-        List of features from dots.
+        dots_features : list[int]
+            List of features from dots.
 
     Returns
     -------
-    list[int, int, int, int, int, int, int, int]
-       Result features.
+        list[int]
+            Result features.
     '''
     g, b, r, m = zip(*dots_features)
     return [
@@ -158,15 +158,15 @@ def classify_image(img: np.ndarray, mask: np.ndarray) -> str:
 
     Parameters
     ----------
-    img : np.ndarray
-        Image to classify.
-    mask : np.ndarray
-        Mask of pigmented skin lesion
+        img : np.ndarray
+            The original image of the neoplasm.
+        mask : np.ndarray
+            Mask of pigmented skin lesion.
 
     Returns
     -------
-    str
-       Predicted label.
+        str
+            "Коричневый"; "Серый".
     '''
     features = calculate_result_features(extract_features_from_image(img, mask))
     df = pd.DataFrame([features])
@@ -176,25 +176,25 @@ def classify_image(img: np.ndarray, mask: np.ndarray) -> str:
 
 def main(img: np.ndarray, mask: np.ndarray) -> str:
     '''
-    Print the label of the image by its path.
+    Classification of a neoplasm by color within an area that contains dots.
 
     Parameters
     ----------
-    img : np.ndarray
-        Image to classify.
-    mask : np.ndarray
-        Mask of pigmented skin lesion
+        img : np.ndarray
+            The original image of the neoplasm.
+        mask : np.ndarray
+            Mask of pigmented skin lesion.
 
     Returns
     -------
-    str
-       Predicted label.
+        str
+            "Коричневый"; "Серый".
     '''
     label = classify_image(img, mask)
     return label
 
 
-# Deprecated since the mask is being passed by from the main.py
+# Deprecated since the mask is being passed from the main.py
 # if __name__ == '__main__':
 #     image_path = "26.jpg"  # change to your image path
 #     img = cv2.imread(image_path)
