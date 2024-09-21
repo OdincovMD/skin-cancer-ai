@@ -1,12 +1,10 @@
-import base64
-
-import numpy as np
 import cv2
-from roboflow import Roboflow
 import os
 
+import mask_builder
+
 import one
-import ManyPatterns_DominantPattern
+import several
 
 import one_structureless
 import one_globules
@@ -28,13 +26,13 @@ app = FastAPI()
 def main(path_to_img: str) -> list:
     image = cv2.imread(path_to_img)
 
-    pred_one_or_more = "OnlyOne"  # TODO add model to classify one or more
+    pred_one_or_more = "Один"  # TODO add model to classify one or more
 
-    mask = "mask"  # TODO add model to segment neoplasm
+    mask = mask_builder.main(path_to_img) 
 
     accumulate = []
 
-    if pred_one_or_more == "OnlyOne":
+    if pred_one_or_more == "Один":
         accumulate.append('Один признак')
         pred_one_which = one.main(image)
 
@@ -97,7 +95,7 @@ def main(path_to_img: str) -> list:
 
     else:
         accumulate.append('Несколько признаков')
-        tmp = ManyPatterns_DominantPattern.main(image)
+        tmp = several.main(image)
 
         if tmp == 'Комки':
             accumulate.append("Комки")

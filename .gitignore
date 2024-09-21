@@ -1,3 +1,4 @@
-/weight/
-/.venv/
-/.idea/
+weight/
+venv/
+.idea/
+model_weights.pth
