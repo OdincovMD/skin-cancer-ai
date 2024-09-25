@@ -6,16 +6,23 @@ import mask_builder
 import one
 import several
 
-import one_structureless
-import one_globules
-import one_dots
-
 import one_lines
 import one_lines_reticular
 import one_lines_branched
 import one_lines_parallel
 import one_lines_reticular_one_color_black_or_brown
 import one_lines_reticular_more_than_one_color
+
+import one_globules
+import one_globules_one_color
+import one_globules_more_than_one_color_melanin # этот модуль не работает, так как классификатор до него не сделан.
+
+import one_structureless
+import one_structureless_one_color
+import one_structureless_more_than_one_color
+
+import one_dots
+
 
 import several_globules_symmetricOrAsymmetric
 import two_circles
@@ -38,27 +45,30 @@ def main(path_to_img: str) -> list:
 
     accumulate = []
 
-    def handle_structureless(image):
-        pred_one_structureless = one_structureless.main(image)
-        colors = {
-            'Коричневый': 'Коричневый',
-            'Красный': 'Красный',
-            'Синий': 'Синий',
-            'Черный': 'Черный'
-        }
-        accumulate.append(colors[pred_one_structureless])
-
     def handle_globules(image):
         pred = one_globules.main(image)
-        colors = {
-            'Желтый-белый': 'Желтый-белый',
-            'Коричневый': 'Коричневый',
-            'Красный': 'Красный',
-            'Оранжевый': 'Оранжевый',
-            'Телесный': 'Телесный',
-            'Черный': 'Черный'
+        globules_color = {
+            'single_color': 'Один цвет',
+            'several_colors': 'Больше одного цвета'
         }
-        accumulate.append(colors[pred])
+        accumulate.append(globules_color[pred])
+
+        def handle_globules_one_color(image):
+            pred = one_globules_one_color.main(image)
+            colors = {
+                'Желтый-белый': 'Желтый-белый',
+                'Коричневый': 'Коричневый',
+                'Красный': 'Красный',
+                'Оранжевый': 'Оранжевый',
+                'Телесный': 'Телесный',
+                'Черный': 'Черный'
+            }
+            accumulate.append(colors[pred])
+        
+        globules_color = {
+            'Один цвет': handle_globules_one_color,
+        }
+        globules_color[pred](image)
 
     def handle_one_lines(image):
         pred = one_lines.main(image)
@@ -128,17 +138,51 @@ def main(path_to_img: str) -> list:
             one_lines_handlers[pred](image)
     
     def handle_dots(image):
-        pred_one_dots = one_dots.main(image, mask)
+        pred = one_dots.main(image, mask)
         dot_colors = {
             'brown': 'Коричневый',
             'gray': 'Серый'
         }
-        accumulate.append(dot_colors[pred_one_dots])
+        accumulate.append(dot_colors[pred])
+
+    def handle_structureless(image):
+        pred = one_structureless.main(image)
+        one_structureless_type = {
+            'monochrome': 'Один цвет',
+            'multicolor': 'Несколько цветов'
+        }
+        accumulate.append(one_structureless_type[pred])
+
+        def handle_one_structureless_one_color(image):
+            pred = one_structureless_one_color.main(image)
+            colors = {
+            'Коричневый': 'Коричневый',
+            'Красный': 'Красный',
+            'Синий': 'Синий',
+            'Черный': 'Черный'
+            }
+            accumulate.append(colors[pred])
+
+        def handle_one_structureless_many_color(iamge):
+            pred = one_structureless_more_than_one_color.main(image, mask)
+            color = {
+                'brown': 'Коричневый',
+                'red': 'Красный',
+                'yellow': 'Зелёный'
+            }
+            accumulate.append(color[pred])
+
+        one_structureless_color_type = {
+            'monochrome': handle_one_structureless_one_color,
+            'multicolor': handle_one_structureless_many_color
+        }
+
+        one_structureless_color_type[pred](image)
 
     # Определение одного признака
     if pred_one_or_more == "Один":
         accumulate.append('Один признак')
-        pred_one_which = one.ma in(image)
+        pred_one_which = one.main(image)
 
         structure_handlers = {
             'Бесструктурная область': handle_structureless,
@@ -153,57 +197,62 @@ def main(path_to_img: str) -> list:
         elif pred_one_which == "Круги":
             accumulate.append("Круги")
             accumulate.append('Продолжение ветки в разработке')
+        else:
+            accumulate.append("Псевдоподии")
+            accumulate.append('Продолжение ветки в разработке')
+
 
     # Обработка нескольких признаков
     else:
-        accumulate.append('Несколько признаков')
-        main_feature = several.main(image)
+        pass    
+        # accumulate.append('Несколько признаков')
+        # main_feature = several.main(image)
 
-        def handle_several_globules(image, mask):
-            pred_several_globules = several_globules_symmetricOrAsymmetric.main(image, mask)
-            symmetry_types = {
-                'СИММЕТРИЧНЫЕ': 'Симметричные',
-                'АСИММЕТРИЧНЫЕ': 'Асимметричные'
-            }
-            accumulate.append(symmetry_types[pred_several_globules])
+        # def handle_several_globules(image, mask):
+        #     pred_several_globules = several_globules_symmetricOrAsymmetric.main(image, mask)
+        #     symmetry_types = {
+        #         'СИММЕТРИЧНЫЕ': 'Симметричные',
+        #         'АСИММЕТРИЧНЫЕ': 'Асимметричные'
+        #     }
+        #     accumulate.append(symmetry_types[pred_several_globules])
 
-        def handle_several_lines(image):
-            pred_several_lines = number_of_signs_lines_full.main(image)
-            line_types = {
-                'Curved': 'Изогнутые',
-                'Parallel': 'Параллельные',
-                'Radial': 'Радиальные',
-                'Reticular_or_network': 'Ретикулярные или разветвленные'
-            }
-            accumulate.append(line_types[pred_several_lines])
+        # def handle_several_lines(image):
+        #     pred_several_lines = number_of_signs_lines_full.main(image)
+        #     line_types = {
+        #         'Curved': 'Изогнутые',
+        #         'Parallel': 'Параллельные',
+        #         'Radial': 'Радиальные',
+        #         'Reticular_or_network': 'Ретикулярные или разветвленные'
+        #     }
+        #     accumulate.append(line_types[pred_several_lines])
 
-        def handle_two_circles(image):
-            pred_several_circles = two_circles.main(image, mask)
-            circles_type = {
-                'Brown': 'Коричневый',
-                'Black or Gray': 'Черный или серый'
-            }
-            accumulate.append(circles_type[pred_several_circles])
+        # def handle_two_circles(image):
+        #     pred_several_circles = two_circles.main(image, mask)
+        #     circles_type = {
+        #         'Brown': 'Коричневый',
+        #         'Black or Gray': 'Черный или серый'
+        #     }
+        #     accumulate.append(circles_type[pred_several_circles])
         
-        def handle_several_dots(image):
-            pred_several_dots = several_dots.main(image)
-            several_dots_type = {
-                'Black': 'Черный',
-                'Brown': 'Коричневый'
-            }
-            accumulate.append(several_dots_type[pred_several_dots])
+        # def handle_several_dots(image):
+        #     pred_several_dots = several_dots.main(image)
+        #     several_dots_type = {
+        #         'Black': 'Черный',
+        #         'Brown': 'Коричневый'
+        #     }
+        #     accumulate.append(several_dots_type[pred_several_dots])
 
 
-        several_handlers = {
-            'Комки': handle_several_globules,
-            'Круги': handle_two_circles,
-            'Линии': handle_several_lines,
-            'Точки': handle_several_dots
-        }
+        # several_handlers = {
+        #     'Комки': handle_several_globules,
+        #     'Круги': handle_two_circles,
+        #     'Линии': handle_several_lines,
+        #     'Точки': handle_several_dots
+        # }
 
-        if main_feature in several_handlers:
-            accumulate.append(main_feature)
-            several_handlers[main_feature](image)
+        # if main_feature in several_handlers:
+        #     accumulate.append(main_feature)
+        #     several_handlers[main_feature](image)
 
     # Финальная классификация
     final_class = final.main(image)
