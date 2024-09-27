@@ -15,7 +15,7 @@ import one_dots
 
 import several_globules_symmetricOrAsymmetric
 import two_circles
-import number_of_signs_lines_full
+import several_lines
 import several_dots
 
 import final

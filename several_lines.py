@@ -14,6 +14,7 @@ LABEL_MAPPING = {
     3: 'Reticular_or_network'
 }
 
+
 def skeletonize(image: np.ndarray) -> np.ndarray:
     size = np.size(image)
     skel = np.zeros(image.shape, np.uint8)
@@ -85,7 +86,8 @@ def get_skeleton_features(gray_img: np.ndarray) -> dict:
     }
 
 
-def blurring_gaussian(img: np.ndarray, k_size: Tuple[int, int] = (5, 5), sigma_x: int = 0, sigma_y: int = 0) -> np.ndarray:
+def blurring_gaussian(img: np.ndarray, k_size: Tuple[int, int] = (5, 5), sigma_x: int = 0,
+                      sigma_y: int = 0) -> np.ndarray:
     return cv2.GaussianBlur(img, k_size, sigmaX=sigma_x, sigmaY=sigma_y)
 
 

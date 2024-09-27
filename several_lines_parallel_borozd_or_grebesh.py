@@ -16,6 +16,7 @@ data_transforms = {
     ]),
 }
 
+
 def load_model(model_path):
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     model = EfficientNet.from_pretrained('efficientnet-b1', num_classes=2)
@@ -25,6 +26,7 @@ def load_model(model_path):
     model.eval()
     return model, device
 
+
 def preprocess_image(img):
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     img = img.transpose((2, 0, 1))
@@ -33,17 +35,21 @@ def preprocess_image(img):
     img = data_transforms['test'](img).unsqueeze(0)
     return img
 
+
 def predict(model, device, image_transform):
     with torch.no_grad():
         prediction = model(image_transform.to(device))
     return "Borozd" if torch.argmax(prediction) == 0 else "Grebesh"
 
+
 model, device = load_model('weight/several_parallel_lines_borozd_grebesh.pth')
+
 
 def main(img):
     image_transform = preprocess_image(img)
     prediction = predict(model, device, image_transform)
     return prediction
+
 
 if __name__ == "__main__":
     img_path = '26.jpg'

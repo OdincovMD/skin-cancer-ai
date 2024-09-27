@@ -6,6 +6,7 @@ from torchvision import transforms, models
 from tqdm import tqdm
 from typing import Optional, Callable, Any, List
 import os
+
 os.chdir(os.path.dirname(__file__))
 
 
@@ -39,10 +40,12 @@ class CustomNeuralNetResNet(torch.nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.net(x)
 
+
 some_line_model = CustomNeuralNetResNet(2)
 some_line_model.load_state_dict(torch.load(
     r'several_line_parallel_furrow_ridges_sym.pth', map_location=torch.device('cpu')))
 some_line_model.eval()
+
 
 class NumpyImageDataset(Dataset):
     """
