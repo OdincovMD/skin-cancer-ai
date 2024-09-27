@@ -42,9 +42,9 @@ import several_globules_asymmetric
 
 import final
 
-from fastapi import FastAPI, File, UploadFile
+# from fastapi import FastAPI, File, UploadFile
 
-app = FastAPI()
+# app = FastAPI()
 
 
 def main(path_to_img: str) -> list:
@@ -175,8 +175,8 @@ def main(path_to_img: str) -> list:
     def handle_dots(image):
         pred = one_dots.main(image, mask)
         dot_colors = {
-            'brown': 'Коричневый',
-            'gray': 'Серый'
+            'Коричневый': 'Коричневый',
+            'Серый': 'Серый'
         }
         accumulate.append(dot_colors[pred])
 
@@ -339,7 +339,7 @@ def main(path_to_img: str) -> list:
             accumulate.append(circles_type[pred])
         
         def handle_several_dots(image):
-            pred_= several_dots.main(image)
+            pred = several_dots.main(image)
             several_dots_type = {
                 'Black': 'Черный',
                 'Brown': 'Коричневый'
@@ -370,13 +370,13 @@ def main(path_to_img: str) -> list:
 
     return accumulate
 
-@app.post("/uploadfile/")
-async def create_upload_file(file: UploadFile = File(...)):
-    with open(file.filename, "wb") as buffer:
-        buffer.write(file.file.read())
-    result = main(file.filename)
-    os.remove(file.filename)
-    return result
+# @app.post("/uploadfile/")
+# async def create_upload_file(file: UploadFile = File(...)):
+#     with open(file.filename, "wb") as buffer:
+#         buffer.write(file.file.read())
+#     result = main(file.filename)
+#     os.remove(file.filename)
+#     return result
 
-# if __name__ == '__main__':
-#     main('26.jpg')
+if __name__ == '__main__':
+    main('26.jpg')
