@@ -33,13 +33,14 @@ import several_lines_reticular_asymmetric
 import several_lines_parallel_furrow
 import several_lines_radial_pereferic  # не реализуется узел выше: несколько признаков -> линни -> радиальные 
 
+import several_circles
 
+import several_dots
 
-# import several_globules_symmetricOrAsymmetric
-# import two_circles
-# import several_dots
+import several_globules
+import several_globules_asymmetric
 
-# import final
+import final
 
 from fastapi import FastAPI, File, UploadFile
 
@@ -241,13 +242,28 @@ def main(path_to_img: str) -> list:
         accumulate.append('Несколько признаков')
         pred = several.main(image)
 
-        # def handle_several_globules(image, mask):
-        #     pred_several_globules = several_globules_symmetricOrAsymmetric.main(image, mask)
-        #     symmetry_types = {
-        #         'СИММЕТРИЧНЫЕ': 'Симметричные',
-        #         'АСИММЕТРИЧНЫЕ': 'Асимметричные'
-        #     }
-        #     accumulate.append(symmetry_types[pred_several_globules])
+        def handle_several_globules(image):
+            pred = several_globules.main(image, mask)
+            symmetry_types = {
+                'СИММЕТРИЧНЫЕ': 'Симметричные',
+                'АСИММЕТРИЧНЫЕ': 'Асимметричные'
+            }
+            accumulate.append(symmetry_types[pred])
+
+            def handle_several_globules_asymmetric(image):
+                pred = several_globules_asymmetric.main(image)
+                color = {
+                    'Другой': 'Другой',
+                    'Меланин': 'Меланин'
+                }
+                accumulate.append(color[pred])
+
+            several_globules_handlers ={
+                'АСИММЕТРИЧНЫЕ': handle_several_globules_asymmetric
+            }
+
+            if pred in several_globules_handlers:
+                several_globules_handlers[pred](image)
 
         def handle_several_lines(image):
             pred = several_lines.main(image)
@@ -314,45 +330,43 @@ def main(path_to_img: str) -> list:
             if pred in several_lines_handler:
                 several_lines_handler[pred](image)
 
-
-        # def handle_two_circles(image):
-        #     pred_several_circles = two_circles.main(image, mask)
-        #     circles_type = {
-        #         'Brown': 'Коричневый',
-        #         'Black or Gray': 'Черный или серый'
-        #     }
-        #     accumulate.append(circles_type[pred_several_circles])
+        def handle_several_circles(image):
+            pred = several_circles.main(image, mask)
+            circles_type = {
+                'Brown': 'Коричневый',
+                'Black or Gray': 'Черный или серый'
+            }
+            accumulate.append(circles_type[pred])
         
-        # def handle_several_dots(image):
-        #     pred_several_dots = several_dots.main(image)
-        #     several_dots_type = {
-        #         'Black': 'Черный',
-        #         'Brown': 'Коричневый'
-        #     }
-        #     accumulate.append(several_dots_type[pred_several_dots])
+        def handle_several_dots(image):
+            pred_= several_dots.main(image)
+            several_dots_type = {
+                'Black': 'Черный',
+                'Brown': 'Коричневый'
+            }
+            accumulate.append(several_dots_type[pred])
 
+        several_handlers = {
+            'Комки': handle_several_globules,
+            'Круги': handle_several_circles,
+            'Линии': handle_several_lines,
+            'Точки': handle_several_dots
+        }
 
-        # several_handlers = {
-        #     'Комки': handle_several_globules,
-        #     'Круги': handle_two_circles,
-        #     'Линии': handle_several_lines,
-        #     'Точки': handle_several_dots
-        # }
-
-        # if main_feature in several_handlers:
-        #     accumulate.append(main_feature)
-        #     several_handlers[main_feature](image)
+        
+        accumulate.append(pred)
+        several_handlers[pred](image)
 
     # Финальная классификация
-    # final_class = final.main(image)
-    # final_classes = {
-    #     'Melanoma': 'Меланома',
-    #     'Nevus': 'Невус',
-    #     'BCC': 'Базалиома',
-    #     'DF': 'Дерматофиброма',
-    #     'SebK': 'Себорейный кератоз'
-    # }
-    # accumulate.append(final_classes[final_class])
+    pred = final.main(image)
+    final_classes = {
+        'Melanoma': 'Меланома',
+        'Nevus': 'Невус',
+        'BCC': 'Базалиома',
+        'DF': 'Дерматофиброма',
+        'SebK': 'Себорейный кератоз'
+    }
+    accumulate.append(final_classes[pred])
 
     return accumulate
 
