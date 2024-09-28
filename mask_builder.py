@@ -168,7 +168,7 @@ def get_predictions(dataloader: DataLoader, device: str='cuda:0') -> np.ndarray:
     """
 
     model = UNet().to(device)
-    model.load_state_dict(torch.load("/home/hardbox/python/skin/model_weights.pth", weights_only=True, map_location=torch.device(device)))
+    model.load_state_dict(torch.load("/home/hardbox/python/skin/weight/model_weights.pth", weights_only=True, map_location=torch.device(device)))
     model.eval()
     with torch.no_grad():
         for images, img_paths in dataloader:
@@ -211,7 +211,7 @@ def main(path_to_image: str) -> np.ndarray:
     original = Image.open(path_to_image)
     mask = Image.fromarray(mask)
     mask_resized = mask.resize(original.size, resample=Image.NEAREST)
-    mask = np.array(mask_resized)
+    mask = np.array(mask_resized, dtype=np.uint8)
     return mask
 
 if __name__ == "__main__":

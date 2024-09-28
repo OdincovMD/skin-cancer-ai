@@ -2,3 +2,4 @@ weight/
 venv/
 .idea/
 model_weights.pth
+__pycache__/

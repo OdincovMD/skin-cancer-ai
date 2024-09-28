@@ -50,7 +50,7 @@ import final
 def main(path_to_img: str) -> list:
     image = cv2.imread(path_to_img)
 
-    pred_one_or_more = "Один"  # TODO add model to classify one or more
+    pred = "Несколько признаков"  # TODO add model to classify one or more
 
     mask = mask_builder.main(path_to_img) 
 
@@ -215,9 +215,9 @@ def main(path_to_img: str) -> list:
         one_structureless_color_type[pred](image)
 
     # Определение одного признака
-    if pred_one_or_more == "Один":
+    if pred == "Один":
         accumulate.append('Один признак')
-        pred_one_which = one.main(image)
+        pred = one.main(image)
 
         structure_handlers = {
             'Бесструктурная область': handle_structureless,
@@ -226,10 +226,10 @@ def main(path_to_img: str) -> list:
             'Точки': handle_dots,
         }
 
-        if pred_one_which in structure_handlers:
-            accumulate.append(pred_one_which)
-            structure_handlers[pred_one_which](image)
-        elif pred_one_which == "Круги":
+        if pred in structure_handlers:
+            accumulate.append(pred)
+            structure_handlers[pred](image)
+        elif pred == "Круги":
             accumulate.append("Круги")
             accumulate.append('Продолжение ветки в разработке')
         else:

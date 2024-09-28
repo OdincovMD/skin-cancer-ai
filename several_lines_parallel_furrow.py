@@ -1,6 +1,6 @@
 import torch
 from torch.utils.data import Dataset, DataLoader
-import matplotlib.image as mpimg
+from PIL import Image
 import numpy as np
 from torchvision import transforms, models
 from tqdm import tqdm
@@ -41,7 +41,7 @@ class CustomNeuralNetResNet(torch.nn.Module):
 
 some_line_model = CustomNeuralNetResNet(2)
 some_line_model.load_state_dict(torch.load(
-    r'several_line_parallel_furrow_ridges_sym.pth', map_location=torch.device('cpu')))
+    r'weight/several_line_parallel_furrow_ridges_sym.pth', map_location=torch.device('cpu')))
 some_line_model.eval()
 
 class NumpyImageDataset(Dataset):
@@ -114,6 +114,6 @@ def main(img: np.ndarray) -> str:
 
 
 if __name__ == "__main__":
-    img = mpimg.imread("26.jpg")  # type(img) is numpy.ndarray
+    img = np.array(Image.open("26.jpg"))  # type(img) is numpy.ndarray
     result = main(img)
     print(result)

@@ -5,7 +5,6 @@ import requests
 import cv2
 import pickle
 
-from roboflow import Roboflow
 
 with open('weight/several_lines_reticOrBranch_asymmetric.pkl', 'rb') as file:
     clf = pickle.load(file)
@@ -57,24 +56,24 @@ def main(img: np.ndarray, mask: np.ndarray):
     return 'ОДИН ЦВЕТ' if res[0] == 1 else 'БОЛЬШЕ ОДНОГО ЦВЕТА'
 
 
-if __name__ == "__main__":
-    img_path = '26.jpg'
-    img = cv2.imread(img_path)
+# if __name__ == "__main__":
+#     img_path = '26.jpg'
+#     img = cv2.imread(img_path)
 
-    rf = Roboflow(api_key="GmJT3lC4NInRGZJ2iEit")
-    project = rf.workspace("neo-dmsux").project("neo-v6wzn")
-    model = project.version(2).model
+#     rf = Roboflow(api_key="GmJT3lC4NInRGZJ2iEit")
+#     project = rf.workspace("neo-dmsux").project("neo-v6wzn")
+#     model = project.version(2).model
 
-    data = model.predict("26.jpg").json()
-    width = data['predictions'][0]['image']['width']
-    height = data['predictions'][0]['image']['height']
+#     data = model.predict("26.jpg").json()
+#     width = data['predictions'][0]['image']['width']
+#     height = data['predictions'][0]['image']['height']
 
-    encoded_mask = data['predictions'][0]['segmentation_mask']
-    mask_bytes = base64.b64decode(encoded_mask)
-    mask_array = np.frombuffer(mask_bytes, dtype=np.uint8)
-    mask_image = cv2.imdecode(mask_array, cv2.IMREAD_GRAYSCALE)
-    mask = np.where(mask_image == 1, 255, mask_image)
-    mask = cv2.resize(mask, (width, height), interpolation=cv2.INTER_LINEAR)
+#     encoded_mask = data['predictions'][0]['segmentation_mask']
+#     mask_bytes = base64.b64decode(encoded_mask)
+#     mask_array = np.frombuffer(mask_bytes, dtype=np.uint8)
+#     mask_image = cv2.imdecode(mask_array, cv2.IMREAD_GRAYSCALE)
+#     mask = np.where(mask_image == 1, 255, mask_image)
+#     mask = cv2.resize(mask, (width, height), interpolation=cv2.INTER_LINEAR)
 
-    result = main(img, mask)
-    print(result)
+#     result = main(img, mask)
+#     print(result)
