@@ -50,7 +50,7 @@ import final
 def main(path_to_img: str) -> list:
     image = cv2.imread(path_to_img)
 
-    pred = "Несколько признаков"  # TODO add model to classify one or more
+    pred = "Один"  # TODO add model to classify one or more
 
     mask = mask_builder.main(path_to_img) 
 
@@ -229,13 +229,9 @@ def main(path_to_img: str) -> list:
         if pred in structure_handlers:
             accumulate.append(pred)
             structure_handlers[pred](image)
-        elif pred == "Круги":
-            accumulate.append("Круги")
-            accumulate.append('Продолжение ветки в разработке')
         else:
-            accumulate.append("Псевдоподии")
+            accumulate.append("Круги либо Псевдоподии")
             accumulate.append('Продолжение ветки в разработке')
-
 
     # Обработка нескольких признаков
     else:   
