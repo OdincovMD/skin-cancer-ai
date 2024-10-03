@@ -15,6 +15,9 @@ class StructurelessClf_1(torch.nn.Module):
         self.fc3 = torch.nn.Linear(model_params['layers'][1], model_params['out_size'])
 
     def forward(self, X):
+        """"
+        asdd: fdfdf
+        """
         X = self.conv1(X)
         X = torch.nn.functional.relu(X)
         X = torch.nn.functional.max_pool2d(X, 2, 2)
