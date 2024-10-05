@@ -2,8 +2,7 @@ import os
 import cv2
 import torch
 import torch.nn as nn
-from torchvision import models
-from torchvision.transforms import v2
+from torchvision import models, transforms
 
 def set_parameter_requires_grad(model, feature_extracting):
     """
@@ -71,10 +70,11 @@ def get_transformations():
 
     """
 
-    return v2.Compose([
-        v2.Resize(299, 299),
-        v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-        v2.Compose([v2.ToImage(), v2.ToDtype(torch.float32, scale=True)])
+    return transforms.Compose([
+        transforms.ToPILImage(),
+        transforms.Resize((299, 299)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
 
 def evaluate(model, input):
