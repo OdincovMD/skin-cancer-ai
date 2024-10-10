@@ -4,7 +4,9 @@ import pandas as pd
 import numpy as np
 from joblib import load
 
+
 CLF = load('weight/several_dots.joblib')
+
 
 def calc_area_of_interest(img):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
