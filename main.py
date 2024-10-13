@@ -1,5 +1,4 @@
 import cv2
-import os
 
 import mask_builder
 
