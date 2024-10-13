@@ -38,7 +38,7 @@ class StructurelessClf_1(torch.nn.Module):
         return X
 
 MODEL = StructurelessClf_1()
-MODEL.load_state_dict(torch.load('weight/One_Structureless_MonoMulti.pt', map_location=torch.device('cpu')))
+MODEL.load_state_dict(torch.load('weight/one_structureless.pt', map_location=torch.device('cpu')))
 DEVICE = ('cuda:0' if torch.cuda.is_available() else 'cpu')
 MODEL = MODEL.to(DEVICE)
 TRANSFORM = torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
