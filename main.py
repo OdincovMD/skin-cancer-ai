@@ -1,5 +1,6 @@
 import cv2
 
+import one_several
 import mask_builder
 
 import one
@@ -49,7 +50,7 @@ import final
 def main(path_to_img: str) -> list:
     image = cv2.imread(path_to_img)
 
-    pred = "Один"  # TODO add model to classify one or more
+    pred = one_several.main(image)
 
     mask = mask_builder.main(path_to_img) 
 
@@ -147,7 +148,7 @@ def main(path_to_img: str) -> list:
 
         
         def handle_one_lines_branched(image):
-            pred = one_lines_branched.main(image)
+            pred = one_lines_branched.main(image, mask=mask)
             branched_type = {
                 'brown': 'Коричневый',
                 'black': 'Чёрный'
@@ -172,7 +173,7 @@ def main(path_to_img: str) -> list:
             one_lines_handlers[pred](image)
     
     def handle_dots(image):
-        pred = one_dots.main(image, mask)
+        pred = one_dots.main(image, mask=mask)
         dot_colors = {
             'Коричневый': 'Коричневый',
             'Серый': 'Серый'
@@ -198,7 +199,7 @@ def main(path_to_img: str) -> list:
             accumulate.append(colors[pred])
 
         def handle_one_structureless_many_color(iamge):
-            pred = one_structureless_more_than_one_color.main(image, mask)
+            pred = one_structureless_more_than_one_color.main(image, mask=mask)
             color = {
                 'brown': 'Коричневый',
                 'red': 'Красный',
@@ -238,7 +239,7 @@ def main(path_to_img: str) -> list:
         pred = several.main(image)
 
         def handle_several_globules(image):
-            pred = several_globules.main(image, mask)
+            pred = several_globules.main(image, mask=mask)
             symmetry_types = {
                 'СИММЕТРИЧНЫЕ': 'Симметричные',
                 'АСИММЕТРИЧНЫЕ': 'Асимметричные'
@@ -279,7 +280,7 @@ def main(path_to_img: str) -> list:
                 accumulate.append(type_parallel_lines[pred])
 
                 def handle_several_lines_parallel_furrow(image):
-                    pred = several_lines_parallel_furrow.main(image)
+                    pred = several_lines_parallel_furrow.main(image, mask=mask)
                     type_parallel_lines_furrow = {
                         'Симметрия': 'Симметрия',
                         'Асимметрия': 'Асимметрия'
@@ -302,7 +303,7 @@ def main(path_to_img: str) -> list:
                 accumulate.append(type_reticular_lines[pred])
 
                 def handle_several_lines_reticular_assymetric(image):
-                    pred = several_lines_reticular_asymmetric.main(image)
+                    pred = several_lines_reticular_asymmetric.main(image, mask=mask)
                     colors = {
                         'ОДИН ЦВЕТ': 'Один цвет',
                         'БОЛЬШЕ ОДНОГО ЦВЕТА': 'Больше одного цвета'
@@ -326,7 +327,7 @@ def main(path_to_img: str) -> list:
                 several_lines_handler[pred](image)
 
         def handle_several_circles(image):
-            pred = several_circles.main(image, mask)
+            pred = several_circles.main(image, mask=mask)
             circles_type = {
                 'Brown': 'Коричневый',
                 'Black or Gray': 'Черный или серый'
@@ -372,6 +373,3 @@ def main(path_to_img: str) -> list:
 #     result = main(file.filename)
 #     os.remove(file.filename)
 #     return result
-
-if __name__ == '__main__':
-    main('26.jpg')

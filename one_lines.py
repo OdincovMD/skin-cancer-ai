@@ -57,7 +57,7 @@ def main(img_to_classify):
 
     img_to_classify = cv2.cvtColor(img_to_classify, cv2.COLOR_BGR2RGB)
     img_transforms = get_transformations()
-    clf_input = img_transforms(image=img_to_classify)
+    clf_input = img_transforms(img_to_classify)
     input_batch = clf_input.unsqueeze(0)
     eval_res = evaluate(model_ft, input_batch)
 
