@@ -4,7 +4,7 @@ import matplotlib.image as mpimg
 import numpy as np
 from torchvision import transforms, models
 from tqdm import tqdm
-from typing import Optional, Callable, Any, List
+from typing import Optional, Callable, Any
 import os
 
 os.chdir(os.path.dirname(__file__))
@@ -12,15 +12,14 @@ os.chdir(os.path.dirname(__file__))
 
 class CustomNeuralNetResNet(torch.nn.Module):
     """
-    Кастомная нейронная сеть, основанная на архитектуре ResNet50.
+    A custom neural network based on the ResNet50 architecture.
 
-    Аргументы:
-        outputs_number (int): Количество выходных нейронов.
+    Args:
+        outputs_number (int): Number of output neurons.
 
-    Атрибуты:
-        net (torch.nn.Module): Загруженная модель ResNet50 с замененным последним слоем.
+    Returns:
+        net (torch.nn.Module): Loaded ResNet50 model with modified final layer.
     """
-
     def __init__(self, outputs_number: int) -> None:
         super(CustomNeuralNetResNet, self).__init__()
         self.net = models.resnet50(pretrained=True)
@@ -45,20 +44,23 @@ some_line_model = CustomNeuralNetResNet(2)
 some_line_model.load_state_dict(torch.load(
     r'several_line_parallel_furrow_ridges_sym.pth', map_location=torch.device('cpu')))
 some_line_model.eval()
+# если это опять глобальное, то почему мы с lower case обозвали переменную 
+# и еще и не передаем ее в функцию. BAd
+# TODO: сделать из этого global и передавать в функцию или сделать функцию на загрузку модели (как будто муторно)
 
 
 class NumpyImageDataset(Dataset):
     """
-    Датасет для работы с изображениями в формате массива NumPy.
+    A dataset class for handling images in the form of NumPy arrays.
 
-    Атрибуты:
-        image_array (np.ndarray): Массив изображений.
-        transform (callable): Преобразование данных, которое применяется к изображению.
+    Args:
+        image_array (np.ndarray): Array of images.
+        transform (callable): A callable that applies data transformations to the image.
 
-    Методы:
-        __init__(self, image_array, transform=None): Конструктор класса.
-        __len__(self): Возвращает количество элементов в датасете.
-        __getitem__(self, idx): Возвращает элемент датасета по индексу.
+    Methods:
+        init(self, image_array, transform=None): Class constructor.
+        len(self): Returns the number of elements in the dataset.
+        getitem(self, idx): Returns a dataset item by index.
     """
 
     def __init__(self, image_array: np.ndarray, transform: Optional[Callable[[Any], Any]] = None) -> None:
@@ -77,15 +79,14 @@ class NumpyImageDataset(Dataset):
 
 def main(img: np.ndarray) -> str:
     """
-    Основная функция для классификации изображения на симметрию и асимметрию.
+    The main function for classifying an image as symmetric or asymmetric.
 
     Args:
-        img (np.ndarray): Массив изображения в формате numpy.
+        img (np.ndarray): Image array in numpy format.
 
     Returns:
-        str: Результат классификации: "Симметрия" или "Асимметрия".
+        str: Classification result: "Симметрия" or "Асимметрия".
     """
-
     transform = transforms.Compose([
         transforms.ToPILImage(),
         transforms.Resize((224, 224)),
