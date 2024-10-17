@@ -1,23 +1,43 @@
 import base64
 import numpy as np
 import pandas as pd
-import requests
 import cv2
 import pickle
+from typing import Dict
 
 from roboflow import Roboflow
 
+#TODO: переименовать файл пкл в соответствии с названием модуля -> several_lines_reticular_or_branched_asymmetric.pkl
+# почему это в глобальной области видимости??? Либо в функцию, либо uppercase!!
 with open('weight/several_lines_reticOrBranch_asymmetric.pkl', 'rb') as file:
     clf = pickle.load(file)
 
 
-def segment_area_of_interest(img: np.ndarray, mask: np.ndarray):
-    seg_img = cv2.bitwise_and(img, img, mask=mask)
+def segment_area_of_interest(img: np.ndarray, mask: np.ndarray) -> np.ndarray:
+    """
+    Applies a mask to the input image and converts it to RGB color space.
 
+    Args:
+        img (np.ndarray): The original image in BGR format.
+        mask (np.ndarray): The binary mask for segmentation.
+
+    Returns:
+        np.ndarray: Segmented image in RGB color space.
+    """
+    seg_img = cv2.bitwise_and(img, img, mask=mask)
     return cv2.cvtColor(seg_img, cv2.COLOR_BGR2RGB)
 
 
-def extract_characteristics(seg_img: np.ndarray):
+def extract_characteristics(seg_img: np.ndarray) -> Dict[str, float]:
+    """
+    Extracts various color and texture characteristics from the segmented image in BGR and HSV
+
+    Args:
+        seg_img (np.ndarray): Segmented image in RGB.
+
+    Returns:
+        dict: A dictionary of extracted image features such as color means, max/min values, and standard deviations.
+    """
     b, g, r = cv2.split(seg_img)
     mask_rgb = (b > 0) | (g > 0) | (r > 0)
 
@@ -47,8 +67,18 @@ def extract_characteristics(seg_img: np.ndarray):
         'std_v': np.std(v[mask_hsv])
     }
 
+# переименовано из main
+def predict(img: np.ndarray, mask: np.ndarray) -> str:
+    """
+    Uses segmented images and their characteristics to predict a category.
+ 
+    Args:
+        img (np.ndarray): The original image in BGR format.
+        mask (np.ndarray): The binary mask for segmentation.
 
-def main(img: np.ndarray, mask: np.ndarray):
+    Returns:
+        str: Classification result, either 'ONE COLOR' or 'MORE THAN ONE COLOR'.
+    """
     seg_img = segment_area_of_interest(img, mask)
     characteristics = extract_characteristics(seg_img)
     df = pd.DataFrame([characteristics])
@@ -56,16 +86,22 @@ def main(img: np.ndarray, mask: np.ndarray):
     res = clf.predict(df)
     return 'ОДИН ЦВЕТ' if res[0] == 1 else 'БОЛЬШЕ ОДНОГО ЦВЕТА'
 
+# переделано в функцию
+def main(img_path: str) -> str:
+    """
+    Main function to process the image and predict its category based on color segmentation.
 
-if __name__ == "__main__":
-    img_path = '26.jpg'
-    img = cv2.imread(img_path)
+    Args:
+        img_path (str): Path to the input image.
 
+    Returns:
+        str: Prediction if the region of interest is 'ONE COLOR' or 'MORE THAN ONE COLOR'.
+    """
     rf = Roboflow(api_key="GmJT3lC4NInRGZJ2iEit")
     project = rf.workspace("neo-dmsux").project("neo-v6wzn")
     model = project.version(2).model
 
-    data = model.predict("26.jpg").json()
+    data = model.predict(img_path).json()
     width = data['predictions'][0]['image']['width']
     height = data['predictions'][0]['image']['height']
 
@@ -76,5 +112,11 @@ if __name__ == "__main__":
     mask = np.where(mask_image == 1, 255, mask_image)
     mask = cv2.resize(mask, (width, height), interpolation=cv2.INTER_LINEAR)
 
-    result = main(img, mask)
+    return predict(img, mask)
+
+
+if __name__ == "__main__":
+    img_path = '26.jpg'
+    img = cv2.imread(img_path)
+    result = main(img)
     print(result)
