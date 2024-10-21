@@ -11,6 +11,21 @@ with open('weight/one_lines_retic_moreThanOneColor_2.pkl', 'rb') as file:
 
 
 def calc_area_of_interest(img: np.ndarray) -> tuple:
+    """
+    Function for selecting area of interest
+
+    Parameters
+    ____________
+        img : np.ndarray
+            Original image of neoplasm
+
+    Returns
+    ____________
+        res_image : np.ndarray
+            Segmented image with selected area of neoplasm
+        largest_contour : np.ndarray
+            coordinates of contour of area of interest
+    """
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
     contours, _ = cv2.findContours(binary, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
@@ -40,6 +55,23 @@ def calc_area_of_interest(img: np.ndarray) -> tuple:
 
 
 def calc_in_out_area(img: np.ndarray, contour: np.ndarray) -> tuple:
+    """
+    Function for calculating area of neoplasm and background
+
+    Parameters
+    ____________
+        img : np.ndarray
+            Segmented image
+        contour : np.ndarray
+            Contour coordinates of neoplasm
+
+    Returns
+    ____________
+        inside_area : np.ndarray
+            Segmented neoplasm
+        outside_area : np.ndarray
+            Segmented background
+    """
     height, width, _ = img.shape
     area = cv2.contourArea(contour)
     M = cv2.moments(contour)
@@ -59,6 +91,23 @@ def calc_in_out_area(img: np.ndarray, contour: np.ndarray) -> tuple:
 
 
 def split_masked_image_into_micro_sectors(masked_image: np.ndarray, contour: np.ndarray) -> tuple:
+    """
+    Function for splitting neoplasm into sector area
+
+    Parameters
+    ____________
+        masked_image : np.ndarray
+            Segmented image
+        contour : np.ndarray
+            Contour coordinates of neoplasm
+
+    Returns
+    ____________
+        sectors : array
+            array of parts of neoplasm
+        cols : int
+            number of taken columns
+    """
     height, width = masked_image.shape[:2]
     area = cv2.contourArea(contour)
     rows = cols = int(50 - (area // 75000))
@@ -77,6 +126,19 @@ def split_masked_image_into_micro_sectors(masked_image: np.ndarray, contour: np.
 
 
 def count_characteristics1(img: np.ndarray) -> dict:
+    """
+    Function for calculating values of features for findind mixture of colors
+
+    Parameters
+    ____________
+        img : np.ndarray
+            Original image of neoplasm
+
+    Returns
+    ____________
+        characters : dict
+            dictionary with calculated values of features
+    """
     characters = {}
     area_of_interest, contour = calc_area_of_interest(img)
 
@@ -128,6 +190,19 @@ def count_characteristics1(img: np.ndarray) -> dict:
 
 
 def count_characteristics2(img: np.ndarray) -> dict:
+    """
+    Function for calculating values of features for findind position of pigmentation
+
+    Parameters
+    ____________
+        img : np.ndarray
+            Original image of neoplasm
+
+    Returns
+    ____________
+        characters : dict
+            dictionary with calculated values of features
+    """
     characters = {}
     area_of_interest, contour = calc_area_of_interest(img)
     area_inside, area_outside = calc_in_out_area(area_of_interest, contour)
@@ -172,20 +247,35 @@ def count_characteristics2(img: np.ndarray) -> dict:
 
 
 def main(img: np.ndarray) -> str:
+    """
+    Classification of reticular lines with several colors by color type:
+    Reticular, Spread, Parallel or Curved
+
+    Parameters
+    ____________
+        img : np.ndarray
+            Original image of neoplasm
+
+    Returns
+    ____________
+        result : str
+            Type of multicolored reticular lines according to classificator
+            Пестрый и краповый, Центральная гиперпигментация, Периферическая гиперпигментация
+    """
     info_img_1 = count_characteristics1(img)
     df_1 = pd.DataFrame(info_img_1, index=[0])
     res_1 = clf_1.predict(df_1)
 
     if res_1 == 0:
-        return 'ПЕСТРЫЙ ИЛИ КРАПОВЫЙ'
+        return 'Пестрый и краповый'
     else:
         info_img_2 = count_characteristics2(img)
         df_2 = pd.DataFrame(info_img_2, index=[0])
         res_2 = clf_2.predict(df_2)
         if res_2 == 0:
-            return 'ЦЕНТРАЛЬНАЯ ГИПЕРПИГМЕНТАЦИЯ'
+            return 'Центральная гиперпигментация'
         else:
-            return 'ПЕРИФЕРИЧЕСКАЯ ГИПЕРПИГМЕНТАЦИЯ'
+            return 'Периферическая гиперпигментация'
 
 
 if __name__ == "__main__":
