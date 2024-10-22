@@ -186,4 +186,3 @@ def main(path_to_image: str)-> np.ndarray:
         mask_resized = mask.resize((width, height), resample=Image.NEAREST)
         combined_mask = np.array(mask_resized, dtype=np.uint8)
     return combined_mask
-
