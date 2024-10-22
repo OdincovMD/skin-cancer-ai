@@ -1,4 +1,3 @@
-import os
 import numpy as np
 import cv2
 import torch
@@ -59,144 +58,16 @@ DEVICE = ('cuda:0' if torch.cuda.is_available() else 'cpu')
 MODEL = MODEL.to(DEVICE)
 TRANSFORM = torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 
-
-def get_tumor_contour(img: np.ndarray, solve_hair: bool = True, area_ratio_thresh: float = 0.65,
-                      indent_ratio_thresh: float = 0.18) -> np.ndarray:
-    """
-    Получает контур опухоли на изображении.
-
-    :param img: исходное изображение
-    :param solve_hair: решать ли проблему с волосами (ухудшает качество сегментации, но игнорирует волосы)
-    :param area_ratio_thresh: максимальное отношение площади подозрительной области к общей площади объекта,
-                              чтобы считать его опухолью
-    :param indent_ratio_thresh: максимальное отношение отступа по оси x (или y) к ширине (или высоте) объекта,
-                                чтобы считать его опухолью
-    :return: контур опухоли
-    """
-    height, width = img.shape[:2]
-    area_thresh = area_ratio_thresh * height * width
-    x_indent_left = indent_ratio_thresh * width
-    x_indent_right = width - x_indent_left
-    y_indent_upper = indent_ratio_thresh * height
-    y_indent_lower = height - y_indent_upper
-
-    best_contours = []
-    orig = img
-
-    for mode in range(3):
-        if mode == 0:
-            img_gray = cv2.cvtColor(orig, cv2.COLOR_BGR2GRAY)
-        elif mode == 1:
-            img_gray, _, _ = cv2.split(orig)
-        elif mode == 2:
-            img_b, img_g, _ = cv2.split(orig)
-            img_gray = cv2.merge([img_b, img_g, img_b])
-            img_gray = cv2.cvtColor(img_gray, cv2.COLOR_BGR2GRAY)
-
-        k = get_k(img_gray, intensity_thresh=140)
-        kernel = np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]]) * k
-        img_filtered = cv2.filter2D(img_gray, -1, kernel)
-        img_blurred = cv2.medianBlur(img_filtered, 15)
-
-        _, mask = cv2.threshold(img_blurred, 110, 255, cv2.THRESH_BINARY_INV)
-        if solve_hair:
-            open_kernel = np.ones((9, 9))
-            mask = cv2.erode(mask, open_kernel, iterations=5)
-            mask = cv2.dilate(mask, open_kernel, iterations=2)
-
-        contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_TC89_L1)
-        best_contour = get_best_contour(contours, area_thresh, x_indent_left, x_indent_right,
-                                        y_indent_upper, y_indent_lower)
-
-        if best_contour is not None:
-            best_contours.append(best_contour)
-
-    if not best_contours:
-        return None
-
-    best_contour = get_best_contour_by_ratio(best_contours)
-    best_contour = cv2.convexHull(best_contour)
-    return best_contour
-
-
-def get_k(img: np.ndarray, intensity_thresh: int = 145) -> float:
-    """
-    Вычисляет коэффициент для матрицы фильтра экспозиции, соответствующей заданной целевой интенсивности.
-
-    :param img: исходное изображение
-    :param intensity_thresh: целевая интенсивность результирующего изображения
-    :return: коэффициент матрицы фильтра
-    """
-    def calc_intensity(img):
-        return np.mean(img)
-
-    k = 0.3
-    while k < 2.2:
-        k += 0.05
-        kernel = np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]]) * k
-        intensity = calc_intensity(cv2.filter2D(img, -1, kernel))
-        if intensity > intensity_thresh:
-            return k
-
-    return k
-
-
-def get_best_contour(contours, area_thresh, x_indent_left, x_indent_right,
-                     y_indent_upper, y_indent_lower):
-    """
-    Находит лучший контур среди заданных контуров.
-
-    :param contours: список контуров
-    :param area_thresh: максимальная площадь контура, чтобы считать его опухолью
-    :param x_indent_left: левый отступ по оси x
-    :param x_indent_right: правый отступ по оси x
-    :param y_indent_upper: верхний отступ по оси y
-    :param y_indent_lower: нижний отступ по оси y
-    :return: лучший контур или None, если не найден
-    """
-    max_area = 0
-    best_contour = None
-
-    for contour in contours:
-        area = cv2.contourArea(contour)
-        if area <= area_thresh and area > max_area:
-            M = cv2.moments(contour)
-            cx = int(M['m10'] / M['m00'])
-            cy = int(M['m01'] / M['m00'])
-            if x_indent_left < cx < x_indent_right and y_indent_upper < cy < y_indent_lower:
-                max_area = area
-                best_contour = contour
-
-    return best_contour
-
-def get_best_contour_by_ratio(contours):
-    """
-    Находит лучший контур среди заданных контуров на основе отношения длины контура к площади.
-
-    :param contours: список контуров
-    :return: лучший контур
-    """
-    best_ratio = cv2.arcLength(contours[0], True) / np.sqrt(cv2.contourArea(contours[0]))
-    best_contour = contours[0]
-
-    for contour in contours:
-        ratio = cv2.arcLength(contour, True) / np.sqrt(cv2.contourArea(contour))
-        if ratio <= best_ratio:
-            best_ratio = ratio
-            best_contour = contour
-
-    return best_contour
-
-
 def get_cropped_image(img: np.ndarray, mask: np.ndarray, size_step: int = 224, const_res: bool = True,
                       solve_hair: bool = True, apply_mask: bool = True,
-                      draw_contour: bool = False, contour_color: tuple[int, int, int] = (255, 0, 0),
+                      contour_color: tuple[int, int, int] = (255, 0, 0),
                       area_ratio_thresh: float = 0.65, indent_ratio_thresh: float = 0.18) -> np.ndarray:
     """
     Возвращает обрезанное изображение с разрешением (N*size_step, N*size_step), где N - минимальное подходящее число.
     Опционально применяет маску к изображению и/или рисует контур на нем.
 
     :param img: исходное изображение
+    :param mask: маска к изображению
     :param size_step: шаг увеличения размера (равен минимальному из HEIGHT и WIDTH, если задан как 0 или меньше)
     :param const_res: изменять ли разрешение всех изображений до (size_step, size_step) после обработки
     :param solve_hair: решать ли проблему с волосами (ухудшает качество сегментации, но более вероятно игнорирует волосы)
@@ -210,21 +81,14 @@ def get_cropped_image(img: np.ndarray, mask: np.ndarray, size_step: int = 224, c
     :return: обрезанное изображение минимального из доступных дискретных размеров
     """
     height, width = img.shape[:2]
-    #contour = get_tumor_contour(img, solve_hair=solve_hair, area_ratio_thresh=area_ratio_thresh,
-    #                            indent_ratio_thresh=indent_ratio_thresh)
     ret, thresh = cv2.threshold(mask, 127, 255, 0)
     contours, hierarchy = cv2.findContours(thresh, 1, 2)
-    print(contours)
     contour = contours[0]
 
     if apply_mask and contour is not None:
         mask = np.zeros_like(img[:, :, 0], dtype='uint8')
         cv2.drawContours(mask, [contour], -1, (255, 255, 255), -1)
         img = cv2.bitwise_and(img, img, mask=mask)
-        cv2.imshow("1", cv2.resize(img, (500, 250)))
-        cv2.waitKey(0)
-    if draw_contour:
-        cv2.drawContours(img, [contour], -1, color=contour_color, thickness=2)
 
     if size_step <= 0:
         size_step = min(width, height)
@@ -311,6 +175,7 @@ def main(img: np.ndarray, mask: np.ndarray) -> str:
     Предсказывает класс: 'monochrome' или 'multicolor'.
 
     :param img: BGR изображение
+    :param mask: маска к изображению
     :return: класс
     """
     img = get_cropped_image(img, mask)
@@ -332,3 +197,9 @@ def main(img: np.ndarray, mask: np.ndarray) -> str:
         res = 'multicolor' if y > 0.5 else 'monochrome'
 
     return res
+
+if __name__ == '__main__':
+    path_to_image = '619.jpg'
+    img = cv2.imread(path_to_image)
+    mask = mask_builder.main(path_to_image)
+    print(main(img, mask))
