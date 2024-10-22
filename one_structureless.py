@@ -3,7 +3,8 @@ import numpy as np
 import cv2
 import torch
 import torchvision
-import mask_builder
+
+import mask_builder # Есил это для локального тетса, то окей. Если в проекте нужна маска, то сообщить об этом.
 
 class StructurelessClf_1(torch.nn.Module):
     """
@@ -168,7 +169,6 @@ def get_best_contour(contours, area_thresh, x_indent_left, x_indent_right,
 
     return best_contour
 
-
 def get_best_contour_by_ratio(contours):
     """
     Находит лучший контур среди заданных контуров на основе отношения длины контура к площади.
@@ -332,13 +332,3 @@ def main(img: np.ndarray, mask: np.ndarray) -> str:
         res = 'multicolor' if y > 0.5 else 'monochrome'
 
     return res
-
-
-if __name__ == "__main__":
-  file_path = '619.jpg'
-  mask = mask_builder.main(file_path)
-  cv2.imshow("1", cv2.resize(mask, (500, 250)))
-  cv2.waitKey(0)
-  img = cv2.imread(file_path)
-  result = main(img, mask)
-  print(result)

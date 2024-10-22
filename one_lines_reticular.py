@@ -84,13 +84,5 @@ def process_image_and_predict(img):
     return predicted_label
 
 
-def main(image_path):
-    image = cv2.imread(image_path)
+def main(image):
     return process_image_and_predict(image)
-
-
-
-if __name__ == "__main__":
-    image_path = "26.jpg"
-    result = main(image_path)
-    print(result)

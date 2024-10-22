@@ -2,9 +2,7 @@ import os
 import cv2
 import torch
 import torch.nn as nn
-from torchvision import models
-import albumentations as A
-from albumentations.pytorch import ToTensorV2
+from torchvision import models, transforms
 
 def set_parameter_requires_grad(model, feature_extracting):
     if feature_extracting:
@@ -32,10 +30,11 @@ if os.path.exists(MODEL_PATH):
     model_ft.load_state_dict(torch.load(MODEL_PATH))
 
 def get_transformations():
-    return A.Compose([
-        A.Resize(299, 299),
-        A.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-        ToTensorV2()
+    return transforms.Compose([
+        transforms.ToPILImage(), 
+        transforms.Resize((299, 299)),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
 
 def evaluate(model, input):
@@ -58,7 +57,7 @@ def main(img_to_classify):
 
     img_to_classify = cv2.cvtColor(img_to_classify, cv2.COLOR_BGR2RGB)
     img_transforms = get_transformations()
-    clf_input = img_transforms(image=img_to_classify)['image']
+    clf_input = img_transforms(img_to_classify)
     input_batch = clf_input.unsqueeze(0)
     eval_res = evaluate(model_ft, input_batch)
 

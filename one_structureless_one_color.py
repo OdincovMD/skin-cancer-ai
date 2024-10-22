@@ -95,8 +95,3 @@ def main(img: np.ndarray) -> str:
     prediction = FOREST.predict([features])
     return INFO[prediction[0].tolist().index(1)]
 
-
-if __name__ == "__main__":
-    img = cv2.imread("26.jpg")
-    result = main(img)
-    print(result)
