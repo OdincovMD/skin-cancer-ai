@@ -184,12 +184,3 @@ def main(image):
             Один цвет, Больше одного цвета
     """
     return process_image_and_predict(image)
-
-
-
-if __name__ == "__main__":
-    image_path = "26.jpg"
-    image = cv2.imread(image_path)
-    result = main(image)
-    print(result)
-

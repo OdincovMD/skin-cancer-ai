@@ -5,7 +5,6 @@ import os
 import requests
 import base64
 from joblib import load
-from roboflow import Roboflow
 
 clf = load('weight/one_structureless_more than 1.joblib')
 
@@ -79,26 +78,3 @@ def main(img, mask):
     :return: метка изображения
     """
     return classify_image(img, mask)
-
-
-if __name__ == '__main__':
-    image_path = "26.jpg"
-    img = cv2.imread(image_path)
-
-    rf = Roboflow(api_key="GmJT3lC4NInRGZJ2iEit")
-    project = rf.workspace("neo-dmsux").project("neo-v6wzn")
-    model = project.version(2).model
-
-    data = model.predict("26.jpg").json()
-    width = data['predictions'][0]['image']['width']
-    height = data['predictions'][0]['image']['height']
-
-    encoded_mask = data['predictions'][0]['segmentation_mask']
-    mask_bytes = base64.b64decode(encoded_mask)
-    mask_array = np.frombuffer(mask_bytes, dtype=np.uint8)
-    mask_image = cv2.imdecode(mask_array, cv2.IMREAD_GRAYSCALE)
-    mask = np.where(mask_image == 1, 255, mask_image)
-    mask = cv2.resize(mask, (width, height), interpolation=cv2.INTER_LINEAR)
-
-    result = main(img, mask)
-    print(result)
