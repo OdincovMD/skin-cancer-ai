@@ -5,11 +5,42 @@ import torch.nn as nn
 from torchvision import models, transforms
 
 def set_parameter_requires_grad(model, feature_extracting):
+    """
+    Function for disabling training of convolutional layers
+
+    Parameters
+    ____________
+        model
+            Original image of neoplasm
+        feature_extracting : bool
+            flag meaning that only fully-connected layer is being trained
+    """
+
     if feature_extracting:
         for param in model.parameters():
             param.requires_grad = False
 
 def initialize_model(num_classes, feature_extract, use_pretrained=True):
+    """
+    Function for initialization of classification model
+
+    Parameters
+    ____________
+        num_classes : int
+            number of classes of lines
+        feature_extract : bool
+            flag meaning that only fully-connected layer is being trained
+        use_pretrained : bool
+            flag meaning that we get pretrained weights of a model
+
+    Returns
+    ____________
+        model_ft
+            the model object
+        input_size : int
+            size of input image
+    """
+
     model_ft = models.inception_v3(pretrained=use_pretrained)
     set_parameter_requires_grad(model_ft, feature_extract)
     num_ftrs = model_ft.AuxLogits.fc.in_features
@@ -30,14 +61,39 @@ if os.path.exists(MODEL_PATH):
     model_ft.load_state_dict(torch.load(MODEL_PATH))
 
 def get_transformations():
+    """
+    Function for initialization of augmetation composition
+
+    Returns
+    ____________
+        composition of transformaions to apply to image for future classification
+
+    """
+
     return transforms.Compose([
-        transforms.ToPILImage(), 
+        transforms.ToPILImage(),
         transforms.Resize((299, 299)),
         transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
 
 def evaluate(model, input):
+    """
+    Function for classification of image
+
+    Parameters
+    ____________
+        model
+            classification model
+       input : tensor
+            batched and transformed image
+
+    Returns
+    ____________
+        res_class : int
+            number of class with max probability
+    """
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     input = input.to(device)
     model.to(device)
@@ -49,6 +105,22 @@ def evaluate(model, input):
     return res_class
 
 def main(img_to_classify):
+    """
+    Classification of lines by the type:
+    Reticular, Spread, Parallel or Curved
+
+    Parameters
+    ____________
+        img : np.ndarray
+            Original image of neoplasm
+
+    Returns
+    ____________
+        result : str
+            Type of lines according to classificator
+            Ретикулярные, разветвленные, параллельные или изогнутые
+    """
+
     global model_ft, input_size
 
     if model_ft is None:
@@ -61,7 +133,7 @@ def main(img_to_classify):
     input_batch = clf_input.unsqueeze(0)
     eval_res = evaluate(model_ft, input_batch)
 
-    class_map = {0: 'Reticular', 1: 'Spread', 2: 'Parallel', 3: 'Curved'}
+    class_map = {0: 'Ретикулярные', 1: 'Разветвленные', 2: 'Параллельные', 3: 'Изогнутые'}
     result = class_map[eval_res]
     return result
 

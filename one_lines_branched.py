@@ -9,10 +9,36 @@ import joblib
 CLF = joblib.load('weight/one_lines_branched_clf.joblib')
 
 def count_area_of_interest(img: np.ndarray) -> int:
+    """
+    Function for counting of area of neoplasm
+
+    Parameters
+    ____________
+        img : np.ndarray
+            Segmented image
+
+    Returns
+    ____________
+        int
+            Area of neoplasm
+    """
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     return cv2.countNonZero(gray)
 
 def get_image_features(img: np.ndarray) -> dict:
+    """
+    Function for acquiring values of features
+
+    Parameters
+    ____________
+        img : np.ndarray
+            Segmented image
+
+    Returns
+    ____________
+        features : dict
+            Dictionary of feature values
+    """
     features = {}
     area_value = count_area_of_interest(img)
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -53,6 +79,22 @@ def get_image_features(img: np.ndarray) -> dict:
 
 
 def apply_mask(image: np.ndarray, mask: np.ndarray) -> np.ndarray:
+
+    """
+    Function for masking the image
+
+    Parameters
+    ____________
+        image : np.ndarray
+            Original image of neoplasm
+        mask : np.ndarray
+            Binary image where white stands for area of neoplasm
+
+    Returns
+    ____________
+        segmented_image : np.ndarray
+            Image with selected area of interest
+    """
     image = cv2.medianBlur(image, 3)
 
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -71,34 +113,42 @@ def apply_mask(image: np.ndarray, mask: np.ndarray) -> np.ndarray:
     return segmented_image
 
 def classify_image(img: np.ndarray) -> str:
+    """
+    Function for image classification
+
+    Parameters
+    ____________
+        img : np.ndarray
+            Segmented image
+
+    Returns
+    ____________
+        str
+            Resulting class
+    """
     features = get_image_features(img)
     df = pd.DataFrame([features])
     pred = CLF.predict(df)
-    return 'brown' if pred[0] == 0 else 'black'
+    return 'Коричневые' if pred[0] == 0 else 'Черные'
 
 def main(img: np.ndarray, mask: np.ndarray):
+    """
+    Classification of branched lines by color:
+    brown or black
+
+    Parameters
+    ____________
+        image : np.ndarray
+            Original image of neoplasm
+        mask : np.ndarray
+            Binary image where white stands for area of neoplasm
+
+    Returns
+    ____________
+        label : str
+            color of branched lines according to classificator
+            Коричневые, Черные
+    """
     segmented_img = apply_mask(img, mask)
     label = classify_image(segmented_img)
     return label
-
-# if __name__ == '__main__':
-#     file_path = "26.jpg"
-#     img = cv2.imread(file_path)
-
-#     rf = Roboflow(api_key="GmJT3lC4NInRGZJ2iEit")
-#     project = rf.workspace("neo-dmsux").project("neo-v6wzn")
-#     model = project.version(2).model
-
-#     data = model.predict("26.jpg").json()
-#     width = data['predictions'][0]['image']['width']
-#     height = data['predictions'][0]['image']['height']
-
-#     encoded_mask = data['predictions'][0]['segmentation_mask']
-#     mask_bytes = base64.b64decode(encoded_mask)
-#     mask_array = np.frombuffer(mask_bytes, dtype=np.uint8)
-#     mask_image = cv2.imdecode(mask_array, cv2.IMREAD_GRAYSCALE)
-#     mask = np.where(mask_image == 1, 255, mask_image)
-#     mask = cv2.resize(mask, (width, height), interpolation=cv2.INTER_LINEAR)
-
-#     result = main(img, mask)
-#     print(result)
