@@ -168,7 +168,7 @@ def get_predictions(dataloader: DataLoader, device: str='cuda:0') -> np.ndarray:
     """
 
     model = UNet().to(device)
-    model.load_state_dict(torch.load("/home/hardbox/python/skin/weight/model_weights.pth", weights_only=True, map_location=torch.device(device)))
+    model.load_state_dict(torch.load("weight/model_weights.pth", weights_only=True, map_location=torch.device(device)))
     model.eval()
     with torch.no_grad():
         for images, img_paths in dataloader:

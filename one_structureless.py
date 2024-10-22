@@ -3,9 +3,21 @@ import numpy as np
 import cv2
 import torch
 import torchvision
+import mask_builder
 
 class StructurelessClf_1(torch.nn.Module):
+    """
+    Сверточная нейронная сеть для определения класса изображения
+    """
     def __init__(self, model_params={'in_size': 250000, 'layers': (100, 10), 'out_size': 1}):
+        """
+        Иницилизация структуры нейронной сети
+
+        :param model_params: параметры модели
+        #in_size: размерность входного вектора
+        #layers: размерность скрытых слоев
+        #out_size: размер выходного вектора (количество классов)
+        """
         super().__init__()
         self.conv1 = torch.nn.Conv2d(3, 6, 3, 1, 1, bias=True)
         self.conv2 = torch.nn.Conv2d(6, 16, 3, 1, 1, bias=True)
@@ -15,8 +27,11 @@ class StructurelessClf_1(torch.nn.Module):
         self.fc3 = torch.nn.Linear(model_params['layers'][1], model_params['out_size'])
 
     def forward(self, X):
-        """"
-        asdd: fdfdf
+        """
+        Проход по нейронной сети
+
+        :param X: принимаемое изображение
+        :return: класс объекта
         """
         X = self.conv1(X)
         X = torch.nn.functional.relu(X)
@@ -100,7 +115,6 @@ def get_tumor_contour(img: np.ndarray, solve_hair: bool = True, area_ratio_thres
 
     best_contour = get_best_contour_by_ratio(best_contours)
     best_contour = cv2.convexHull(best_contour)
-
     return best_contour
 
 
@@ -174,9 +188,9 @@ def get_best_contour_by_ratio(contours):
     return best_contour
 
 
-def get_cropped_image(img: np.ndarray, size_step: int = 224, const_res: bool = True, solve_hair: bool = True,
-                      apply_mask: bool = False, draw_contour: bool = False,
-                      contour_color: tuple[int, int, int] = (255, 0, 0),
+def get_cropped_image(img: np.ndarray, mask: np.ndarray, size_step: int = 224, const_res: bool = True,
+                      solve_hair: bool = True, apply_mask: bool = True,
+                      draw_contour: bool = False, contour_color: tuple[int, int, int] = (255, 0, 0),
                       area_ratio_thresh: float = 0.65, indent_ratio_thresh: float = 0.18) -> np.ndarray:
     """
     Возвращает обрезанное изображение с разрешением (N*size_step, N*size_step), где N - минимальное подходящее число.
@@ -196,14 +210,19 @@ def get_cropped_image(img: np.ndarray, size_step: int = 224, const_res: bool = T
     :return: обрезанное изображение минимального из доступных дискретных размеров
     """
     height, width = img.shape[:2]
-    contour = get_tumor_contour(img, solve_hair=solve_hair, area_ratio_thresh=area_ratio_thresh,
-                                indent_ratio_thresh=indent_ratio_thresh)
+    #contour = get_tumor_contour(img, solve_hair=solve_hair, area_ratio_thresh=area_ratio_thresh,
+    #                            indent_ratio_thresh=indent_ratio_thresh)
+    ret, thresh = cv2.threshold(mask, 127, 255, 0)
+    contours, hierarchy = cv2.findContours(thresh, 1, 2)
+    print(contours)
+    contour = contours[0]
 
     if apply_mask and contour is not None:
         mask = np.zeros_like(img[:, :, 0], dtype='uint8')
         cv2.drawContours(mask, [contour], -1, (255, 255, 255), -1)
         img = cv2.bitwise_and(img, img, mask=mask)
-
+        cv2.imshow("1", cv2.resize(img, (500, 250)))
+        cv2.waitKey(0)
     if draw_contour:
         cv2.drawContours(img, [contour], -1, color=contour_color, thickness=2)
 
@@ -287,14 +306,14 @@ def get_crop_coordinates(x, y, w, h, size, height, width):
     return x1, y1, x2, y2
 
 
-def main(img: np.ndarray) -> str:
+def main(img: np.ndarray, mask: np.ndarray) -> str:
     """
     Предсказывает класс: 'monochrome' или 'multicolor'.
 
     :param img: BGR изображение
     :return: класс
     """
-    img = get_cropped_image(img)
+    img = get_cropped_image(img, mask)
     img = cv2.resize(img, dsize=(250, 250))
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     img = img.transpose((2, 0, 1))
@@ -316,7 +335,10 @@ def main(img: np.ndarray) -> str:
 
 
 if __name__ == "__main__":
-  file_path = '26.jpg'
+  file_path = '619.jpg'
+  mask = mask_builder.main(file_path)
+  cv2.imshow("1", cv2.resize(mask, (500, 250)))
+  cv2.waitKey(0)
   img = cv2.imread(file_path)
-  result = main(img)
+  result = main(img, mask)
   print(result)
