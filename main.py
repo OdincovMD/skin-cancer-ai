@@ -198,7 +198,7 @@ def main(path_to_img: str) -> list:
             }
             accumulate.append(colors[pred])
 
-        def handle_one_structureless_many_color(iamge):
+        def handle_one_structureless_many_color(image):
             pred = one_structureless_more_than_one_color.main(image, mask=mask)
             color = {
                 'brown': 'Коричневый',
