@@ -1,15 +1,10 @@
 import cv2
-import numpy as np
 import pandas as pd
-import os
-import requests
-import base64
 from joblib import load
 
-clf = load('weight/one_structureless_more than 1.joblib')
+clf = load('weight/one_structureless_more_than_one_color.joblib')
 
-
-def clahe_filter(img, limit: float, grid: tuple):
+def clahe_filter(img, limit: float = 10, grid: tuple = (6, 4)):
     """
     Увеличение контрастности изображения с помощью CLAHE.
     :param img: входное изображение
@@ -50,8 +45,7 @@ def feature_from_im(image, mask_of_les):
     features = cv2.meanStdDev(cv2.merge((b, g, r, gray)), mask=result_mask)
     return features[0].flatten().tolist() + features[1].flatten().tolist()
 
-
-def classify_image(img, mask) -> str:
+def main(img, mask) -> str:
     """
     Классификация изображения.
     :param img: изображение для классификации
@@ -69,12 +63,3 @@ def classify_image(img, mask) -> str:
         return 'red'
     else:
         return 'yellow'
-
-
-def main(img, mask):
-    """
-    Вывод метки изображения по пути.
-    :param im: изображение
-    :return: метка изображения
-    """
-    return classify_image(img, mask)
