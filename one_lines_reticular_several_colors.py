@@ -278,8 +278,3 @@ def main(img: np.ndarray) -> str:
             return 'Периферическая гиперпигментация'
 
 
-if __name__ == "__main__":
-    file_path = '26.jpg'
-    img = cv2.imread(file_path)
-    result = main(img)
-    print(result)
