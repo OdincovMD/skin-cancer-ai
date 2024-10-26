@@ -8,7 +8,9 @@ from typing import Optional, Callable, Any
 import os
 
 os.chdir(os.path.dirname(__file__))
+MODEL_PATH = os.path.join('weight','several_line_parallel_furrow_ridges_sym.pth')
 
+#TODO Вопрос: img = mpimg.imread("26.jpg") - RGB order. Соответственно влияет на каналы, которые подаются в нейронку на вход. при чтении cv2 - там bgr каналы
 
 class CustomNeuralNetResNet(torch.nn.Module):
     """
@@ -40,13 +42,12 @@ class CustomNeuralNetResNet(torch.nn.Module):
         return self.net(x)
 
 
-some_line_model = CustomNeuralNetResNet(2)
-some_line_model.load_state_dict(torch.load(
-    r'several_line_parallel_furrow_ridges_sym.pth', map_location=torch.device('cpu')))
-some_line_model.eval()
-# если это опять глобальное, то почему мы с lower case обозвали переменную 
-# и еще и не передаем ее в функцию. BAd
-# TODO: сделать из этого global и передавать в функцию или сделать функцию на загрузку модели (как будто муторно)
+def load_model() -> CustomNeuralNetResNet:
+    model = CustomNeuralNetResNet(2)
+    model.load_state_dict(torch.load(MODEL_PATH, map_location=torch.device('cpu')))
+    model.eval()
+    return model
+
 
 
 class NumpyImageDataset(Dataset):
@@ -87,6 +88,7 @@ def main(img: np.ndarray) -> str:
     Returns:
         str: Classification result: "Симметрия" or "Асимметрия".
     """
+    model = load_model()
     transform = transforms.Compose([
         transforms.ToPILImage(),
         transforms.Resize((224, 224)),
@@ -107,7 +109,7 @@ def main(img: np.ndarray) -> str:
     test_predictions = []
     for inputs in tqdm(dataloader):
         with torch.set_grad_enabled(False):
-            preds = some_line_model(inputs)
+            preds = model(inputs)
         test_predictions.append(
             torch.nn.functional.softmax(preds, dim=1)[:, 1].data.cpu().numpy())
     pred = 0
