@@ -1,137 +1,102 @@
+import pandas as pd
+from scipy import stats
 import joblib
 import cv2
-import matplotlib.image as mpimg
 import numpy as np
-import torch
 
-forest_brown = joblib.load("weight/one_globules_1")
-forest_selected = joblib.load("weight/one_globules_2")
+clf = joblib.load('weight/one_clods_single-color_clf.joblib')
 
-def area_of_interest(img: np.ndarray, to_hsv: bool = False) -> np.ndarray:
-    '''
-    Функция. Вовзращает обработанное изображение img.
-    Для этого происходит вырезка области размером 1500 х 1500, изменение её размеров до 200 х 200.
-    Затем при помощи пороговой фильтрации на изображении выделяется новообразование.
 
-    Parameters
-    ----------
-    img : np.ndarray
-        Исходное цветное трехканальное фото новообразования
-    to_hsv : bool
-        Метка. Указывает, нужно ли преобразовывать конечное изображение из формата BGR в формат HSV
+def count_area_of_interest(img: np.ndarray) -> int:
+    """
+    Считает количество пикселей в области интереса изображения.
 
-    Returns
-    -------
-    np.ndarray
-        Изображенние 200x200x3, обработанное по указанному алгоритму.
-    '''
-
-    height, width = 1500, 1500
-    center = img.shape
-    x = center[1]/2 - width/2
-    y = center[0]/2 - height/2
-
-    img = img[int(y):int(y+height), int(x):int(x+width)]
-    img = cv2.resize(img, (200, 200))
+    :param img: исходное изображение (трехканальное)
+    :return: количество ненулевых пикселей в изображении
+    """
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    blur = cv2.GaussianBlur(gray, (3, 3), 0)
-    _, threshold = cv2.threshold(
-        blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    mask = cv2.bitwise_not(threshold)
-    res = cv2.bitwise_and(img, img, mask=mask)
-    # res = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    if to_hsv:
-        res = cv2.cvtColor(res, cv2.COLOR_BGR2HSV)
-    return res
+    return cv2.countNonZero(gray)
 
 
-def create_dataset(X_new: list, y_new: list) -> tuple[np.ndarray, np.ndarray]:
-    '''
-    Создает датасет на основе фотографий и меток к ним и возвращает этот датасет.
+def get_image_features(img: np.ndarray) -> dict:
+    """
+    Вычисляет признаки изображения для классификации.
 
-    Parameters
-    ----------
-    X_new : list
-       Список, содержащий пути до всех обрабатываемых изображений
-    y_new : list
-       Список, содержащий метки для соответствующих изображений из списка X_new
+    :param img: исходное изображение (трехканальное)
+    :return: словарь признаков изображения
+    """
+    features = {}
+    area_value = count_area_of_interest(img)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    b, g, r = cv2.split(img)
 
-    Returns
-    -------
-    np.ndarray
-       Массив, содержащий выделенные признаки для каждого из изображений.
-       Выделенными признаками являются:
-       1) Среднее значение каждого из каналов B, G, R по всем оставшимся пикселам (всего 3 признака).
-       2) Отношения среднего значения каналов B, G, R всех пикселов
-          к сумме средних значений каналов B, G, R (всего 3 признака).
-       3) Отношение среднего значения каналов B, G, R всех пикселов
-          к каждому среднему значению двух других каналов (всего 6 признаков).
-       4) Среднее значение каждого из каналов H, S, V по всем оставшимся пикселам (всего 3 признака).
-       ----------------------------------------------------------------------------------
-          Итог: 15 признаков.
+    for channel, color in zip([b, g, r], ['b', 'g', 'r']):
+        channel_nonzero = channel[channel != 0]
+        if len(channel_nonzero) == 0:
+            # Если в канале нет ненулевых пикселей, добавляем нулевые значения признаков
+            channel_nonzero = np.array([0])
 
-    np.ndarray
-       Массив, содержащий метки для каждого из изображений из массива X
-    '''
+        features.update({
+            f'mean_{color}': np.mean(channel_nonzero),
+            f'mean_{color}/area_value': np.mean(channel_nonzero) / area_value,
+            f'std_{color}': np.std(channel_nonzero),
+            f'std_{color}/area_value': np.std(channel_nonzero) / area_value,
+            f'var_{color}': np.var(channel_nonzero),
+            f'var_{color}/area_value': np.var(channel_nonzero) / area_value,
+            f'sum_{color}': np.sum(channel_nonzero),
+            f'sum_{color}/area_value': np.sum(channel_nonzero) / area_value,
+            f'max_{color}': np.max(channel_nonzero),
+            f'max_{color}/area_value': np.max(channel_nonzero) / area_value,
+            f'min_{color}': np.min(channel_nonzero),
+            f'min_{color}/area_value': np.min(channel_nonzero) / area_value,
+            f'median_{color}': np.median(channel_nonzero),
+            f'median_{color}/area_value': np.median(channel_nonzero) / area_value,
+            f'mode_{color}': float(stats.mode(channel_nonzero, keepdims=False)[0]),
+            f'mode_{color}/area_value': float(stats.mode(channel_nonzero, keepdims=False)[0] / area_value)
+        })
 
-    X = None
-    y = None
-    for (i, image) in enumerate(X_new):
-        img_bgr = area_of_interest(image, to_hsv=False)
-        img_bgr = torch.tensor(
-            img_bgr, dtype=torch.double).permute(2, 0, 1).numpy()
-        masked_bgr = np.ma.masked_equal(img_bgr, 0)
-        mean_bgr = masked_bgr.mean(axis=(1, 2)).data
-        balanced_bgr = mean_bgr / mean_bgr.sum()
-        prop_to_red = mean_bgr[1:] / mean_bgr[0]
-        prop_to_green = torch.zeros(2)
-        prop_to_green[0] = mean_bgr[0] / mean_bgr[1]
-        prop_to_green[1] = mean_bgr[2] / mean_bgr[1]
-        prop_to_blue = mean_bgr[:-1] / mean_bgr[2]
+    features.update({
+        'var_area_interest': np.var(gray),
+        'std/area_value': np.std(gray) / area_value,
+        'std_area_interest': np.std(gray),
+        'mean/area_value': np.mean(gray) / area_value,
+        'mean_area_interest': np.mean(gray),
+        'var_area_interest/area_value': np.var(gray) / area_value,
+        'area_value': area_value
+    })
 
-        img_hsv = area_of_interest(image, to_hsv=True)
-        img_hsv = torch.tensor(
-            img_hsv, dtype=torch.double).permute(2, 0, 1).numpy()
-        masked_hsv = np.ma.masked_equal(img_hsv, 0)
-        mean_hsv = masked_hsv.mean(axis=(1, 2)).data
+    return features
 
-        new_row = np.hstack(
-            (mean_bgr, balanced_bgr, prop_to_red, prop_to_green, prop_to_blue, mean_hsv)).round(2)
-        new_label = np.array(y_new[i])
 
-        if X is None:
-            X = new_row
-            y = new_label
+def classify_image(img: np.ndarray) -> str:
+    """
+    Классифицирует изображение на основе заранее обученной модели.
 
-        else:
-            X = np.vstack((X, new_row))
-            y = np.vstack((y, new_label))
-    return X, y
+    :param img: изображение для классификации
+    :return: предсказанный ярлык ('single_color' или 'several_colors')
+    """
+    features = get_image_features(img)
+    df = pd.DataFrame([features])
+    pred = clf.predict(df)
+
+    return 'single_color' if pred[0] == 0 else 'several_colors'
 
 
 def main(img: np.ndarray) -> str:
-    info = ["Желтый-белый", "Коричневый", "Красный",
-            "Оранжевый", "Телесный", "Черный"]
+    """
+    Основная функция для классификации изображения.
 
-    X_temp = [img]
-    X_processed, _ = create_dataset(X_temp, [[]])
-
-    prediction = forest_brown.predict([X_processed])[0].tolist()
-
-    if prediction[1] != 1:
-        prediction = forest_selected.predict([X_processed])[0].tolist()
-        prediction.insert(1, 0)
-
-    try:
-        return info[prediction.index(1)]
-    except ValueError:
-        # If 1 is not in the prediction list, return the class with the highest probability
-        max_prob_index = prediction.index(max(prediction))
-        print(max_prob_index)
-        return info[max_prob_index]
+    :param img: изображение для классификации
+    :return: результат классификации
+    """
+    return classify_image(img)
 
 
-if __name__ == "__main__":
-    img = mpimg.imread("8642.jpg")
-    result = main(img)
-    print(result)
+if __name__ == '__main__':
+    file_path = "26.jpg"  # Укажите путь к вашему изображению
+    img = cv2.imread(file_path)
+    if img is not None:
+        result = main(img)
+        print(result)
+    else:
+        print(f"Ошибка: не удалось загрузить изображение по пути {file_path}")
