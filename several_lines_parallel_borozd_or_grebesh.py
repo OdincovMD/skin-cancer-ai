@@ -1,5 +1,6 @@
 import cv2
 import torch
+import os
 from torchvision import transforms
 from efficientnet_pytorch import EfficientNet
 from typing import Tuple
@@ -18,7 +19,12 @@ DATA_TRANSFORMS = {
     ]),
 }
 
-def load_model(model_path: str) -> Tuple[EfficientNet, torch.device]:
+
+# TODO: переименовать весовой файл several_parallel_lines_borozd_grebesh.pth') в соответствии с названием модуля -> several_lines_parallel_borozd_or_grebesh.pth
+MODEL_PATH = os.path.join('weight', 'several_parallel_lines_borozd_grebesh.pth')
+
+
+def load_model(model_path: str = MODEL_PATH) -> Tuple[EfficientNet, torch.device]:
     """
     Loads a model from a specified checkpoint path.
 
@@ -36,8 +42,16 @@ def load_model(model_path: str) -> Tuple[EfficientNet, torch.device]:
     model.eval()
     return model, device
 
-# TODO: переименовать весовой файл several_parallel_lines_borozd_grebesh.pth') в соответствии с названием модуля -> several_lines_parallel_borozd_or_grebesh.pth
-MODEL, DEVICE = load_model('weight/several_parallel_lines_borozd_grebesh.pth')
+
+_model_several_lines_parallel_borozd_or_grebesh = None
+_device_several_lines_parallel_borozd_or_grebesh = None
+
+def get_model():
+    global _model_several_lines_parallel_borozd_or_grebesh
+    global _device_several_lines_parallel_borozd_or_grebesh
+    if not _model_several_lines_parallel_borozd_or_grebesh and not _device_several_lines_parallel_borozd_or_grebesh:
+        _model_several_lines_parallel_borozd_or_grebesh, _device_several_lines_parallel_borozd_or_grebesh = load_model()
+    return _model_several_lines_parallel_borozd_or_grebesh, _device_several_lines_parallel_borozd_or_grebesh
 
 
 # до этого main была функцией для вызова двух функций
@@ -51,6 +65,7 @@ def main(img: np.ndarray) -> str:
     Returns:
         str: "Борозды" or "Гребешки"
     """
+    model, device = get_model()
     # До этого это была функция для обработки
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     img = img.transpose((2, 0, 1))
@@ -60,7 +75,7 @@ def main(img: np.ndarray) -> str:
 
     # раньше была функция для предсказания
     with torch.no_grad():
-        prediction = MODEL(image_transform.to(DEVICE))
+        prediction = model(image_transform.to(device))
 
     return "Борозды" if torch.argmax(prediction) == 0 else "Гребешки"
 
