@@ -1,11 +1,13 @@
+import os
+import pickle
+from typing import Tuple, Dict, Any
+
 import cv2
 import numpy as np
-import pickle
 import pandas as pd
-from typing import Tuple
 
 # TODO: добавить признаки и обучить модель again функции закоменчены в конце
-#dictionary = {
+# dictionary = {
 #     'std_L': 'стандартное отклонение яркости',
 #     'std_A': 'стандартное отклонение зеленого-красного',
 #     'std_B': 'стандартное отклонение голубого-желтого',
@@ -24,9 +26,30 @@ from typing import Tuple
 #     'median_lbp': 'медианное значение локального бинарного паттерна'
 # }
 
+#переименовано с number_of_sign_lines_full.pkl -> several_lines.pkl
+MODEL_PATH = os.path.join('weight', 'several_lines.pkl')
 
-with open('weight/number_of_sign_lines_full.pkl', 'rb') as file:
-    PIPELINE = pickle.load(file)
+
+def load_model(path: str = MODEL_PATH) -> Any:
+    with open(path, 'rb') as file:
+        return pickle.load(file)
+
+
+_model_several_lines = None
+
+
+def get_model() -> Any:
+    """
+    Retrieve the model, loading it from the file if it has not been loaded yet.
+
+    Returns:
+        Any: The loaded model object.
+    """
+    global _model_several_lines
+    if not _model_several_lines:
+        _model_several_lines = load_model()
+    return _model_several_lines
+
 
 LABEL_MAPPING = {
     0: 'Curved',
@@ -36,19 +59,19 @@ LABEL_MAPPING = {
 }
 
 
-def skeletonize(image: np.ndarray) -> np.ndarray:
+def get_skeleton_features(gray_img: np.ndarray) -> dict:
     """
-    Converts an image to its skeleton representation using morphological transformations.
+    Extracts skeleton features from a grayscale image.
 
     Args:
-        image (np.ndarray): The original binary image.
+        gray_img (np.ndarray): The grayscale image.
 
     Returns:
-        np.ndarray: The skeletonized version of the input image.
+        dict: A dictionary containing counts of branches, average of branch lengths, curvatures and angles.
     """
-    size = np.size(image)
-    skel = np.zeros(image.shape, np.uint8)
-    ret, img = cv2.threshold(image, 128, 255, 0)
+    size = np.size(gray_img)
+    skel = np.zeros(gray_img.shape, np.uint8)
+    ret, img = cv2.threshold(gray_img, 128, 255, 0)
     element = cv2.getStructuringElement(cv2.MORPH_CROSS, (3, 3))
     done = False
 
@@ -61,71 +84,14 @@ def skeletonize(image: np.ndarray) -> np.ndarray:
         zeros = size - cv2.countNonZero(img)
         done = zeros == size
 
-    return skel
-
-
-def detect_lines(img: np.ndarray) -> np.ndarray:
-    """
-    Detects lines in an image using the Canny edge detector and Hough line transform.
-
-    Args:
-        img (np.ndarray): The input image after preprocessing.
-
-    Returns:
-        np.ndarray: Array of detected lines. Each line is represented by rho and theta values.
-    """
-    edges = cv2.Canny(img, 50, 150, apertureSize=3)
+    edges = cv2.Canny(skel, 50, 150, apertureSize=3)
     lines = cv2.HoughLines(edges, 1, np.pi / 180, 100)
-    return lines
 
-
-def calculate_angles(lines: np.ndarray) -> np.ndarray:
-    """
-    Calculate the angles of the detected lines.
-
-    Args:
-        lines (np.ndarray): Array of lines detected, each described by rho and theta.
-
-    Returns:
-        np.ndarray: Array of angles in degrees.
-    """
     angles = []
     if lines is not None:
         angles = [np.degrees(line[0][1]) for line in lines]
-    return np.array(angles)
 
-
-def calculate_curvature(contour: np.ndarray) -> float:
-    """
-    Calculates the curvature for a given contour.
-
-    Args:
-        contour (np.ndarray): The contour of which to calculate the curvature.
-
-    Returns:
-        float: The calculated curvature value.
-    """
-    epsilon = 0.02 * cv2.arcLength(contour, True)
-    approx = cv2.approxPolyDP(contour, epsilon, True)
-    curvature = cv2.arcLength(approx, True) - cv2.arcLength(contour, True)
-    return curvature
-
-
-def get_skeleton_features(gray_img: np.ndarray) -> dict:
-    """
-    Extracts various features from the skeleton of an image.
-
-    Args:
-        gray_img (np.ndarray): Grayscale version of the image.
-
-    Returns:
-        dict: A dictionary containing counts of branches, average of branch lengths, curvatures and angles.
-    """
-    skeletonized = skeletonize(gray_img)
-    lines = detect_lines(skeletonized)
-    angles = calculate_angles(lines)
-    contours, _ = cv2.findContours(skeletonized, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
+    contours, _ = cv2.findContours(skel, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     branch_lengths = []
     curvature_values = []
     branch_count = 0
@@ -134,7 +100,10 @@ def get_skeleton_features(gray_img: np.ndarray) -> dict:
         if arc_length > 10:
             branch_lengths.append(arc_length)
             branch_count += 1
-            curvature_values.append(calculate_curvature(contour))
+            epsilon = 0.02 * arc_length
+            approx = cv2.approxPolyDP(contour, epsilon, True)
+            curvature = cv2.arcLength(approx, True) - arc_length
+            curvature_values.append(curvature)
 
     avg_branch_length = np.mean(branch_lengths) if branch_lengths else 0.0
     avg_curvature = np.mean(curvature_values) if curvature_values else 0.0
@@ -152,93 +121,48 @@ def get_skeleton_features(gray_img: np.ndarray) -> dict:
     }
 
 
-def blurring_gaussian(img: np.ndarray, k_size: Tuple[int, int] = (5, 5), sigma_x: int = 0,
-                      sigma_y: int = 0) -> np.ndarray:
+def process_image_and_extract_features(img: np.ndarray,
+                                       apply_blur: bool = True,
+                                       k_size_gaussian: Tuple[int, int] = (5, 5),
+                                       sigma_x: int = 0, sigma_y: int = 0,
+                                       k_size_median: int = 7) -> Dict[str, Any]:
     """
-    Applies Gaussian blurring to an image which reduces image noise and detail.
-
-    Args:
-        img (np.ndarray): The input image to blur.
-        k_size (Tuple[int, int]): The kernel size for the Gaussian operator.
-        sigma_x (int): Gaussian kernel standard deviation in the x-direction.
-        sigma_y (int): Gaussian kernel standard deviation in the y-direction.
-
-    Returns:
-        np.ndarray: The blurred image.
-    """
-    return cv2.GaussianBlur(img, k_size, sigmaX=sigma_x, sigmaY=sigma_y)
-
-
-def blurring_median(img: np.ndarray, k_size: int = 7) -> np.ndarray:
-    """
-    Applies median blurring to the image, which is effective in removing salt-and-pepper noise.
-
-    Args:
-        img (np.ndarray): The input image.
-        k_size (int): Aperture linear size; it must be odd and greater than 1.
-
-    Returns:
-        np.ndarray: The median blurred image.
-    """
-    return cv2.medianBlur(img, k_size)
-
-
-def preprocessing_img(img: np.ndarray) -> np.ndarray:
-    """
-    Processes an input image by applying median and Gaussian blurring, followed by resizing.
+    Processes the input image by applying blurring, resizing, using a given mask and calculating features.
 
     Args:
         img (np.ndarray): The original image to process.
+        mask (np.ndarray): Binary mask to isolate regions of interest.
+        apply_blur (bool): Whether to apply blurring steps or not. Defaults to True.
+        k_size_gaussian (Tuple[int, int]): The kernel size for the Gaussian blur. Defaults to (5, 5).
+        sigma_x (int): Gaussian kernel standard deviation in the x-direction. Defaults to 0.
+        sigma_y (int): Gaussian kernel standard deviation in the y-direction. Defaults to 0.
+        k_size_median (int): Aperture linear size for median blur; it must be odd. Defaults to 7.
 
     Returns:
-        np.ndarray: The processed image resized to (500, 500) pixels.
+        dict: A dictionary containing various image feature statistics.
     """
-    blurred = blurring_gaussian(blurring_median(img))
-    return cv2.resize(blurred, (500, 500))
+    if apply_blur:
+        img = cv2.medianBlur(img, k_size_median)
+        img = cv2.GaussianBlur(img, k_size_gaussian, sigmaX=sigma_x, sigmaY=sigma_y)
 
-
-def region_of_lines_and_stuff(img: np.ndarray) -> np.ndarray:
-    """
-    Identifies and isolates specific regions of interest in an image by applying a threshold and creating a mask.
-
-    Args:
-        img (np.ndarray): The original image.
-
-    Returns:
-        np.ndarray: Image with enhanced features using the mask.
-    """
+    img = cv2.resize(img, (500, 500))
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    mask = cv2.bitwise_not(thresh)
-    return cv2.bitwise_and(img, img, mask=mask)
+    features = extract_image_features(img, gray)
+
+    return features
 
 
-def count_area_of_interest(img: np.ndarray) -> int:
+def extract_image_features(region: np.ndarray, gray: np.ndarray) -> Dict[str, Any]:
     """
-    Counts the area of interest in the image by thresholding and counting non-zero pixels.
+    Extracts various features from the image derived from the processed regions and skeleton features.
 
     Args:
-        img (np.ndarray): The original image.
+        region (np.ndarray): Image with specific regions highlighted.
+        gray (np.ndarray): Grayscale version of the original image.
 
     Returns:
-        int: The count of non-zero pixels in the thresholded area.
+        dict: A dictionary with various image feature statistics.
     """
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    return cv2.countNonZero(thresh)
-
-
-def get_image_features(img: np.ndarray) -> dict:
-    """
-    Extracts various features from the image to be used for further analysis or model prediction.
-
-    Args:
-        img (np.ndarray): The preprocessed image.
-
-    Returns:
-        dict: A dictionary containing various image feature statistics including brown area ratio and standard deviations of RGB channels.
-    """
-    region = region_of_lines_and_stuff(img)
     b, g, r = cv2.split(region)
 
     brown_mask = (r > 50) & (g > 30) & (b < 30)
@@ -250,13 +174,16 @@ def get_image_features(img: np.ndarray) -> dict:
         'std_g': np.std(g),
         'std_r': np.std(r),
         'brown_area_ratio': brown_area_ratio,
-        'area': count_area_of_interest(img)
+        'area': cv2.countNonZero(cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1])
     }
-    features.update(get_skeleton_features(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)))
+
+    skeleton_features = get_skeleton_features(gray)
+    features.update(skeleton_features)
+
     return features
 
 
-def main(image: np.ndarray) -> str:
+def main(image: np.ndarray, mask: np.ndarray) -> str:
     """
     Main function to process and classify an image based on its features.
 
@@ -264,24 +191,23 @@ def main(image: np.ndarray) -> str:
         image (np.ndarray): The input image.
 
     Returns:
-        str: The predicted label categorizing the image's line patterns.
+        str: "Curved", "Parallel", "Radial", "Reticular_or_network"
     """
-    img = preprocessing_img(image)
-    features = get_image_features(img)
+    model = get_model()
+    masked_image = cv2.bitwise_and(image, image, mask=mask)
+    features = process_image_and_extract_features(masked_image, apply_blur=True)
     df = pd.DataFrame([features])
-    predicted_label_encoded = PIPELINE.predict(df)[0]
+    predicted_label_encoded = model.predict(df)[0]
     predicted_label = LABEL_MAPPING[predicted_label_encoded]
     return predicted_label
 
 
 if __name__ == "__main__":
     image_path = '26.jpg'
+    mask = None
     image = cv2.imread(image_path)
-    classification = main(image)
+    classification = main(image, mask)
     print("Predicted class:", classification)
-
-
-
 
 # def compute_haralick_features(image, mask):
 #     """
