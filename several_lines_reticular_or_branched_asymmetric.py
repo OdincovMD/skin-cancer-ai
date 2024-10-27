@@ -1,16 +1,41 @@
-import base64
+import os
+import pickle
+from typing import Dict, Any
+
+import cv2
 import numpy as np
 import pandas as pd
-import cv2
-import pickle
-from typing import Dict
 
-from roboflow import Roboflow
+#переименовано с several_lines_reticOrBranch_asymmetric.pkl -> several_lines_reticular_or_branched_asymmetric.pkl
+MODEL_PATH = os.path.join('weight', 'several_lines_reticOrBranch_asymmetric.pkl')
 
-#TODO: переименовать файл пкл в соответствии с названием модуля -> several_lines_reticular_or_branched_asymmetric.pkl
-# почему это в глобальной области видимости??? Либо в функцию, либо uppercase!!
-with open('weight/several_lines_reticOrBranch_asymmetric.pkl', 'rb') as file:
-    clf = pickle.load(file)
+
+def load_model(path: str = MODEL_PATH) -> Any:
+    """
+    Load a model from a specified file path.
+
+    Args:
+        path (str): The file path to the model. Defaults to MODEL_PATH.
+
+    Returns:
+        Any: The loaded model object.
+    """
+    with open(path, 'rb') as file:
+        return pickle.load(file)
+
+_model_several_lines_reticular_or_branched_asymmetric = None
+
+def get_model() -> Any:
+    """
+    Retrieve the model, loading it from the file if it has not been loaded yet.
+
+    Returns:
+        Any: The loaded model object.
+    """
+    global _model_several_lines_reticular_or_branched_asymmetric
+    if not _model_several_lines_reticular_or_branched_asymmetric:
+        _model_several_lines_reticular_or_branched_asymmetric = load_model()
+    return _model_several_lines_reticular_or_branched_asymmetric
 
 
 def segment_area_of_interest(img: np.ndarray, mask: np.ndarray) -> np.ndarray:
@@ -67,8 +92,8 @@ def extract_characteristics(seg_img: np.ndarray) -> Dict[str, float]:
         'std_v': np.std(v[mask_hsv])
     }
 
-# переименовано из main
-def predict(img: np.ndarray, mask: np.ndarray) -> str:
+
+def main(img: np.ndarray, mask: np.ndarray) -> str:
     """
     Uses segmented images and their characteristics to predict a category.
  
@@ -77,46 +102,40 @@ def predict(img: np.ndarray, mask: np.ndarray) -> str:
         mask (np.ndarray): The binary mask for segmentation.
 
     Returns:
-        str: Classification result, either 'ONE COLOR' or 'MORE THAN ONE COLOR'.
+        str: "ОДИН ЦВЕТ" or "БОЛЬШЕ ОДНОГО ЦВЕТА".
     """
+    model = get_model()
     seg_img = segment_area_of_interest(img, mask)
     characteristics = extract_characteristics(seg_img)
     df = pd.DataFrame([characteristics])
 
-    res = clf.predict(df)
+    res = model.predict(df)
     return 'ОДИН ЦВЕТ' if res[0] == 1 else 'БОЛЬШЕ ОДНОГО ЦВЕТА'
 
-# переделано в функцию
-def main(img_path: str) -> str:
-    """
-    Main function to process the image and predict its category based on color segmentation.
+# # переделано в функцию
+# def main(img_path: str) -> str:
+#     """
+#     Main function to process the image and predict its category based on color segmentation.
 
-    Args:
-        img_path (str): Path to the input image.
+#     Args:
+#         img_path (str): Path to the input image.
 
-    Returns:
-        str: Prediction if the region of interest is 'ONE COLOR' or 'MORE THAN ONE COLOR'.
-    """
-    rf = Roboflow(api_key="GmJT3lC4NInRGZJ2iEit")
-    project = rf.workspace("neo-dmsux").project("neo-v6wzn")
-    model = project.version(2).model
+#     Returns:
+#         str: Prediction if the region of interest is 'ONE COLOR' or 'MORE THAN ONE COLOR'.
+#     """
+#     rf = Roboflow(api_key="GmJT3lC4NInRGZJ2iEit")
+#     project = rf.workspace("neo-dmsux").project("neo-v6wzn")
+#     model = project.version(2).model
 
-    data = model.predict(img_path).json()
-    width = data['predictions'][0]['image']['width']
-    height = data['predictions'][0]['image']['height']
+#     data = model.predict(img_path).json()
+#     width = data['predictions'][0]['image']['width']
+#     height = data['predictions'][0]['image']['height']
 
-    encoded_mask = data['predictions'][0]['segmentation_mask']
-    mask_bytes = base64.b64decode(encoded_mask)
-    mask_array = np.frombuffer(mask_bytes, dtype=np.uint8)
-    mask_image = cv2.imdecode(mask_array, cv2.IMREAD_GRAYSCALE)
-    mask = np.where(mask_image == 1, 255, mask_image)
-    mask = cv2.resize(mask, (width, height), interpolation=cv2.INTER_LINEAR)
+#     encoded_mask = data['predictions'][0]['segmentation_mask']
+#     mask_bytes = base64.b64decode(encoded_mask)
+#     mask_array = np.frombuffer(mask_bytes, dtype=np.uint8)
+#     mask_image = cv2.imdecode(mask_array, cv2.IMREAD_GRAYSCALE)
+#     mask = np.where(mask_image == 1, 255, mask_image)
+#     mask = cv2.resize(mask, (width, height), interpolation=cv2.INTER_LINEAR)
 
-    return predict(img, mask)
-
-
-if __name__ == "__main__":
-    img_path = '26.jpg'
-    img = cv2.imread(img_path)
-    result = main(img)
-    print(result)
+#     return predict(img, mask)
