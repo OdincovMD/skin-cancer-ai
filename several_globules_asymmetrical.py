@@ -11,6 +11,17 @@ DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 def segment_image(img: np.ndarray) -> np.ndarray:
+
+    """
+    Segments the image to highlight the nevus region and resizes the image to a specified size (SIZE).
+    
+    Parameters:
+        img (np.ndarray): Input image in numpy array format.
+    
+    Returns:
+        np.ndarray: Segmented and resized image.
+    """
+      
     h, w, _ = img.shape
     if h == SIZE and w == SIZE:
         return img
@@ -72,6 +83,13 @@ def segment_image(img: np.ndarray) -> np.ndarray:
 
 
 def create_model() -> nn.Sequential:
+
+    """
+    Creates and configures a neural network based on a pretrained VGG16 model for binary image classification.
+    
+    Returns:
+        nn.Sequential: Configured model ready for predictions.
+    """
     model = models.vgg16(pretrained=True)
     model = nn.Sequential(*(list(model.children())[:-2]))
 
@@ -98,6 +116,17 @@ model.to(DEVICE)
 
 
 def main(image: np.ndarray) -> str:
+    
+    """
+    Main function that performs class prediction for the input image.
+    
+    Parameters:
+    image (np.ndarray): Input image in numpy array format.
+    
+    Returns:
+    str: Predicted class of the image ('Other' or 'Melanin').
+    """
+     
     image = segment_image(image)
 
     transform = transforms.Compose([transforms.ToTensor()])

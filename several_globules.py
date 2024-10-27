@@ -22,11 +22,15 @@ MODEL.eval()
 
 def detect_globs(image: np.ndarray) -> np.ndarray:
     """
-    Detects globules in the input image using the SimpleBlobDetector from OpenCV and
-    returns globules mask.
-    :param image: Input image.
-    :return: Binary mask indicating the detected globules.
+    Detects globules in the input image using OpenCV's SimpleBlobDetector and returns a binary mask.
+    
+    Parameters:
+        image (np.ndarray): Input image as a numpy array.
+    
+    Returns:
+        np.ndarray: Binary mask indicating the locations of detected globules.
     """
+
     params = cv2.SimpleBlobDetector_Params()
     params.filterByColor = True
     params.minDistBetweenBlobs = 0.001
@@ -51,6 +55,16 @@ def detect_globs(image: np.ndarray) -> np.ndarray:
 
 
 def apply_mask(image: np.ndarray, mask: np.ndarray) -> np.ndarray:
+    """
+    Applies the globules mask and additional segmentation mask to the input image.
+    
+    Parameters:
+        image (np.ndarray): Input image in numpy array format.
+        mask (np.ndarray): Segmentation mask to apply to the image.
+    
+    Returns:
+        np.ndarray: Image with applied masks, showing segmented regions.
+    """
     globs_mask = detect_globs(image)
     globs_mask = np.expand_dims(globs_mask, axis=2).repeat(3, axis=2)
     segmented_image = cv2.bitwise_or(image, globs_mask)
@@ -61,6 +75,15 @@ def apply_mask(image: np.ndarray, mask: np.ndarray) -> np.ndarray:
 
 
 def predict_one_image(image: np.ndarray) -> str:
+    """
+    Predicts the symmetry label for a single image after processing with a pretrained model.
+    
+    Parameters:
+        image (np.ndarray): Input image as a numpy array.
+    
+    Returns:
+        str: Predicted label for the image, either "ASYMMETRIC" or "SYMMETRIC".
+    """
     image_size = 256  # model was learned on this image size
     transform = A.Compose([
         A.Resize(image_size, image_size),
@@ -79,9 +102,14 @@ def predict_one_image(image: np.ndarray) -> str:
 
 def main(image: np.ndarray, mask: np.ndarray) -> str:
     """
-    You need to use only NEO without background.
-    :param image: Input image as a NumPy array.
-    :return: Predicted label ("АСИММЕТРИЧНЫЕ" or "СИММЕТРИЧНЫЕ").
+    Applies masking and performs symmetry classification on the input image.
+    
+    Parameters:
+        image (np.ndarray): Input image as a numpy array.
+        mask (np.ndarray): Segmentation mask for isolating relevant image areas.
+    
+    Returns:
+        str: Predicted label indicating symmetry ("ASYMMETRIC" or "SYMMETRIC").
     """
     image = apply_mask(image, mask)
     return predict_one_image(image)
