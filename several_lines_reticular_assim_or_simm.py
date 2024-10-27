@@ -1,5 +1,5 @@
 import os
-from typing import Tuple
+from typing import Tuple, Any
 
 import cv2
 import numpy as np
@@ -7,14 +7,12 @@ import torch
 from torchvision import transforms
 from efficientnet_pytorch import EfficientNet
 
-
 INPUT_SIZE = 224
 MEAN = [0.485, 0.456, 0.406]
 STD = [0.229, 0.224, 0.225]
 
-# TODO: согласовать переименование весов в соответствии с названием модуля -> several_lines_reticular_assim_or_simm.pth
-MODEL_PATH = os.path.join('weight','several_reticular_lines_simm_assimm.pth')
-
+#переименовано с several_reticular_lines_simm_assimm.pth -> several_lines_reticular_assim_or_simm.pth
+MODEL_PATH = os.path.join('weight', 'several_lines_reticular_assim_or_simm.pth')
 
 
 def preprocess_image(img: np.ndarray) -> torch.Tensor:
@@ -57,7 +55,13 @@ _model_several_lines_reticular_assim_or_simm = None
 _device_several_lines_reticular_assim_or_simm = None
 
 
-def get_model():
+def get_model() -> Any:
+    """
+    Retrieve the model, loading it from the file if it has not been loaded yet.
+
+    Returns:
+        Any: The loaded model object.
+    """
     global _model_several_lines_reticular_assim_or_simm
     global _device_several_lines_reticular_assim_or_simm
     if not _model_several_lines_reticular_assim_or_simm and not _device_several_lines_reticular_assim_or_simm:
@@ -73,7 +77,7 @@ def main(img: np.ndarray) -> str:
         img (np.ndarray): Input image in BGR format.
 
     Returns:
-        str: Prediction result, either "Ассиметричные" or "Симметричные".
+        str: "Ассиметричные" or "Симметричные".
     """
     model, device = get_model()
     img = preprocess_image(img)
@@ -81,9 +85,3 @@ def main(img: np.ndarray) -> str:
     with torch.no_grad():
         prediction = model(img)
     return "Ассиметричные" if torch.argmax(prediction) == 0 else "Симметричные"
-
-
-
-if __name__ == "__main__":
-    img = cv2.imread('26.jpg')
-    print(main(img))

@@ -1,7 +1,7 @@
 import os
 from typing import Optional, Callable, Any
 
-import matplotlib.image as mpimg # TODO: убрать после удаления загрузки изображения для тестрирования
+import matplotlib.image as mpimg # TODO: убрать после удаления загрузки изображения для тестирования
 import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
@@ -9,9 +9,12 @@ from torchvision import transforms, models
 from tqdm import tqdm
 
 os.chdir(os.path.dirname(__file__))
-MODEL_PATH = os.path.join('weight','several_line_parallel_furrow_ridges_sym.pth')
+# переименовано с several_line_parallel_furrow_ridges_sym.pth -> several_lines_parallel_furrow_ridges_symmetric.pth
+MODEL_PATH = os.path.join('weight', 'several_lines_parallel_furrow_ridges_symmetric.pth')
 
-#TODO Вопрос: img = mpimg.imread("26.jpg") - RGB order. Соответственно влияет на каналы, которые подаются в нейронку на вход. при чтении cv2 - там bgr каналы
+
+# TODO Вопрос: img = mpimg.imread("26.jpg") - RGB order. Соответственно влияет на каналы, которые подаются в нейронку
+#  на вход. при чтении cv2 - там bgr каналы
 
 class CustomNeuralNetResNet(torch.nn.Module):
     """
@@ -23,6 +26,7 @@ class CustomNeuralNetResNet(torch.nn.Module):
     Returns:
         net (torch.nn.Module): Loaded ResNet50 model with modified final layer.
     """
+
     def __init__(self, outputs_number: int) -> None:
         super(CustomNeuralNetResNet, self).__init__()
         self.net = models.resnet50(pretrained=True)
@@ -44,6 +48,12 @@ class CustomNeuralNetResNet(torch.nn.Module):
 
 
 def load_model() -> CustomNeuralNetResNet:
+    """
+    Load the model weights from a specified path.
+
+    Returns:
+        model (CustomNeuralNetResNet): The initialized model with loaded weights.
+    """
     model = CustomNeuralNetResNet(2)
     model.load_state_dict(torch.load(MODEL_PATH, map_location=torch.device('cpu')))
     model.eval()
@@ -52,7 +62,14 @@ def load_model() -> CustomNeuralNetResNet:
 
 _model_several_lines_parallel_furrow_edges_symmetric = None
 
+
 def get_model():
+    """
+    Retrieve the model, loading it from the file if it has not been loaded yet.
+
+    Returns:
+        Any: The loaded model object.
+    """
     global _model_several_lines_parallel_furrow_edges_symmetric
     if not _model_several_lines_parallel_furrow_edges_symmetric:
         _model_several_lines_parallel_furrow_edges_symmetric = load_model()

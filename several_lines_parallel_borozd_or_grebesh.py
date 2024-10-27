@@ -20,9 +20,8 @@ DATA_TRANSFORMS = {
     ]),
 }
 
-
-# TODO: переименовать весовой файл several_parallel_lines_borozd_grebesh.pth') в соответствии с названием модуля -> several_lines_parallel_borozd_or_grebesh.pth
-MODEL_PATH = os.path.join('weight', 'several_parallel_lines_borozd_grebesh.pth')
+#переименован several_parallel_lines_borozd_grebesh.pth -> several_lines_parallel_borozd_or_grebesh.pth
+MODEL_PATH = os.path.join('weight', 'several_lines_parallel_borozd_or_grebesh.pth')
 
 
 def load_model(model_path: str = MODEL_PATH) -> Tuple[EfficientNet, torch.device]:
@@ -47,7 +46,14 @@ def load_model(model_path: str = MODEL_PATH) -> Tuple[EfficientNet, torch.device
 _model_several_lines_parallel_borozd_or_grebesh = None
 _device_several_lines_parallel_borozd_or_grebesh = None
 
+
 def get_model():
+    """
+    Retrieve the model, loading it from the file if it has not been loaded yet.
+
+    Returns:
+        Any: The loaded model object.
+    """
     global _model_several_lines_parallel_borozd_or_grebesh
     global _device_several_lines_parallel_borozd_or_grebesh
     if not _model_several_lines_parallel_borozd_or_grebesh and not _device_several_lines_parallel_borozd_or_grebesh:
@@ -64,7 +70,7 @@ def main(img: np.ndarray) -> str:
         img (np.ndarray): image for preprocessing.
 
     Returns:
-        str: "Борозды" or "Гребешки"
+        str: "Borozd" or "Grebesh"
     """
     model, device = get_model()
     # До этого это была функция для обработки
@@ -78,12 +84,4 @@ def main(img: np.ndarray) -> str:
     with torch.no_grad():
         prediction = model(image_transform.to(device))
 
-    return "Борозды" if torch.argmax(prediction) == 0 else "Гребешки"
-
-
-#выпилится после тестирования
-if __name__ == "__main__":
-    img_path = '26.jpg'
-    img = cv2.imread(img_path)
-    prediction = main(img)
-    print(prediction)
+    return "Borozd" if torch.argmax(prediction) == 0 else "Grebesh"
