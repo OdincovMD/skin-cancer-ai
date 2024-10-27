@@ -1,6 +1,4 @@
-#######################
-# СДЕЛАНО KIWIFM
-#######################
+# код @kiwifm
 
 import cv2
 import numpy as np
@@ -14,7 +12,49 @@ IMAGE_SIZE = 400
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-def preprocess_image(img):
+def create_model() -> nn.Sequential:
+
+    """
+    Creates a model of the required architecture.
+    
+    Returns:
+        model (torch.nn.Sequential): The model of the required architecture for class prediction.
+    """
+
+    model = models.vgg16(pretrained=True)
+    model = torch.nn.Sequential(*(list(model.children())[:-2]))
+
+    classifier = nn.Sequential(
+        nn.Flatten(),
+        nn.Linear(12 * 12 * 512, 512),
+        nn.ReLU(),
+        nn.Linear(512, 256),
+        nn.ReLU(),
+        nn.Dropout(0.5),
+        nn.Linear(256, 5),
+        nn.Softmax(dim=1)
+    )
+
+    model.classifier = classifier
+    model.to(DEVICE)
+    return model
+
+MODEL = create_model()
+STATE = torch.load(PATH_TO_MODEL, map_location=torch.device(DEVICE))
+MODEL.load_state_dict(STATE)
+MODEL.to(DEVICE)
+
+
+# В дальнейшем при разработке можно переобучить модель на изображениях с маской, тогда можно оставить только обрезку до размера 400*400
+def preprocess_image(img: np.ndarray) -> np.ndarray:
+    """
+    Finding a mole in the image and reducing it to a size of 400*400.
+    
+    Paraneters:
+        img (np.ndarray): The input image.
+    Returns:
+        np.ndarray: The image after preprocessing.
+    """
     h, w, _ = img.shape
     if h == IMAGE_SIZE and w == IMAGE_SIZE:
         return img
@@ -73,34 +113,21 @@ def preprocess_image(img):
     return cv2.resize(crop, (IMAGE_SIZE, IMAGE_SIZE), interpolation=cv2.INTER_AREA)
 
 
-def create_model():
-    model = models.vgg16(pretrained=True)
-    model = torch.nn.Sequential(*(list(model.children())[:-2]))
+def main(image: np.ndarray) -> str:
+    """
+    Calls the image preprocessing and model creation functions, and then passes the image to the model for prediction.
 
-    classifier = nn.Sequential(
-        nn.Flatten(),
-        nn.Linear(12 * 12 * 512, 512),
-        nn.ReLU(),
-        nn.Linear(512, 256),
-        nn.ReLU(),
-        nn.Dropout(0.5),
-        nn.Linear(256, 5),
-        nn.Softmax(dim=1)
-    )
-
-    model.classifier = classifier
-    model.to(DEVICE)
-    return model
-
-
-def main(image):
+    Paraneters:
+        img (np.ndarray): The input image.    
+    Returns:
+        classes[predicted_index] (str): The label of the predicted class: "Бесструктурная область", "Комки", "Круги", "Линии" or "Точки".
+    """
     image = preprocess_image(image)
-
     transform = transforms.Compose([transforms.ToTensor()])
     input_image = transform(Image.fromarray(image))
 
     input_image = torch.FloatTensor(input_image).to(DEVICE).unsqueeze(0)
-    output = model(input_image)
+    output = MODEL(input_image)
     prediction = nn.Softmax(dim=1)(output)
     predicted_index = torch.argmax(prediction, dim=1).item()
 
@@ -108,11 +135,7 @@ def main(image):
     return classes[predicted_index]
 
 
-model = create_model()
-state = torch.load(PATH_TO_MODEL, map_location=torch.device(DEVICE))
-model.load_state_dict(state)
-model.to(DEVICE)
-
+# Оставлено для тестирования работы модуля, при успешной проверке можно удалить 
 if __name__ == "__main__":
     path_to_image = "26.jpg"
     image_np = np.array(Image.open(path_to_image))

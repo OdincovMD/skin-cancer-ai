@@ -50,14 +50,12 @@ def get_model() -> Any:
         _model_several_lines = load_model()
     return _model_several_lines
 
-
 LABEL_MAPPING = {
     0: 'Curved',
     1: 'Parallel',
     2: 'Radial',
     3: 'Reticular_or_network'
 }
-
 
 def get_skeleton_features(gray_img: np.ndarray) -> dict:
     """
@@ -254,3 +252,4 @@ if __name__ == "__main__":
 #         'max_lbp': np.max(lbp),
 #         'median_lbp': np.median(lbp)
 #     }
+

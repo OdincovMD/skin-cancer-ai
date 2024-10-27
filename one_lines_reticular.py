@@ -3,13 +3,27 @@ import numpy as np
 import pickle
 import pandas as pd
 
-with open('weight/one_lines_reticular.pkl', 'rb') as file:
+with open('one_lines_reticular.pkl', 'rb') as file:
     PIPELINE = pickle.load(file)
 
-LABEL_DICT = {0: '1_color', 1: 'more_colors'}
+LABEL_DICT = {0: 'Один цвет', 1: 'Больше одного цвета'}
 
 
 def extract_color_features(image):
+    """
+        Function for acquiring values of color features
+
+        Parameters
+        ____________
+            image: np.ndarray
+                Original image of neoplasm
+
+        Returns
+        ____________
+            dict
+                Dictionary with values of color features
+
+    """
     # Разделение на каналы
     b, g, r = cv2.split(image)
 
@@ -32,7 +46,21 @@ def extract_color_features(image):
 
 
 def extract_gray_features(image_gray):
-    # Исключаем значения равные 0
+    """
+        Function for acquiring values of gray intensity features
+
+        Parameters
+        ____________
+            image_gray: np.ndarray
+                Grayscale image of neoplasm
+
+        Returns
+        ____________
+            dict
+                Dictionary with values of color features
+
+    """
+# Исключаем значения равные 0
     nonzero_gray = image_gray[image_gray != 0]
 
     return {
@@ -43,6 +71,20 @@ def extract_gray_features(image_gray):
 
 
 def extract_texture_features(image_gray):
+    """
+        Function for acquiring values of texture features
+
+        Parameters
+        ____________
+            image_gray : np.ndarray
+                Grayscale image of neoplasm
+
+        Returns
+        ____________
+            dict
+                Dictionary with values of texture features
+
+    """
     moments = cv2.moments(image_gray)
 
     return {
@@ -52,6 +94,20 @@ def extract_texture_features(image_gray):
 
 
 def region_of_lines_and_stuff(img):
+    """
+        Function for selecting area of interest
+
+        Parameters
+        ____________
+            img : np.ndarray
+                Original image of neoplasm
+
+        Returns
+        ____________
+            np.ndarray
+                Image with selected neoplasm and black background
+
+    """
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     main_threshold = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 11, 1)
@@ -63,6 +119,19 @@ def region_of_lines_and_stuff(img):
 
 
 def extract_image_features(img):
+    """
+        Function for extracting all feature values from image
+
+        Parameters
+        ____________
+            img : np.ndarray
+                Original image of neoplasm
+
+        Returns
+        ____________
+                Values of all features
+
+    """
     img = cv2.GaussianBlur(img, (5, 5), 0)
     img = region_of_lines_and_stuff(cv2.resize(img, dsize=(750, 750)))
 
@@ -76,6 +145,20 @@ def extract_image_features(img):
 
 
 def process_image_and_predict(img):
+    """
+        Function for image preprocessing and evaluation
+
+        Parameters
+        ____________
+            img : np.ndarray
+                Original image of neoplasm
+
+        Returns
+        ____________
+            predicted_label : str
+                Result - one or more than one color
+
+    """
     image_features = extract_image_features(img)
     df = pd.DataFrame([image_features])
 
@@ -84,13 +167,20 @@ def process_image_and_predict(img):
     return predicted_label
 
 
-def main(image_path):
-    image = cv2.imread(image_path)
+def main(image):
+    """
+    Classification of reticular lines by number of colors:
+    One or More than one
+
+    Parameters
+    ____________
+        image : np.ndarray
+            Original image of neoplasm
+
+    Returns
+    ____________
+        result : str
+            One or more than one color of reticular lines
+            Один цвет, Больше одного цвета
+    """
     return process_image_and_predict(image)
-
-
-
-if __name__ == "__main__":
-    image_path = "26.jpg"
-    result = main(image_path)
-    print(result)
