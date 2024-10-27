@@ -49,6 +49,14 @@ def load_model() -> CustomNeuralNetResNet:
     return model
 
 
+_model_several_lines_parallel_furrow_edges_symmetric = None
+
+def get_model():
+    global _model_several_lines_parallel_furrow_edges_symmetric
+    if not _model_several_lines_parallel_furrow_edges_symmetric:
+        _model_several_lines_parallel_furrow_edges_symmetric = load_model()
+    return _model_several_lines_parallel_furrow_edges_symmetric
+
 
 class NumpyImageDataset(Dataset):
     """
@@ -88,7 +96,7 @@ def main(img: np.ndarray) -> str:
     Returns:
         str: Classification result: "Симметрия" or "Асимметрия".
     """
-    model = load_model()
+    model = get_model()
     transform = transforms.Compose([
         transforms.ToPILImage(),
         transforms.Resize((224, 224)),
