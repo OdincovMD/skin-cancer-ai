@@ -9,16 +9,9 @@ INPUT_SIZE = 224
 MEAN = [0.485, 0.456, 0.406]
 STD = [0.229, 0.224, 0.225]
 
-# зачем вообще этот словарь, который нигде не используется??? я бы удалила
-# TODO: согласовать удаление
-data_transforms = {
-    'test': transforms.Compose([
-        transforms.Resize(INPUT_SIZE),
-        transforms.CenterCrop(INPUT_SIZE),
-        transforms.ToTensor(),
-        transforms.Normalize(MEAN, STD)
-    ]),
-}
+# TODO: согласовать переименование весов в соответствии с названием модуля -> several_lines_reticular_assim_or_simm.pth
+MODEL_PATH = 'weight/several_reticular_lines_simm_assimm.pth'
+
 
 
 def preprocess_image(img: np.ndarray) -> torch.Tensor:
@@ -38,7 +31,7 @@ def preprocess_image(img: np.ndarray) -> torch.Tensor:
     return img.unsqueeze(0)
 
 
-def load_model(checkpoint_path: str, num_classes: int = 2) -> Tuple[EfficientNet, torch.device]:
+def load_model(checkpoint_path: str = MODEL_PATH, num_classes: int = 2) -> Tuple[EfficientNet, torch.device]:
     """
     Loads a pretrained EfficientNet model from a checkpoint.
 
@@ -57,32 +50,34 @@ def load_model(checkpoint_path: str, num_classes: int = 2) -> Tuple[EfficientNet
     return model, device
 
 
-def predict(model: EfficientNet, device: torch.device, img: np.ndarray) -> str:
+_model_several_lines_reticular_assim_or_simm = None
+_device_several_lines_reticular_assim_or_simm = None
+
+def get_model():
+    global _model_several_lines_reticular_assim_or_simm
+    global _device_several_lines_reticular_assim_or_simm
+    if not _model_several_lines_reticular_assim_or_simm and not _device_several_lines_reticular_assim_or_simm:
+        _model_several_lines_reticular_assim_or_simm, _device_several_lines_reticular_assim_or_simm = load_model()
+    return _model_several_lines_reticular_assim_or_simm, _device_several_lines_reticular_assim_or_simm
+
+
+def main(img: np.ndarray) -> str:
     """
     Predicts the class of an image using a trained model.
 
     Args:
-        model (EfficientNet): Loaded model.
-        device (torch.device): Computation device.
         img (np.ndarray): Input image in BGR format.
 
     Returns:
-        str: Prediction result, either "Asymmetric" or "Symmetric".
+        str: Prediction result, either "Ассиметричные" or "Симметричные".
     """
+    model, device = get_model()
     img = preprocess_image(img)
     img = img.to(device)
     with torch.no_grad():
         prediction = model(img)
-    return "Asymmetric" if torch.argmax(prediction) == 0 else "Symmetric"
+    return "Ассиметричные" if torch.argmax(prediction) == 0 else "Симметричные"
 
-
-model, device = load_model('weight/several_reticular_lines_simm_assimm.pth')
-# Ура опять глобальные переменные в lowercase. Почему загрузка вне функций? засунуть в main наверное
-# TODO: согласовать переименование весов в соответствии с названием модуля -> several_lines_reticular_assim_or_simm.pth
-
-# эта функция не имеет смысла. Либо изменить предикт на main или наоборот. Только жрет ресурсы
-def main(img: np.ndarray) -> str:
-    return predict(model, device, img)
 
 
 if __name__ == "__main__":
