@@ -1,10 +1,12 @@
 import os
-import numpy as np
+from typing import Tuple
+
 import cv2
+import numpy as np
 import torch
 from torchvision import transforms
 from efficientnet_pytorch import EfficientNet
-from typing import Tuple
+
 
 INPUT_SIZE = 224
 MEAN = [0.485, 0.456, 0.406]
@@ -53,6 +55,7 @@ def load_model(checkpoint_path: str = MODEL_PATH, num_classes: int = 2) -> Tuple
 
 _model_several_lines_reticular_assim_or_simm = None
 _device_several_lines_reticular_assim_or_simm = None
+
 
 def get_model():
     global _model_several_lines_reticular_assim_or_simm

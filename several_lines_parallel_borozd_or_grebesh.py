@@ -1,10 +1,11 @@
-import cv2
-import torch
 import os
-from torchvision import transforms
-from efficientnet_pytorch import EfficientNet
 from typing import Tuple
+
+import cv2
 import numpy as np
+import torch
+from efficientnet_pytorch import EfficientNet
+from torchvision import transforms
 
 INPUT_SIZE = 224
 MEAN = [0.485, 0.456, 0.406]

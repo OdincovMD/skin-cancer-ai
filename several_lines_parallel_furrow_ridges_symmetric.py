@@ -1,11 +1,12 @@
+import os
+from typing import Optional, Callable, Any
+
+import matplotlib.image as mpimg # TODO: убрать после удаления загрузки изображения для тестрирования
+import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
-import matplotlib.image as mpimg
-import numpy as np
 from torchvision import transforms, models
 from tqdm import tqdm
-from typing import Optional, Callable, Any
-import os
 
 os.chdir(os.path.dirname(__file__))
 MODEL_PATH = os.path.join('weight','several_line_parallel_furrow_ridges_sym.pth')
