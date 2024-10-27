@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import cv2
 import torch
@@ -10,7 +11,7 @@ MEAN = [0.485, 0.456, 0.406]
 STD = [0.229, 0.224, 0.225]
 
 # TODO: согласовать переименование весов в соответствии с названием модуля -> several_lines_reticular_assim_or_simm.pth
-MODEL_PATH = 'weight/several_reticular_lines_simm_assimm.pth'
+MODEL_PATH = os.path.join('weight','several_reticular_lines_simm_assimm.pth')
 
 
 
