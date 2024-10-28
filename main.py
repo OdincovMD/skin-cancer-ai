@@ -23,7 +23,6 @@ import one_structureless_more_than_one_color
 
 import one_dots
 
-
 import several
 
 import several_lines
@@ -34,7 +33,6 @@ import several_lines_parallel_furrow
 import several_lines_radial_pereferic  # не реализуется узел выше: несколько признаков -> линни -> радиальные 
 
 import several_circles
-
 import several_dots
 
 import several_globules
