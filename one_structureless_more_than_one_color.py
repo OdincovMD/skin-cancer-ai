@@ -58,8 +58,8 @@ def main(img, mask) -> str:
     pred = clf.predict(df)
 
     if pred[0] == 1:
-        return 'brown'
+        return 'Коричневый'
     elif pred[0] == 0:
-        return 'red'
+        return 'Красный'
     else:
-        return 'yellow'
+        return 'Желтый'
