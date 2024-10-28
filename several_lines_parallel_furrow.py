@@ -51,7 +51,7 @@ def main(img: np.ndarray, mask: np.ndarray) -> str:
 
     model = CustomNeuralNetResNet(2)
     model.load_state_dict(
-        torch.load(r'weight/cl_several_line_parallel_furrow_ridges_sym.pth', map_location=torch.device('cpu'))
+        torch.load(r'weight/several_lines_parallel_furrow.pth', map_location=torch.device('cpu'))
         )
     model.eval()
 

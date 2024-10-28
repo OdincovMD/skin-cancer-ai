@@ -260,25 +260,25 @@ def main(path_to_img: str) -> list:
                 several_globules_handlers[pred](image)
 
         def handle_several_lines(image):
-            pred = several_lines.main(image)
+            pred = several_lines.main(image, mask=mask)
             line_types = {
-                'Curved': 'Изогнутые',
-                'Parallel': 'Параллельные',
-                'Radial': 'Радиальные',
-                'Reticular_or_network': 'Ретикулярные или разветвленные'
+                'Изогнутые': 'Изогнутые',
+                'Параллельные': 'Параллельные',
+                'Радиальные': 'Радиальные',
+                'Ретикулярные или разветвленные': 'Ретикулярные или разветвленные'
             }
             accumulate.append(line_types[pred])
 
             def handle_several_lines_parallel(image):
                 pred = several_lines_parallel.main(image)
                 type_parallel_lines = {
-                    'Borozd': 'Борозды',
-                    'Grebesh': 'Гребешки'
+                    'Борозды': 'Борозды',
+                    'Гребешки': 'Гребешки'
                 }
                 accumulate.append(type_parallel_lines[pred])
 
                 def handle_several_lines_parallel_furrow(image):
-                    pred = several_lines_parallel_furrow.main(image, mask=mask)
+                    pred = several_lines_parallel_furrow.main(cv2.cvtColor(image, cv2.COLOR_BGR2RGB), mask=mask)
                     type_parallel_lines_furrow = {
                         'Симметрия': 'Симметрия',
                         'Асимметрия': 'Асимметрия'
@@ -286,7 +286,7 @@ def main(path_to_img: str) -> list:
                     accumulate.append(type_parallel_lines_furrow[pred])
 
                 type_parallel_lines_handlers = {
-                    'Borozd': handle_several_lines_parallel_furrow
+                    'Борозды': handle_several_lines_parallel_furrow
                 }
 
                 if pred in type_parallel_lines_handlers:
@@ -295,22 +295,22 @@ def main(path_to_img: str) -> list:
             def handle_several_lines_reticular(image):
                 pred =  several_lines_reticular.main(image)
                 type_reticular_lines = {
-                    'Asymmetric': 'Ассиметричные',
-                    'Symmetric': 'Симметричные'
+                    'Ассиметричные': 'Ассиметричные',
+                    'Симметричные': 'Симметричные'
                 }
                 accumulate.append(type_reticular_lines[pred])
 
                 def handle_several_lines_reticular_assymetric(image):
                     pred = several_lines_reticular_asymmetric.main(image, mask=mask)
                     colors = {
-                        'ОДИН ЦВЕТ': 'Один цвет',
-                        'БОЛЬШЕ ОДНОГО ЦВЕТА': 'Больше одного цвета'
+                        'Один цвет': 'Один цвет',
+                        'Больше одного цвета': 'Больше одного цвета'
                     }
 
                     accumulate.append(colors[pred])
 
                 several_lines_reticular_handlers = {
-                    'Asymmetric': handle_several_lines_reticular_assymetric
+                    'Ассиметричные': handle_several_lines_reticular_assymetric
                 }
 
                 if pred in several_lines_reticular_handlers:
@@ -318,8 +318,8 @@ def main(path_to_img: str) -> list:
 
 
             several_lines_handler = {
-                'Parallel': handle_several_lines_parallel,
-                'Reticular_or_network': handle_several_lines_reticular
+                'Параллельные': handle_several_lines_parallel,
+                'Ретикулярные или разветвленные': handle_several_lines_reticular
             }
             if pred in several_lines_handler:
                 several_lines_handler[pred](image)
