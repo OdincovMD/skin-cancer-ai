@@ -1,19 +1,15 @@
 import cv2
 import pandas as pd
 from joblib import load
-import warnings
 
-with warnings.catch_warnings():
-    warnings.simplefilter("ignore", category=UserWarning)
-    classifier = load('weight/glob_melanin_other_pigment.joblib')
-
+classifier = load('weight/one_globules_several_colors.joblib')
 
 def extract_color_features(img: cv2.Mat) -> dict:
     """
-    Извлекает цветовые признаки из изображения, включая средние значения каналов BGR и HSV.
+    Extracts color features from the image, including average values of BGR and HSV channels.
 
-    :param img: исходное изображение (трехканальное)
-    :return: словарь, содержащий цветовые признаки изображения
+    :param img: input image (three-channel)
+    :return: dictionary containing the color features of the image
     """
     features = {}
     bgr_means = cv2.mean(img)[:3]
@@ -24,24 +20,15 @@ def extract_color_features(img: cv2.Mat) -> dict:
 
     return features
 
-
 def main(img: cv2.Mat) -> str:
     """
-    Основная функция для классификации изображения на основе извлечённых цветовых признаков.
+    Main function for classifying the image based on extracted color features.
 
-    :param img: изображение для классификации
-    :return: метка, определяющая класс изображения ('melanin' или 'other')
+    :param img: image to classify
+    :return: label indicating the class of the image ('Меланин' or 'Другой пигмент')
     """
     features = extract_color_features(img)
     df = pd.DataFrame([features])
-    label = 'melanin' if classifier.predict(df)[0] == 1 else 'other'
+    label = 'Меланин' if classifier.predict(df)[0] == 1 else 'Другой пигмент'
     return label
 
-
-if __name__ == "__main__":
-    img = cv2.imread('26.jpg')
-    if img is not None:
-        result = main(img)
-        print(result)
-    else:
-        print("Ошибка: не удалось загрузить изображение")

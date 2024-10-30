@@ -3,19 +3,16 @@ import numpy as np
 import pandas as pd
 from math import sin, cos
 from joblib import load
-import warnings
 
-with warnings.catch_warnings():
-    warnings.simplefilter("ignore", category=UserWarning)
-    clf = load('weight/one_globules_morethanonecolor_melanin.joblib')
+clf = load('weight/one_globules_several_colors_melanin.joblib')
 
 
 def preprocess_image(img: np.ndarray) -> np.ndarray:
     """
-    Выполняет предварительную обработку изображения для выделения маски области интереса.
+    Performs preprocessing of the image to extract the mask of the area of interest.
 
-    :param img: исходное изображение (трехканальное)
-    :return: маска области интереса
+    :param img: original image (three-channel)
+    :return: mask of the area of interest
     """
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     h_channel = cv2.split(hsv)[0]
@@ -24,14 +21,13 @@ def preprocess_image(img: np.ndarray) -> np.ndarray:
     mask = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
     return mask
 
-
 def extract_nevus(img: np.ndarray, mask: np.ndarray) -> np.ndarray:
     """
-    Извлекает область невуса из изображения с использованием маски.
+    Extracts the nevus region from the image using the mask.
 
-    :param img: исходное изображение (трехканальное)
-    :param mask: маска области интереса
-    :return: изображение невуса с прозрачным фоном
+    :param img: original image (three-channel)
+    :param mask: mask of the area of interest
+    :return: nevus image with transparent background
     """
     img_BGRA = cv2.cvtColor(img, cv2.COLOR_BGR2BGRA)
     masked = cv2.bitwise_and(img_BGRA, img_BGRA, mask=mask)
@@ -43,11 +39,11 @@ def extract_nevus(img: np.ndarray, mask: np.ndarray) -> np.ndarray:
 
 def find_globule_centers(img: np.ndarray, mask: np.ndarray) -> tuple[list, list]:
     """
-    Находит центры глобул на изображении.
+    Finds the centers of globules in the image.
 
-    :param img: изображение невуса
-    :param mask: маска области интереса
-    :return: списки координат x и y центров глобул
+    :param img: nevus image
+    :param mask: mask of the area of interest
+    :return: lists of x and y coordinates of globule centers
     """
     src = cv2.morphologyEx(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), cv2.MORPH_BLACKHAT, np.ones((50, 50), np.uint8))
     kernel = np.ones((7, 7), np.uint8)
@@ -67,10 +63,10 @@ def find_globule_centers(img: np.ndarray, mask: np.ndarray) -> tuple[list, list]
 
 def find_nevus_center_and_area(mask: np.ndarray) -> tuple[int, int, int]:
     """
-    Находит центр и площадь невуса на маске.
+    Finds the center and area of the nevus in the mask.
 
-    :param mask: маска области интереса
-    :return: координаты центра невуса и его площадь
+    :param mask: mask of the area of interest
+    :return: coordinates of the nevus center and its area
     """
     square = cv2.countNonZero(mask)
     moments = cv2.moments(mask)
@@ -84,10 +80,10 @@ def find_nevus_center_and_area(mask: np.ndarray) -> tuple[int, int, int]:
 
 def align_object(mask: np.ndarray) -> float:
     """
-    Вычисляет угол поворота объекта для его выравнивания.
+    Calculates the rotation angle of the object for alignment.
 
-    :param mask: маска области интереса
-    :return: угол поворота в радианах
+    :param mask: mask of the area of interest
+    :return: rotation angle in radians
     """
     moments = cv2.moments(mask)
     mu02 = moments['mu02']
@@ -101,12 +97,12 @@ def align_object(mask: np.ndarray) -> float:
 
 def align_arrays(x_array: list, y_array: list, angle: float) -> tuple[list, list]:
     """
-    Выравнивает массивы координат центров глобул относительно заданного угла.
+    Aligns arrays of globule center coordinates relative to the given angle.
 
-    :param x_array: список координат x
-    :param y_array: список координат y
-    :param angle: угол поворота в радианах
-    :return: списки выравненных координат x и y
+    :param x_array: list of x coordinates
+    :param y_array: list of y coordinates
+    :param angle: rotation angle in radians
+    :return: lists of aligned x and y coordinates
     """
     cos_a, sin_a = cos(angle), sin(angle)
     al_array_x = [x / cos_a - y / sin_a for x, y in zip(x_array, y_array)]
@@ -116,14 +112,14 @@ def align_arrays(x_array: list, y_array: list, angle: float) -> tuple[list, list
 
 def color_ratio(img: np.ndarray, center: int, axis: str, x_array: list, y_array: list) -> list:
     """
-    Вычисляет соотношение цветов по осям x и y.
+    Calculates color ratios along the x and y axes.
 
-    :param img: изображение невуса
-    :param center: координата центра невуса
-    :param axis: ось ('x' или 'y')
-    :param x_array: список координат x центров глобул
-    :param y_array: список координат y центров глобул
-    :return: список соотношений цветов (красный, зелёный, синий)
+    :param img: nevus image
+    :param center: coordinate of the nevus center
+    :param axis: axis ('x' or 'y')
+    :param x_array: list of x coordinates of globule centers
+    :param y_array: list of y coordinates of globule centers
+    :return: list of color ratios (red, green, blue)
     """
     b, g, r = cv2.split(img)
     channels = [b, g, r]
@@ -138,13 +134,13 @@ def color_ratio(img: np.ndarray, center: int, axis: str, x_array: list, y_array:
 
 def standard_deviation(x_0: float, y_0: float, x_array: list, y_array: list) -> tuple[float, float, float, float]:
     """
-    Вычисляет стандартное отклонение распределения глобул по четырём направлениям.
+    Calculates the standard deviation of the distribution of globules in four directions.
 
-    :param x_0: координата x центра невуса
-    :param y_0: координата y центра невуса
-    :param x_array: список координат x центров глобул
-    :param y_array: список координат y центров глобул
-    :return: стандартные отклонения для четырёх направлений
+    :param x_0: x coordinate of the nevus center
+    :param y_0: y coordinate of the nevus center
+    :param x_array: list of x coordinates of globule centers
+    :param y_array: list of y coordinates of globule centers
+    :return: standard deviations for four directions
     """
     lst_std_xpos_y = [y for x, y in zip(x_array, y_array) if x > x_0]
     lst_std_xneg_y = [y for x, y in zip(x_array, y_array) if x <= x_0]
@@ -163,10 +159,10 @@ def standard_deviation(x_0: float, y_0: float, x_array: list, y_array: list) -> 
 
 def get_image_features(img: np.ndarray) -> dict:
     """
-    Извлекает все признаки изображения для классификации.
+    Extracts all features from the image for classification.
 
-    :param img: исходное изображение (трехканальное)
-    :return: словарь, содержащий все выделенные признаки изображения
+    :param img: original image (three-channel)
+    :return: dictionary containing all extracted features of the image
     """
     mask = preprocess_image(img)
     nevus = extract_nevus(img, mask)
@@ -175,7 +171,7 @@ def get_image_features(img: np.ndarray) -> dict:
     angle = align_object(mask)
     al_x_array, al_y_array = align_arrays(x_array, y_array, angle)
     al_x_0, al_y_0 = align_arrays([x_0], [y_0], angle)
-    al_x_0, al_y_0 = al_x_0[0], al_y_0[0]  # Извлекаем значения из списков
+    al_x_0, al_y_0 = al_x_0[0], al_y_0[0]  # Extract values from lists
     features = {}
     features['average_x'] = np.mean(np.abs(np.array(al_x_array) - al_x_0))
     features['average_y'] = np.mean(np.abs(np.array(al_y_array) - al_y_0))
@@ -189,25 +185,16 @@ def get_image_features(img: np.ndarray) -> dict:
 
 def main(img: np.ndarray) -> str:
     """
-    Основная функция для классификации изображения на основе признаков.
+    Main function for image classification based on features.
 
-    :param img: изображение для классификации
-    :return: предсказанная метка ('АСИММЕТРИЧНОЕ РАСПОЛОЖЕНИЕ ГЛОБУЛ' или 'СИММЕТРИЧНОЕ РАСПОЛОЖЕНИЕ ГЛОБУЛ')
+    :param img: image to classify
+    :return: predicted label ('Цвета расположены асимметрично' or 'Цвета расположены асимметрично')
     """
     features = get_image_features(img)
     df_features = pd.DataFrame([features])
     pred = clf.predict(df_features)
     if pred == 0:
-        return 'АСИММЕТРИЧНОЕ РАСПОЛОЖЕНИЕ ГЛОБУЛ'
+        return 'Цвета расположены асимметрично'
     if pred == 1:
-        return 'СИММЕТРИЧНОЕ РАСПОЛОЖЕНИЕ ГЛОБУЛ'
+        return 'Цвета расположены симметрично'
 
-
-if __name__ == "__main__":
-    image_path = '26.jpg'
-    image = cv2.imread(image_path)
-    if image is not None:
-        label = main(image)
-        print(label)
-    else:
-        print("Ошибка: не удалось загрузить изображение")

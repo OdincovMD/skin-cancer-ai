@@ -1,39 +1,36 @@
 import pandas as pd
-from scipy import stats
-import joblib
 import cv2
 import numpy as np
+from scipy import stats
+import joblib
 
-clf = joblib.load('weight/one_clods_single-color_clf.joblib')
-
+clf = joblib.load('weight/one_globules.joblib')
 
 def count_area_of_interest(img: np.ndarray) -> int:
     """
-    Считает количество пикселей в области интереса изображения.
+    Counts the number of pixels in the area of interest of the image.
 
-    :param img: исходное изображение (трехканальное)
-    :return: количество ненулевых пикселей в изображении
+    :param img: input image (three-channel)
+    :return: number of non-zero pixels in the image
     """
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     return cv2.countNonZero(gray)
 
-
 def get_image_features(img: np.ndarray) -> dict:
     """
-    Вычисляет признаки изображения для классификации.
+    Computes image features for classification.
 
-    :param img: исходное изображение (трехканальное)
-    :return: словарь признаков изображения
+    :param img: input image (three-channel)
+    :return: dictionary of image features
     """
     features = {}
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) 
     area_value = count_area_of_interest(img)
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     b, g, r = cv2.split(img)
 
     for channel, color in zip([b, g, r], ['b', 'g', 'r']):
         channel_nonzero = channel[channel != 0]
         if len(channel_nonzero) == 0:
-            # Если в канале нет ненулевых пикселей, добавляем нулевые значения признаков
             channel_nonzero = np.array([0])
 
         features.update({
@@ -67,36 +64,27 @@ def get_image_features(img: np.ndarray) -> dict:
 
     return features
 
-
 def classify_image(img: np.ndarray) -> str:
     """
-    Классифицирует изображение на основе заранее обученной модели.
+    Classifies the image based on a pre-trained model.
 
-    :param img: изображение для классификации
-    :return: предсказанный ярлык ('single_color' или 'several_colors')
+    :param img: image to classify
+    :return: predicted label ('Один цвет' or 'Более одного цвета')
     """
     features = get_image_features(img)
     df = pd.DataFrame([features])
     pred = clf.predict(df)
 
-    return 'single_color' if pred[0] == 0 else 'several_colors'
-
+    return 'Один цвет' if pred[0] == 0 else 'Более одного цвета'
 
 def main(img: np.ndarray) -> str:
     """
-    Основная функция для классификации изображения.
+    Main function for image classification.
 
-    :param img: изображение для классификации
-    :return: результат классификации
+    :param img: image to classify
+    :return: classification result
     """
     return classify_image(img)
 
 
-if __name__ == '__main__':
-    file_path = "26.jpg"  # Укажите путь к вашему изображению
-    img = cv2.imread(file_path)
-    if img is not None:
-        result = main(img)
-        print(result)
-    else:
-        print(f"Ошибка: не удалось загрузить изображение по пути {file_path}")
+

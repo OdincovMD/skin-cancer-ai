@@ -1,25 +1,19 @@
 import joblib
 import cv2
-import matplotlib.image as mpimg
 import numpy as np
 import torch
-import warnings
 
-# Загрузка классификаторов из файлов
-with warnings.catch_warnings():
-    warnings.simplefilter("ignore", category=UserWarning)
-    forest_brown = joblib.load("weight/one_globules_1")
-    forest_selected = joblib.load("weight/one_globules_2")
-
+forest_brown = joblib.load("weight/one_globules_one_color_1")
+forest_selected = joblib.load("weight/one_globules_one_color_2")
 
 def area_of_interest(img: np.ndarray, to_hsv: bool = False) -> np.ndarray:
     """
-    Возвращает обработанную область интереса изображения.
-    Выбирается область размером 1500x1500 пикселей, изменяется её размер до 200x200, затем выполняется фильтрация.
+    Returns the processed area of interest of the image.
+    A 1500x1500 pixel area is selected, resized to 200x200, and then filtered.
 
-    :param img: исходное изображение (трехканальное)
-    :param to_hsv: флаг, указывающий, нужно ли преобразовать результат в HSV
-    :return: обработанное изображение размером 200x200
+    :param img: original image (three-channel)
+    :param to_hsv: flag indicating whether to convert the result to HSV
+    :return: processed 200x200 image
     """
     height, width = 1500, 1500
     center = img.shape
@@ -39,14 +33,13 @@ def area_of_interest(img: np.ndarray, to_hsv: bool = False) -> np.ndarray:
 
     return res
 
-
 def create_dataset(X_new: list, y_new: list) -> tuple[np.ndarray, np.ndarray]:
     """
-    Создаёт датасет на основе изображений и их меток, возвращает выделенные признаки и метки.
+    Creates a dataset based on images and their labels, returns extracted features and labels.
 
-    :param X_new: список путей к изображениям
-    :param y_new: список меток для изображений
-    :return: массив признаков и массив меток
+    :param X_new: list of image paths
+    :param y_new: list of labels for images
+    :return: feature array and label array
     """
     X, y = None, None
     for (i, image) in enumerate(X_new):
@@ -76,13 +69,12 @@ def create_dataset(X_new: list, y_new: list) -> tuple[np.ndarray, np.ndarray]:
 
     return X, y
 
-
 def main(img: np.ndarray) -> str:
     """
-    Основная функция для классификации изображения на основе признаков.
+    Main function for image classification based on features.
 
-    :param img: изображение для классификации
-    :return: предсказанная категория изображения
+    :param img: image to classify
+    :return: predicted category of the image
     """
     info = ["Желтый-белый", "Коричневый", "Красный", "Оранжевый", "Телесный", "Черный"]
 
@@ -98,15 +90,6 @@ def main(img: np.ndarray) -> str:
     try:
         return info[prediction.index(1)]
     except ValueError:
-        # Если 1 не найден в списке предсказаний, возвращаем класс с максимальной вероятностью
         max_prob_index = prediction.index(max(prediction))
         return info[max_prob_index]
 
-
-if __name__ == "__main__":
-    img = mpimg.imread("26.jpg")
-    if img is not None:
-        result = main(img)
-        print(result)
-    else:
-        print("Ошибка: не удалось загрузить изображение")
