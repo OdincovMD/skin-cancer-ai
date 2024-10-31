@@ -117,7 +117,7 @@ def main(path_to_img: str) -> list:
 
         elif tmp == "Линии":
             accumulate.append("Линии")
-            pred_several_lines = number_of_signs_lines_full.main(image)
+            pred_several_lines = several_lines.main(image)
             if pred_several_lines == 'Curved':
                 accumulate.append('Изогнутые')
             elif pred_several_lines == 'Parallel':
