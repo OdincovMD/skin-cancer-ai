@@ -50,14 +50,12 @@ def get_model() -> Any:
         _model_several_lines = load_model()
     return _model_several_lines
 
-
 LABEL_MAPPING = {
-    0: 'Curved',
-    1: 'Parallel',
-    2: 'Radial',
-    3: 'Reticular_or_network'
+    0: 'Изогнутые',
+    1: 'Параллельные',
+    2: 'Радиальные',
+    3: 'Ретикулярные или разветвленные'
 }
-
 
 def get_skeleton_features(gray_img: np.ndarray) -> dict:
     """
@@ -191,7 +189,7 @@ def main(image: np.ndarray, mask: np.ndarray) -> str:
         image (np.ndarray): The input image.
 
     Returns:
-        str: "Curved", "Parallel", "Radial", "Reticular_or_network"
+        str: "Изогнутые", "Параллельные", "Радиальные", "Ретикулярные или разветвленные
     """
     model = get_model()
     masked_image = cv2.bitwise_and(image, image, mask=mask)
@@ -202,12 +200,12 @@ def main(image: np.ndarray, mask: np.ndarray) -> str:
     return predicted_label
 
 
-if __name__ == "__main__":
-    image_path = '26.jpg'
-    mask = None
-    image = cv2.imread(image_path)
-    classification = main(image, mask)
-    print("Predicted class:", classification)
+# if __name__ == "__main__":
+#     image_path = '26.jpg'
+#     mask = None
+#     image = cv2.imread(image_path)
+#     classification = main(image, mask)
+#     print("Predicted class:", classification)
 
 # def compute_haralick_features(image, mask):
 #     """
@@ -254,3 +252,4 @@ if __name__ == "__main__":
 #         'max_lbp': np.max(lbp),
 #         'median_lbp': np.median(lbp)
 #     }
+

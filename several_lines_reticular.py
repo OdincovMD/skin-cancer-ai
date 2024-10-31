@@ -11,8 +11,8 @@ INPUT_SIZE = 224
 MEAN = [0.485, 0.456, 0.406]
 STD = [0.229, 0.224, 0.225]
 
-#переименовано с several_reticular_lines_simm_assimm.pth -> several_lines_reticular_assim_or_simm.pth
-MODEL_PATH = os.path.join('weight', 'several_lines_reticular_assim_or_simm.pth')
+#переименовано с several_reticular_lines_simm_assimm.pth -> several_lines_reticular
+MODEL_PATH = os.path.join('weight', 'several_lines_reticular.pth')
 
 
 def preprocess_image(img: np.ndarray) -> torch.Tensor:

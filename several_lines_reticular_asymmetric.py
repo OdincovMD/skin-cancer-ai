@@ -6,8 +6,8 @@ import cv2
 import numpy as np
 import pandas as pd
 
-#переименовано с several_lines_reticOrBranch_asymmetric.pkl -> several_lines_reticular_or_branched_asymmetric.pkl
-MODEL_PATH = os.path.join('weight', 'several_lines_reticOrBranch_asymmetric.pkl')
+#переименовано с several_lines_reticOrBranch_asymmetric.pkl -> several_lines_reticular_asymmetric.pkl
+MODEL_PATH = os.path.join('weight', 'several_lines_reticular_asymmetric.pkl')
 
 
 def load_model(path: str = MODEL_PATH) -> Any:
@@ -102,7 +102,7 @@ def main(img: np.ndarray, mask: np.ndarray) -> str:
         mask (np.ndarray): The binary mask for segmentation.
 
     Returns:
-        str: "ОДИН ЦВЕТ" or "БОЛЬШЕ ОДНОГО ЦВЕТА".
+        str: "Один цвет" or "Больше одного цвета".
     """
     model = get_model()
     seg_img = segment_area_of_interest(img, mask)
@@ -110,32 +110,4 @@ def main(img: np.ndarray, mask: np.ndarray) -> str:
     df = pd.DataFrame([characteristics])
 
     res = model.predict(df)
-    return 'ОДИН ЦВЕТ' if res[0] == 1 else 'БОЛЬШЕ ОДНОГО ЦВЕТА'
-
-# # переделано в функцию
-# def main(img_path: str) -> str:
-#     """
-#     Main function to process the image and predict its category based on color segmentation.
-
-#     Args:
-#         img_path (str): Path to the input image.
-
-#     Returns:
-#         str: Prediction if the region of interest is 'ONE COLOR' or 'MORE THAN ONE COLOR'.
-#     """
-#     rf = Roboflow(api_key="GmJT3lC4NInRGZJ2iEit")
-#     project = rf.workspace("neo-dmsux").project("neo-v6wzn")
-#     model = project.version(2).model
-
-#     data = model.predict(img_path).json()
-#     width = data['predictions'][0]['image']['width']
-#     height = data['predictions'][0]['image']['height']
-
-#     encoded_mask = data['predictions'][0]['segmentation_mask']
-#     mask_bytes = base64.b64decode(encoded_mask)
-#     mask_array = np.frombuffer(mask_bytes, dtype=np.uint8)
-#     mask_image = cv2.imdecode(mask_array, cv2.IMREAD_GRAYSCALE)
-#     mask = np.where(mask_image == 1, 255, mask_image)
-#     mask = cv2.resize(mask, (width, height), interpolation=cv2.INTER_LINEAR)
-
-#     return predict(img, mask)
+    return 'Один цвет' if res[0] == 1 else 'Больше одного цвета'

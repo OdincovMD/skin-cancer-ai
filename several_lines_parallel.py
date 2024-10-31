@@ -20,8 +20,8 @@ DATA_TRANSFORMS = {
     ]),
 }
 
-#переименован several_parallel_lines_borozd_grebesh.pth -> several_lines_parallel_borozd_or_grebesh.pth
-MODEL_PATH = os.path.join('weight', 'several_lines_parallel_borozd_or_grebesh.pth')
+#переименован several_parallel_lines_borozd_grebesh.pth -> several_lines_parallel.pth
+MODEL_PATH = os.path.join('weight', 'several_lines_parallel.pth')
 
 
 def load_model(model_path: str = MODEL_PATH) -> Tuple[EfficientNet, torch.device]:
@@ -70,7 +70,7 @@ def main(img: np.ndarray) -> str:
         img (np.ndarray): image for preprocessing.
 
     Returns:
-        str: "Borozd" or "Grebesh"
+        str: "Борозды" or "Гребешки"
     """
     model, device = get_model()
     # До этого это была функция для обработки
@@ -84,4 +84,4 @@ def main(img: np.ndarray) -> str:
     with torch.no_grad():
         prediction = model(image_transform.to(device))
 
-    return "Borozd" if torch.argmax(prediction) == 0 else "Grebesh"
+    return "Борозды" if torch.argmax(prediction) == 0 else "Гребешки"
