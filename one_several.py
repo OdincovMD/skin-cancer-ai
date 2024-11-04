@@ -20,7 +20,7 @@ class CustomNeuralNetResNet(torch.nn.Module):
         for param in self.net.parameters():
             param.requires_grad = False
         
-        # Размораживаем 4-ый блок
+        #Размораживаем 4-ый блок
         for param in self.net.layer4.parameters():
             param.requires_grad = True
 
@@ -68,19 +68,34 @@ def main(img: np.ndarray) -> str:
     img = Image.fromarray(img)
     img_tensor = transform(img).unsqueeze(0)
 
-    model = CustomNeuralNetResNet(2)
-    model.load_state_dict(
-        torch.load(r'weight/best_model_55_89.pth', map_location=torch.device('cpu'))
-        )
-    model.eval()
+    models = []
+    for fold in range(4):
+        model = CustomNeuralNetResNet(2)
+        model.load_state_dict(torch.load(f'weight/best_model_fold_{fold+1}.pth', 
+                                         map_location=torch.device('cpu'))) 
+        models.append(model)
 
-    with torch.no_grad():
-        output = model(img_tensor)
-        probs = torch.softmax(output, dim=1)
-        pred_class = probs.argmax(dim=1).cpu().numpy()[0]
+    voting = 'soft'
 
-    return ['Несколько', 'Один'][pred_class]
+    fold_preds = []
+    fold_probs = []
 
-import cv2
-if __name__ == '__main__':
-    main(cv2.imread('26.jpg'))
+    for model in models:
+        model.eval()
+        with torch.no_grad():
+            output = model(img_tensor)
+            probs = torch.softmax(output, dim=1)
+            fold_probs.append(probs.cpu().numpy())  # Для soft voting
+            pred_class = probs.argmax(dim=1).cpu().numpy()[0]
+            fold_preds.append(pred_class)
+
+    # Majority voting: выбор класса с наибольшим количеством голосов
+    if voting == 'majority':
+        final_pred_class = np.bincount(fold_preds).argmax()
+
+    # Soft voting: усреднение вероятностей классов
+    elif voting == 'soft':
+        avg_probs = np.mean(np.stack(fold_probs, axis=0), axis=0)
+        final_pred_class = avg_probs.argmax(axis=1)[0]
+
+    return ['Несколько', 'Один'][final_pred_class]

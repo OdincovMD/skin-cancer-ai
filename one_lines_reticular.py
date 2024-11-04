@@ -3,7 +3,7 @@ import numpy as np
 import pickle
 import pandas as pd
 
-with open('one_lines_reticular.pkl', 'rb') as file:
+with open('weight/one_lines_reticular.pkl', 'rb') as file:
     PIPELINE = pickle.load(file)
 
 LABEL_DICT = {0: 'Один цвет', 1: 'Больше одного цвета'}
