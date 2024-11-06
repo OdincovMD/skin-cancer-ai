@@ -181,8 +181,8 @@ def main(path_to_img: str) -> list:
     def handle_structureless(image):
         pred = one_structureless.main(image)
         one_structureless_type = {
-            'monochrome': 'Один цвет',
-            'multicolor': 'Несколько цветов'
+            'Один цвет': 'Один цвет',
+            'Несколько цветов': 'Несколько цветов'
         }
         accumulate.append(one_structureless_type[pred])
 
@@ -199,15 +199,15 @@ def main(path_to_img: str) -> list:
         def handle_one_structureless_many_color(image):
             pred = one_structureless_more_than_one_color.main(image, mask=mask)
             color = {
-                'brown': 'Коричневый',
-                'red': 'Красный',
-                'yellow': 'Зелёный'
+                'Коричневый': 'Коричневый',
+                'Красный': 'Красный',
+                'Желтый': 'Желтый'
             }
             accumulate.append(color[pred])
 
         one_structureless_color_type = {
-            'monochrome': handle_one_structureless_one_color,
-            'multicolor': handle_one_structureless_many_color
+            'Один цвет': handle_one_structureless_one_color,
+            'Несколько цветов': handle_one_structureless_many_color
         }
 
         one_structureless_color_type[pred](image)

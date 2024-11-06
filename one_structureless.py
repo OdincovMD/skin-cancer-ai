@@ -49,7 +49,7 @@ def main(img, mask) -> str:
     Классификация изображения.
     :param img: изображение для классификации
     :param mask: маска изображения
-    :return: предсказанная метка
+    :return: предсказанная метка "Один цвет" , "Несколько цветов"
     """
 
     features = feature_from_im(img, mask)
@@ -57,7 +57,7 @@ def main(img, mask) -> str:
     pred = clf.predict(df)
 
     if pred[0] == 1:
-        return 'multicolor'
+        return 'Один цвет'
     else:
-        return 'monochrome'
+        return 'Несколько цветов'
 
