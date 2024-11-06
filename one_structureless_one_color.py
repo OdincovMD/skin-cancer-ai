@@ -1,97 +1,66 @@
-import joblib
 import cv2
-import numpy as np
-import torch
+import pandas as pd
+from joblib import load
 
-FOREST = joblib.load("weight/one_structureless")
-INFO = ["Коричневый", "Красный", "Синий", "Черный"]
+clf = load('weight/one_structureless_one_color.joblib')
 
-
-def preprocess_image(img: np.ndarray, target_size: tuple = (200, 200)) -> np.ndarray:
+def clahe_filter(img, limit: float = 10, grid: tuple = (6, 4)):
     """
-    Предобработка изображения.
-
-    Parameters
-    ----------
-    img : np.ndarray
-        Исходное цветное трехканальное фото новообразования
-    target_size : tuple
-        Целевой размер изображения после обработки
-
-    Returns
-    -------
-    np.ndarray
-        Обработанное изображение
+    Увеличение контрастности изображения с помощью CLAHE.
+    :param img: входное изображение
+    :param limit: предел контрастности
+    :param grid: количество плиток по строкам и столбцам
+    :return: результат увеличения контрастности
     """
-    height, width = img.shape[:2]
-    center_x, center_y = width // 2, height // 2
-    crop_size = min(width, height)
-    half_crop_size = crop_size // 2
-
-    img_cropped = img[center_y - half_crop_size:center_y + half_crop_size,
-                      center_x - half_crop_size:center_x + half_crop_size]
-    img_resized = cv2.resize(img_cropped, target_size)
-    gray = cv2.cvtColor(img_resized, cv2.COLOR_BGR2GRAY)
-    blur = cv2.GaussianBlur(gray, (3, 3), 0)
-    _, threshold = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    mask = cv2.bitwise_not(threshold)
-    img_masked = cv2.bitwise_and(img_resized, img_resized, mask=mask)
-
-    return img_masked
+    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+    l, _, _ = cv2.split(lab)
+    clahe = cv2.createCLAHE(clipLimit=limit, tileGridSize=grid)
+    return clahe.apply(l)
 
 
-def extract_features(img_bgr: np.ndarray, img_hsv: np.ndarray) -> np.ndarray:
+def segmentation(image, mask):
+    """
+    Сегментация изображения.
+    :param image: входное изображение
+    :param mask: маска изображения
+    :return: сегментированная маска
+    """
+    equ = clahe_filter(image, 10, (6, 4))
+    masked_image = cv2.bitwise_and(equ, equ, mask=mask)
+    _, binar = cv2.threshold(masked_image, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+    return cv2.bitwise_and(binar, binar, mask=mask)
+
+
+def feature_from_im(image, mask_of_les):
     """
     Извлечение признаков из изображения.
-
-    Parameters
-    ----------
-    img_bgr : np.ndarray
-        Изображение в формате BGR
-    img_hsv : np.ndarray
-        Изображение в формате HSV
-
-    Returns
-    -------
-    np.ndarray
-        Массив извлеченных признаков
+    :param image: входное изображение
+    :param mask_of_les: маска пигментированного кожного поражения
+    :return: список признаков (среднее значение и стандартное отклонение зеленого, синего, красного и серого цветов)
+             для каждой бесструктурной области на изображении
     """
-    img_bgr = torch.from_numpy(img_bgr.transpose(2, 0, 1)).double()
-    masked_bgr = np.ma.masked_equal(img_bgr, 0)
-    mean_bgr = masked_bgr.mean(axis=(1, 2)).data
-    balanced_bgr = mean_bgr / mean_bgr.sum()
-    prop_to_red = mean_bgr[1:] / mean_bgr[0]
-    prop_to_green = torch.zeros(2)
-    prop_to_green[0] = mean_bgr[0] / mean_bgr[1]
-    prop_to_green[1] = mean_bgr[2] / mean_bgr[1]
-    prop_to_blue = mean_bgr[:-1] / mean_bgr[2]
+    result_mask = segmentation(image, mask_of_les)
+    b, g, r = cv2.split(image)
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    features = cv2.meanStdDev(cv2.merge((b, g, r, gray)), mask=result_mask)
+    return features[0].flatten().tolist() + features[1].flatten().tolist()
 
-    img_hsv = torch.from_numpy(img_hsv.transpose(2, 0, 1)).double()
-    masked_hsv = np.ma.masked_equal(img_hsv, 0)
-    mean_hsv = masked_hsv.mean(axis=(1, 2)).data
-
-    features = np.hstack((mean_bgr, balanced_bgr, prop_to_red,
-                          prop_to_green, prop_to_blue, mean_hsv)).round(2)
-    return features
-
-
-def main(img: np.ndarray) -> str:
+def main(img, mask) -> str:
     """
-    Предсказание класса новообразования на изображении.
-
-    Parameters
-    ----------
-    img : np.ndarray
-        Исходное изображение новообразования
-
-    Returns
-    -------
-    str
-        Предсказанный класс новообразования
+    Классификация изображения.
+    :param img: изображение для классификации
+    :param mask: маска изображения
+    :return: предсказанная метка
     """
-    img_bgr = preprocess_image(img)
-    img_hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
-    features = extract_features(img_bgr, img_hsv)
-    prediction = FOREST.predict([features])
-    return INFO[prediction[0].tolist().index(1)]
 
+    features = feature_from_im(img, mask)
+    df = pd.DataFrame([features])
+    pred = clf.predict(df)
+    if pred[0] == 0:
+        return 'Коричневый'
+    elif pred[0] == 1:
+        return 'Черный'
+    elif pred[0] == 2:
+        return 'Синий'
+    else:
+        return 'Красный'
