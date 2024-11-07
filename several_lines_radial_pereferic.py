@@ -28,7 +28,7 @@ def load_model(path: str = MODEL_PATH) -> Any:
         return load(file)
 
 
-_model_several_lines_reticular_or_branched_asymmetric = None
+_model_several_lines_radial_pereferic = None
 
 
 def get_model() -> Any:
@@ -38,10 +38,10 @@ def get_model() -> Any:
     Returns:
         Any: The loaded model object.
     """
-    global _model_several_lines_reticular_or_branched_asymmetric
-    if not _model_several_lines_reticular_or_branched_asymmetric:
-        _model_several_lines_reticular_or_branched_asymmetric = load_model()
-    return _model_several_lines_reticular_or_branched_asymmetric
+    global _model_several_lines_radial_pereferic
+    if not _model_several_lines_radial_pereferic:
+        _model_several_lines_radial_pereferic = load_model()
+    return _model_several_lines_radial_pereferic
 
 
 # оставлена старая функция по созданию маски, убрана из использования

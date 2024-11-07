@@ -9,6 +9,8 @@ import pandas as pd
 #переименовано с several_lines_reticOrBranch_asymmetric.pkl -> several_lines_reticular_asymmetric.pkl
 MODEL_PATH = os.path.join('weight', 'several_lines_reticular_asymmetric.pkl')
 
+_model_several_lines_reticular_asymmetric = None
+
 
 def load_model(path: str = MODEL_PATH) -> Any:
     """
@@ -23,7 +25,7 @@ def load_model(path: str = MODEL_PATH) -> Any:
     with open(path, 'rb') as file:
         return pickle.load(file)
 
-_model_several_lines_reticular_or_branched_asymmetric = None
+
 
 def get_model() -> Any:
     """
@@ -32,10 +34,10 @@ def get_model() -> Any:
     Returns:
         Any: The loaded model object.
     """
-    global _model_several_lines_reticular_or_branched_asymmetric
-    if not _model_several_lines_reticular_or_branched_asymmetric:
-        _model_several_lines_reticular_or_branched_asymmetric = load_model()
-    return _model_several_lines_reticular_or_branched_asymmetric
+    global _model_several_lines_reticular_asymmetric
+    if not _model_several_lines_reticular_asymmetric:
+        _model_several_lines_reticular_asymmetric = load_model()
+    return _model_several_lines_reticular_asymmetric
 
 
 def segment_area_of_interest(img: np.ndarray, mask: np.ndarray) -> np.ndarray:

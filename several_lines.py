@@ -189,7 +189,7 @@ def main(image: np.ndarray, mask: np.ndarray) -> str:
         image (np.ndarray): The input image.
 
     Returns:
-        str: "Изогнутые", "Параллельные", "Радиальные", "Ретикулярные или разветвленные
+        str: "Изогнутые", "Параллельные", "Радиальные", "Ретикулярные или разветвленные"
     """
     model = get_model()
     masked_image = cv2.bitwise_and(image, image, mask=mask)

@@ -51,8 +51,8 @@ def load_model(checkpoint_path: str = MODEL_PATH, num_classes: int = 2) -> Tuple
     return model, device
 
 
-_model_several_lines_reticular_assim_or_simm = None
-_device_several_lines_reticular_assim_or_simm = None
+_model_several_lines_reticular = None
+_device_several_lines_reticular = None
 
 
 def get_model() -> Any:
@@ -62,11 +62,11 @@ def get_model() -> Any:
     Returns:
         Any: The loaded model object.
     """
-    global _model_several_lines_reticular_assim_or_simm
-    global _device_several_lines_reticular_assim_or_simm
-    if not _model_several_lines_reticular_assim_or_simm and not _device_several_lines_reticular_assim_or_simm:
-        _model_several_lines_reticular_assim_or_simm, _device_several_lines_reticular_assim_or_simm = load_model()
-    return _model_several_lines_reticular_assim_or_simm, _device_several_lines_reticular_assim_or_simm
+    global _model_several_lines_reticular
+    global _device_several_lines_reticular
+    if not _model_several_lines_reticular and not _device_several_lines_reticular:
+        _model_several_lines_reticular, _device_several_lines_reticular = load_model()
+    return _model_several_lines_reticular, _device_several_lines_reticular
 
 
 def main(img: np.ndarray) -> str:

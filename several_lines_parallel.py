@@ -43,8 +43,8 @@ def load_model(model_path: str = MODEL_PATH) -> Tuple[EfficientNet, torch.device
     return model, device
 
 
-_model_several_lines_parallel_borozd_or_grebesh = None
-_device_several_lines_parallel_borozd_or_grebesh = None
+_model_several_lines_parallel = None
+_device_several_lines_parallel = None
 
 
 def get_model():
@@ -54,11 +54,11 @@ def get_model():
     Returns:
         Any: The loaded model object.
     """
-    global _model_several_lines_parallel_borozd_or_grebesh
-    global _device_several_lines_parallel_borozd_or_grebesh
-    if not _model_several_lines_parallel_borozd_or_grebesh and not _device_several_lines_parallel_borozd_or_grebesh:
-        _model_several_lines_parallel_borozd_or_grebesh, _device_several_lines_parallel_borozd_or_grebesh = load_model()
-    return _model_several_lines_parallel_borozd_or_grebesh, _device_several_lines_parallel_borozd_or_grebesh
+    global _model_several_lines_parallel
+    global _device_several_lines_parallel
+    if not _model_several_lines_parallel and not _device_several_lines_parallel:
+        _model_several_lines_parallel, _device_several_lines_parallel = load_model()
+    return _model_several_lines_parallel, _device_several_lines_parallel
 
 
 # до этого main была функцией для вызова двух функций
