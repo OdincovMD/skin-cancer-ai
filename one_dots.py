@@ -1,5 +1,3 @@
-import base64
-
 import cv2
 import numpy as np
 import pandas as pd
@@ -75,7 +73,7 @@ def convert_dots_to_mask(im_with_keypoints: np.ndarray) -> np.ndarray:
     Parameters
     ----------
         im_with_keypoints : np.ndarray
-            Iimage with white circles.
+            Image with white circles.
 
     Returns
     -------
@@ -89,7 +87,7 @@ def convert_dots_to_mask(im_with_keypoints: np.ndarray) -> np.ndarray:
     return res_mask
 
 
-def extract_features_from_image(img: np.ndarray, mask_of_lesion: np.ndarray) -> list[int]:
+def extract_features_from_image(im_with_keypoints: np.ndarray, mask_of_lesion: np.ndarray) -> list[int]:
     '''
     Extract features from the image.
 
@@ -108,11 +106,11 @@ def extract_features_from_image(img: np.ndarray, mask_of_lesion: np.ndarray) -> 
     dots_features = []
     keypoints = []
     limit = 0.1
-    im_with_keypoints = np.zeros_like(img, dtype=np.uint8)
+    im_with_keypoints = np.zeros_like(im_with_keypoints, dtype=np.uint8)
 
     while len(keypoints) < 10:
         limit += 0.5
-        equalized = apply_clahe(img, limit, (6, 4))
+        equalized = apply_clahe(im_with_keypoints, limit, (6, 4))
         equalized = cv2.bilateralFilter(equalized, 12, 75, 75)
         detector = blob_detector(0, 1, 40, 20)
         keypoints = detector.detect(equalized, mask=mask_of_lesion)
@@ -125,7 +123,7 @@ def extract_features_from_image(img: np.ndarray, mask_of_lesion: np.ndarray) -> 
     for contour in contours:
         contour_mask = np.zeros_like(res_mask, dtype=np.uint8)
         cv2.drawContours(contour_mask, [contour], -1, 255, thickness=cv2.FILLED)
-        average_color = cv2.mean(img, mask=contour_mask)[:3]
+        average_color = cv2.mean(im_with_keypoints, mask=contour_mask)[:3]
         dots_features.append(list(average_color) + [sum(average_color) / len(average_color)])
 
     return dots_features
@@ -152,28 +150,6 @@ def calculate_result_features(dots_features: list[int]) -> list[int]:
     ]
 
 
-def classify_image(img: np.ndarray, mask: np.ndarray) -> str:
-    '''
-    Classify the image.
-
-    Parameters
-    ----------
-        img : np.ndarray
-            The original image of the neoplasm.
-        mask : np.ndarray
-            Mask of pigmented skin lesion.
-
-    Returns
-    -------
-        str
-            "Коричневый"; "Серый".
-    '''
-    features = calculate_result_features(extract_features_from_image(img, mask))
-    df = pd.DataFrame([features])
-    pred = clf.predict(df)
-    return 'brown' if pred[0] == 1 else 'gray'
-
-
 def main(img: np.ndarray, mask: np.ndarray) -> str:
     '''
     Classification of a neoplasm by color within an area that contains dots.
@@ -190,28 +166,7 @@ def main(img: np.ndarray, mask: np.ndarray) -> str:
         str
             "Коричневый"; "Серый".
     '''
-    label = classify_image(img, mask)
-    return label
-
-
-# Deprecated since the mask is being passed from the main.py
-# if __name__ == '__main__':
-#     image_path = "26.jpg"  # change to your image path
-#     img = cv2.imread(image_path)
-
-#     rf = Roboflow(api_key="GmJT3lC4NInRGZJ2iEit")
-#     project = rf.workspace("neo-dmsux").project("neo-v6wzn")
-#     model = project.version(2).model
-
-#     data = model.predict("26.jpg").json()
-#     width = data['predictions'][0]['image']['width']
-#     height = data['predictions'][0]['image']['height']
-
-#     encoded_mask = data['predictions'][0]['segmentation_mask']
-#     mask_bytes = base64.b64decode(encoded_mask)
-#     mask_array = np.frombuffer(mask_bytes, dtype=np.uint8)
-#     mask_image = cv2.imdecode(mask_array, cv2.IMREAD_GRAYSCALE)
-#     mask = np.where(mask_image == 1, 255, mask_image)
-#     mask = cv2.resize(mask, (width, height), interpolation=cv2.INTER_LINEAR)
-
-#     print(main(img, mask))
+    features = calculate_result_features(extract_features_from_image(img, mask))
+    df = pd.DataFrame([features])
+    pred = clf.predict(df)
+    return 'Коричневый' if pred[0] == 1 else 'Серый'
