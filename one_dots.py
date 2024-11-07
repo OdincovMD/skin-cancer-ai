@@ -2,7 +2,6 @@ import cv2
 import numpy as np
 import pandas as pd
 from joblib import load
-from roboflow import Roboflow
 from typing import Optional
 
 clf = load('./weight/one_dots.joblib')
