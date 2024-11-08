@@ -137,7 +137,3 @@ def main(img_to_classify):
     result = class_map[eval_res]
     return result
 
-if __name__ == '__main__':
-    img_to_classify = cv2.imread('26.jpg')
-    res = main(img_to_classify)
-    print(res)

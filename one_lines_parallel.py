@@ -4,10 +4,15 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import transforms
 from PIL import Image
+import cv2
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class ConvolutionalNetwork(nn.Module):
+    """
+   This class builds a convolutional neural network consisting of
+   2 convolutional layers and 3 fully-connected.
+   """
     def __init__(self):
         super().__init__()
         self.conv1 = nn.Conv2d(3, 6, 3, 1)
@@ -36,6 +41,9 @@ CNNmodel.to(device)
 
 
 class AddGaussianNoise:
+    """
+    Class of Gaussian noise for transformation of image to classify
+    """
     def __init__(self, mean=0., std=1.):
         self.std = std
         self.mean = mean
@@ -43,23 +51,21 @@ class AddGaussianNoise:
     def __call__(self, tensor):
         return tensor + torch.randn(tensor.size(), device=tensor.device) * self.std + self.mean
 
-def augmentation(train_data):
-    transform_noise = transforms.Compose([
-        transforms.Resize(990),
-        transforms.CenterCrop(990),
-        AddGaussianNoise(0., 0.1),
-        transforms.RandomPerspective(distortion_scale=0.1)
-    ])
-
-    augmented_data = []
-    for image, label in train_data:
-        num_augmentations = 4 if label == 0 else 10
-        for _ in range(num_augmentations):
-            augmented_image = transform_noise(image)
-            augmented_data.append((augmented_image, label))
-    return augmented_data
 
 def classify_image(image_np):
+    """
+    Function for performing classification of neoplasm
+
+    Parameters
+    ____________
+        image_np : np.ndarray
+            Original image of neoplasm
+
+    Returns
+    ____________
+        classes[predicted_class] : str
+            Pattern of parallel lines according to classificator
+    """
     transform = transforms.Compose([
         transforms.Resize(990),
         transforms.CenterCrop(990),
@@ -80,10 +86,21 @@ def classify_image(image_np):
     return classes[predicted_class]
 
 def main(image_np):
+    """
+    Classification of parallel lines by the type:
+    Гребешки, Борозды, Пересекающиеся гребешки и борозды
+
+    Parameters
+    ____________
+        image_np : np.ndarray
+            Original image of neoplasm
+
+    Returns
+    ____________
+        predicted_class : str
+            Pattern of parallel lines according to classificator
+            Гребешки, Борозды, Пересекающиеся гребешки и борозды
+    """
     predicted_class = classify_image(image_np)
     return predicted_class
 
-if __name__ == '__main__':
-    path_to_image = '26.jpg'
-    image_np = np.array(Image.open(path_to_image))
-    print(main(image_np))

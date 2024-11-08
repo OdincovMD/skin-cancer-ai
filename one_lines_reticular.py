@@ -184,3 +184,4 @@ def main(image):
             Один цвет, Больше одного цвета
     """
     return process_image_and_predict(image)
+
