@@ -74,7 +74,7 @@ def predict(model: torch.nn.Module, image_tensor: torch.Tensor) -> str:
     """
     output = model(image_tensor)
     prediction = torch.sigmoid(output) >= 0.5
-    label = "ЧЕРНЫЕ" if prediction else "КОРИЧНЕВЫЕ"
+    label = "Черные" if prediction else "Коричневые"
     return label
 
 
