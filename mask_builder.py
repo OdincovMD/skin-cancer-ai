@@ -165,7 +165,7 @@ def main(path_to_image: str)-> np.ndarray:
         The segmentation mask resized to the original image dimensions, in the form of a NumPy array.
     """ 
 
-    model = YOLO("weight/v2310.pt")
+    model = YOLO("weight/mask_builder_yolo.pt")
 
     results = model(path_to_image, retina_masks=True, save=True)
 

@@ -1,17 +1,16 @@
 import torch
 import cv2
 import numpy as np
-import albumentations as A
-from albumentations.pytorch import ToTensorV2
-import torchvision.models as models
+from torchvision import models, transforms
 
 IMAGE_SIZE = 256
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-TRANSFORM = A.Compose([
-    A.Resize(IMAGE_SIZE, IMAGE_SIZE),
-    A.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-    ToTensorV2()
-])
+TRANSFORM = transforms.Compose([
+    transforms.ToPILImage(),
+    transforms.Resize((IMAGE_SIZE, IMAGE_SIZE)),
+    transforms.ToTensor(),
+    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+])  
 
 
 def load_model(model_name: str, model_path: str) -> torch.nn.Module:
@@ -52,7 +51,7 @@ def preprocess_image(image: np.ndarray) -> torch.Tensor:
             Transformed image
     """
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    image_tensor = TRANSFORM(image=image)["image"]
+    image_tensor = TRANSFORM(image)
     return image_tensor.unsqueeze(0).to(DEVICE, non_blocking=True)
 
 
@@ -78,7 +77,7 @@ def predict(model: torch.nn.Module, image_tensor: torch.Tensor) -> str:
     return label
 
 
-model_path = "weight/single_lines_retic_oneColor_blackOrBrown.pth"
+model_path = "weight/one_lines_reticular_one_color.pth"
 model_name = "resnet50"
 
 model = load_model(model_name, model_path)
@@ -98,7 +97,7 @@ def main(image: np.ndarray) -> str:
    ____________
        result : str
            Color of reticular lines according to classificator
-           ЧЕРНЫЕ, КОРИЧНЕВЫЕ
+           Черные, Коричневые
    """
     image_tensor = preprocess_image(image)
     result = predict(model, image_tensor)

@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 import joblib
 
-CLF = joblib.load('weight/one_lines_branched_clf.joblib')
+CLF = joblib.load('weight/one_lines_branched.joblib')
 
 def count_area_of_interest(img: np.ndarray) -> int:
     """

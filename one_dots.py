@@ -86,13 +86,13 @@ def convert_dots_to_mask(im_with_keypoints: np.ndarray) -> np.ndarray:
     return res_mask
 
 
-def extract_features_from_image(im_with_keypoints: np.ndarray, mask_of_lesion: np.ndarray) -> list[int]:
+def extract_features_from_image(img: np.ndarray, mask_of_lesion: np.ndarray) -> list[int]:
     '''
     Extract features from the image.
 
     Parameters
     ----------
-        im_with_keypoints : np.ndarray
+        img : np.ndarray
             Image with white circles.
         mask_of_lesion : np.ndarray
             Mask of pigmented skin lesion.
@@ -105,11 +105,11 @@ def extract_features_from_image(im_with_keypoints: np.ndarray, mask_of_lesion: n
     dots_features = []
     keypoints = []
     limit = 0.1
-    im_with_keypoints = np.zeros_like(im_with_keypoints, dtype=np.uint8)
+    im_with_keypoints = np.zeros_like(img, dtype=np.uint8)
 
     while len(keypoints) < 10:
         limit += 0.5
-        equalized = apply_clahe(im_with_keypoints, limit, (6, 4))
+        equalized = apply_clahe(img, limit, (6, 4))
         equalized = cv2.bilateralFilter(equalized, 12, 75, 75)
         detector = blob_detector(0, 1, 40, 20)
         keypoints = detector.detect(equalized, mask=mask_of_lesion)
@@ -122,7 +122,7 @@ def extract_features_from_image(im_with_keypoints: np.ndarray, mask_of_lesion: n
     for contour in contours:
         contour_mask = np.zeros_like(res_mask, dtype=np.uint8)
         cv2.drawContours(contour_mask, [contour], -1, 255, thickness=cv2.FILLED)
-        average_color = cv2.mean(im_with_keypoints, mask=contour_mask)[:3]
+        average_color = cv2.mean(img, mask=contour_mask)[:3]
         dots_features.append(list(average_color) + [sum(average_color) / len(average_color)])
 
     return dots_features

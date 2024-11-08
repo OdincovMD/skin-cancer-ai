@@ -4,9 +4,9 @@ import pandas as pd
 import os
 import pickle
 
-with open('weight/one_lines_retic_moreThanOneColor_1.pkl', 'rb') as file:
+with open('weight/one_lines_reticular_several_colors_1.pkl', 'rb') as file:
     clf_1 = pickle.load(file)
-with open('weight/one_lines_retic_moreThanOneColor_2.pkl', 'rb') as file:
+with open('weight/one_lines_reticular_several_colors_2.pkl', 'rb') as file:
     clf_2 = pickle.load(file)
 
 

@@ -69,9 +69,9 @@ def main(img: np.ndarray) -> str:
     img_tensor = transform(img).unsqueeze(0)
 
     models = []
-    for fold in range(4):
+    for fold in range(5):
         model = CustomNeuralNetResNet(2)
-        model.load_state_dict(torch.load(f'weight/best_model_fold_{fold+1}.pth', 
+        model.load_state_dict(torch.load(f'weight/one_several_{fold+1}.pth', 
                                          map_location=torch.device('cpu'))) 
         models.append(model)
 

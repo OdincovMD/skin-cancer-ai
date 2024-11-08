@@ -9,8 +9,8 @@ import one_lines
 import one_lines_reticular
 import one_lines_branched
 import one_lines_parallel
-import one_lines_reticular_one_color_black_or_brown
-import one_lines_reticular_more_than_one_color
+import one_lines_reticular_one_color
+import one_lines_reticular_several_colors
 
 import one_globules
 import one_globules_one_color
@@ -106,41 +106,41 @@ def main(path_to_img: str) -> list:
     def handle_one_lines(image):
         pred = one_lines.main(image)
         line_types = {
-            'Curved': 'Изогнутые',
-            'Parallel': 'Параллельные',
-            'Reticular': 'Ретикулярные',
-            'Spread': 'Разветвленные'
+            'Изогнутые': 'Изогнутые',
+            'Параллельные': 'Параллельные',
+            'Ретикулярные': 'Ретикулярные',
+            'Разветвленные': 'Разветвленные'
         }
         accumulate.append(line_types[pred])
 
         def handle_one_lines_reticular(image):
             pred = one_lines_reticular.main(image)
             reticular_type = {
-                '1_color': 'Один цвет',
-                'more_colors': 'Больше одного цвета'
+                'Один цвет': 'Один цвет',
+                'Больше одного цвета': 'Больше одного цвета'
             }
             accumulate.append(reticular_type[pred])
 
             def handle_one_lines_reticular_one_color(image):
-                pred = one_lines_reticular_one_color_black_or_brown.main(image)
+                pred = one_lines_reticular_one_color.main(image)
                 color = {
-                    'ЧЕРНЫЕ': 'Черный',
-                    'КОРИЧНЕВЫЕ': 'Коричневый'
+                    'Черные': 'Черный',
+                    'Коричневые': 'Коричневый'
                 }
                 accumulate.append(color[pred])
 
             def handle_one_lines_reticular_more_one_color(image):
-                pred = one_lines_reticular_more_than_one_color.main(image)
+                pred = one_lines_reticular_several_colors.main(image)
                 color = {
-                    'ПЕСТРЫЙ ИЛИ КРАПОВЫЙ': 'Пестрый или краптовый',
-                    'ЦЕНТРАЛЬНАЯ ГИПЕРПИГМЕНТАЦИЯ': 'Центральная гиперпигментация',
-                    'ПЕРИФЕРИЧЕСКАЯ ГИПЕРПИГМЕНТАЦИЯ': 'Периферическая гиперпигментация', 
+                    'Пестрый или краптовый': 'Пестрый или краптовый',
+                    'Центральная гиперпигментация': 'Центральная гиперпигментация',
+                    'Периферическая гиперпигментация': 'Периферическая гиперпигментация', 
                 }
                 accumulate.append(color[pred])
 
             one_lines_reticular_color_handlers = {
-                '1_color': handle_one_lines_reticular_one_color,
-                'more_colors': handle_one_lines_reticular_more_one_color
+                'Один цвет': handle_one_lines_reticular_one_color,
+                'Больше одного цвета': handle_one_lines_reticular_more_one_color
             }
             accumulate.append(one_lines_reticular_color_handlers[pred])
 
@@ -148,8 +148,8 @@ def main(path_to_img: str) -> list:
         def handle_one_lines_branched(image):
             pred = one_lines_branched.main(image, mask=mask)
             branched_type = {
-                'brown': 'Коричневый',
-                'black': 'Чёрный'
+                'Коричневые': 'Коричневый',
+                'Черные': 'Чёрный'
             }
             accumulate.append(branched_type[pred])
         
@@ -163,9 +163,9 @@ def main(path_to_img: str) -> list:
             accumulate.append(parallel_type[pred])
 
         one_lines_handlers = {
-            'Reticular': handle_one_lines_reticular,
-            'Spread': handle_one_lines_branched,
-            'Parallel': handle_one_lines_parallel,
+            'Ретикулярные': handle_one_lines_reticular,
+            'Разветвленные': handle_one_lines_branched,
+            'Параллельные': handle_one_lines_parallel,
         }
         if pred in one_lines_handlers:
             one_lines_handlers[pred](image)

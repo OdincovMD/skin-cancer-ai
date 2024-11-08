@@ -4,7 +4,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import transforms
 from PIL import Image
-import cv2
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -32,7 +31,7 @@ class ConvolutionalNetwork(nn.Module):
         x = self.fc3(x)
         return F.log_softmax(x, dim=1)
 
-model_path = 'weight/OnePattern_Lines_ParallelLines_TypeOfLines.pt'
+model_path = 'weight/one_lines_parallel.pt'
 CNNmodel = ConvolutionalNetwork()
 
 state = torch.load(model_path, map_location=device)
