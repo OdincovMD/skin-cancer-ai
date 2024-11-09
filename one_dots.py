@@ -127,7 +127,6 @@ def extract_features_from_image(img: np.ndarray, mask_of_lesion: np.ndarray) -> 
 
     return dots_features
 
-
 def calculate_result_features(dots_features: list[int]) -> list[int]:
     '''
     Calculate result features from the list of dot features.
