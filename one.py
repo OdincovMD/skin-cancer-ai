@@ -39,6 +39,7 @@ def create_model() -> nn.Sequential:
     model.to(DEVICE)
     return model
 
+
 MODEL = create_model()
 STATE = torch.load(PATH_TO_MODEL, map_location=torch.device(DEVICE))
 MODEL.load_state_dict(STATE)
@@ -127,16 +128,8 @@ def main(image: np.ndarray) -> str:
     input_image = transform(Image.fromarray(image))
 
     input_image = torch.FloatTensor(input_image).to(DEVICE).unsqueeze(0)
-    output = MODEL(input_image)
-    prediction = nn.Softmax(dim=1)(output)
+    prediction = MODEL(input_image)
     predicted_index = torch.argmax(prediction, dim=1).item()
 
     classes = {0: 'Бесструктурная область', 1: 'Комки', 2: 'Круги', 3: 'Линии', 4: 'Точки'}
     return classes[predicted_index]
-
-
-# Оставлено для тестирования работы модуля, при успешной проверке можно удалить 
-if __name__ == "__main__":
-    path_to_image = "26.jpg"
-    image_np = np.array(Image.open(path_to_image))
-    print(main(image_np))
