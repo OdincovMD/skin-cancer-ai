@@ -1,35 +1,37 @@
 import pandas as pd
-from scipy import stats
-import joblib
 import cv2
 import numpy as np
+from scipy import stats
+import joblib
 
-clf = joblib.load('weight/one_clods_single-color_clf.joblib')
-
+clf = joblib.load('weight/one_globules.joblib')
 
 def count_area_of_interest(img: np.ndarray) -> int:
     """
-    Counts area of interest in image
-    :param img: initial image
-    :return: count of non-zero pixels in image
+    Counts the number of pixels in the area of interest of the image.
+
+    :param img: input image (three-channel)
+    :return: number of non-zero pixels in the image
     """
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     return cv2.countNonZero(gray)
 
-
 def get_image_features(img: np.ndarray) -> dict:
     """
-    Calculates features for image
-    :param img: initial image
-    :return: features dict
+    Computes image features for classification.
+
+    :param img: input image (three-channel)
+    :return: dictionary of image features
     """
     features = {}
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) 
     area_value = count_area_of_interest(img)
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     b, g, r = cv2.split(img)
 
     for channel, color in zip([b, g, r], ['b', 'g', 'r']):
         channel_nonzero = channel[channel != 0]
+        if len(channel_nonzero) == 0:
+            channel_nonzero = np.array([0])
         features.update({
             f'mean_{color}': np.mean(channel_nonzero),
             f'mean_{color}/area_value': np.mean(channel_nonzero) / area_value,
@@ -45,8 +47,8 @@ def get_image_features(img: np.ndarray) -> dict:
             f'min_{color}/area_value': np.min(channel_nonzero) / area_value,
             f'median_{color}': np.median(channel_nonzero),
             f'median_{color}/area_value': np.median(channel_nonzero) / area_value,
-            f'mode_{color}': float(stats.mode(channel_nonzero)[0]),
-            f'mode_{color}/area_value': float(stats.mode(channel_nonzero)[0] / area_value)
+            f'mode_{color}': float(stats.mode(channel_nonzero, keepdims=False)[0]),
+            f'mode_{color}/area_value': float(stats.mode(channel_nonzero, keepdims=False)[0] / area_value)
         })
 
     features.update({
@@ -61,26 +63,23 @@ def get_image_features(img: np.ndarray) -> dict:
 
     return features
 
-
 def classify_image(img: np.ndarray) -> str:
     """
-    Classifies img
+    Classifies the image based on a pre-trained model.
+
     :param img: image to classify
-    :return: predicted label
+    :return: predicted label ('Один цвет' or 'Более одного цвета')
     """
     features = get_image_features(img)
     df = pd.DataFrame([features])
     pred = clf.predict(df)
+    return 'Один цвет' if pred[0] == 0 else 'Более одного цвета'
 
-    return 'single_color' if pred[0] == 0 else 'several_colors'
+def main(img: np.ndarray) -> str:
+    """
+    Main function for image classification.
 
-def main(img: np.ndarray):
-    label = classify_image(img)
-    return label
-
-
-if __name__ == '__main__':
-    file_path = "26.jpg"  # change to your image path
-    img = cv2.imread(file_path)
-    result = main(img)
-    print(result)
+    :param img: image to classify
+    :return: 'Один цвет', 'Более одного цвета'
+    """
+    return classify_image(img)
