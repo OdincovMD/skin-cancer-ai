@@ -41,8 +41,3 @@ def main(image: np.ndarray, mask: np.ndarray) -> str:
     df = pd.DataFrame([features])
     pred = CLF.predict(df)
     return 'Черный' if pred[0] == 1 else 'Коричневый'
-
-
-#if __name__ == '__main__':
-#    image = cv2.imread('26.jpg')
-#    print(main(image, mask))

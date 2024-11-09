@@ -333,10 +333,10 @@ def main(path_to_img: str) -> list:
             accumulate.append(circles_type[pred])
         
         def handle_several_dots(image):
-            pred = several_dots.main(image)
+            pred = several_dots.main(image, mask=mask)
             several_dots_type = {
-                'Black': 'Черный',
-                'Brown': 'Коричневый'
+                'Черный': 'Черный',
+                'Коричневый': 'Коричневый'
             }
             accumulate.append(several_dots_type[pred])
 
@@ -347,7 +347,6 @@ def main(path_to_img: str) -> list:
             'Точки': handle_several_dots
         }
 
-        
         accumulate.append(pred)
         several_handlers[pred](image)
 
