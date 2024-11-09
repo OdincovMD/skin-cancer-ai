@@ -2,7 +2,7 @@ import cv2
 import pandas as pd
 from joblib import load
 
-clf = load('weight/one_structureless.joblib')
+clf = load('weight/one_structureless_one_color.joblib')
 
 def clahe_filter(img, limit: float = 10, grid: tuple = (6, 4)):
     """
@@ -30,34 +30,37 @@ def segmentation(image, mask):
     _, binar = cv2.threshold(masked_image, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
     return cv2.bitwise_and(binar, binar, mask=mask)
 
+
 def feature_from_im(image, mask_of_les):
     """
     Извлечение признаков из изображения.
     :param image: входное изображение
     :param mask_of_les: маска пигментированного кожного поражения
-    :return: список признаков (количество в 20 интервалах канала Hue)
+    :return: список признаков (среднее значение и стандартное отклонение зеленого, синего, красного и серого цветов)
+             для каждой бесструктурной области на изображении
     """
     result_mask = segmentation(image, mask_of_les)
-    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-
-    counts = cv2.calcHist([hsv], [0], result_mask, [20], [0, 180])
-
-    return [counts.transpose()[0].tolist()]
+    b, g, r = cv2.split(image)
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    features = cv2.meanStdDev(cv2.merge((b, g, r, gray)), mask=result_mask)
+    return features[0].flatten().tolist() + features[1].flatten().tolist()
 
 def main(img, mask) -> str:
     """
     Классификация изображения.
     :param img: изображение для классификации
     :param mask: маска изображения
-    :return: предсказанная метка "Один цвет" , "Несколько цветов"
+    :return: предсказанная метка "Коричневый", "Черный", "Синий", "Красный"
     """
 
     features = feature_from_im(img, mask)
-    df = pd.DataFrame([features[0],])
+    df = pd.DataFrame([features])
     pred = clf.predict(df)
-
-    if pred[0] == 1:
-        return 'Один цвет'
+    if pred[0] == 0:
+        return 'Коричневый'
+    elif pred[0] == 1:
+        return 'Черный'
+    elif pred[0] == 2:
+        return 'Синий'
     else:
-        return 'Несколько цветов'
-
+        return 'Красный'

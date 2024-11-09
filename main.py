@@ -1,161 +1,373 @@
-import base64
-
-import numpy as np
 import cv2
-from roboflow import Roboflow
-import os
+
+import one_several
+import mask_builder
 
 import one
-import ManyPatterns_DominantPattern
+
+import one_lines
+import one_lines_reticular
+import one_lines_branched
+import one_lines_parallel
+import one_lines_reticular_one_color
+import one_lines_reticular_several_colors
+
+import one_globules
+import one_globules_one_color
+import one_globules_many_color
+import one_globules_more_than_one_color_melanin
 
 import one_structureless
-import one_globules
-import one_lines
+import one_structureless_one_color
+import one_structureless_more_than_one_color
+
 import one_dots
 
-import several_globules_symmetricOrAsymmetric
-import two_circles
-import number_of_signs_lines_full
+import several
+
+import several_lines
+import several_lines_parallel
+import several_lines_reticular
+import several_lines_reticular_asymmetric
+import several_lines_parallel_furrow
+import several_lines_radial_pereferic  # не реализуется узел выше: несколько признаков -> линни -> радиальные 
+
+import several_circles
 import several_dots
+
+import several_globules
+import several_globules_asymmetric
 
 import final
 
-from fastapi import FastAPI, File, UploadFile
+# from fastapi import FastAPI, File, UploadFile
 
-app = FastAPI()
+# app = FastAPI()
 
 
 def main(path_to_img: str) -> list:
     image = cv2.imread(path_to_img)
 
-    pred_one_or_more = "OnlyOne"  # TODO add model to classify one or more
+    pred = one_several.main(image)
 
-    mask = "mask"  # TODO add model to segment neoplasm
+    mask = mask_builder.main(path_to_img) 
 
     accumulate = []
 
-    if pred_one_or_more == "OnlyOne":
+    def handle_globules(image):
+        pred = one_globules.main(image)
+        globules_color = {
+            'single_color': 'Один цвет',
+            'several_colors': 'Больше одного цвета'
+        }
+        accumulate.append(globules_color[pred])
+
+        def handle_globules_one_color(image):
+            pred = one_globules_one_color.main(image)
+            colors = {
+                'Желтый-белый': 'Желтый-белый',
+                'Коричневый': 'Коричневый',
+                'Красный': 'Красный',
+                'Оранжевый': 'Оранжевый',
+                'Телесный': 'Телесный',
+                'Черный': 'Черный'
+            }
+            accumulate.append(colors[pred])
+
+        def handle_globules_many_colors(image):
+            pred = one_globules_many_color.main(image)
+            colors = {
+                'melanin': 'Меланин',
+                'other': 'Другой пигмент'
+            }
+            accumulate.append(colors[pred])
+
+            def handle_globules_many_colors_melanin(image):
+                pred = one_globules_more_than_one_color_melanin.main(image)
+                type_globules = {
+                    'АСИММЕТРИЧНОЕ РАСПОЛОЖЕНИЕ ГЛОБУЛ': 'Ассиметричность',
+                    'СИММЕТРИЧНОЕ РАСПОЛОЖЕНИЕ ГЛОБУЛ': 'Симметричность'
+                }
+                accumulate.append(type_globules[pred])
+
+            one_globules_many_color_handlers = {
+                'melanin': handle_globules_many_colors_melanin,
+            }
+
+            if pred in one_globules_many_color_handlers:
+                one_globules_many_color_handlers[pred](image)
+
+        globules_color = {
+            'single_color': handle_globules_one_color,
+            'several_colors': handle_globules_many_colors
+        }
+        globules_color[pred](image)
+
+    def handle_one_lines(image):
+        pred = one_lines.main(image)
+        line_types = {
+            'Изогнутые': 'Изогнутые',
+            'Параллельные': 'Параллельные',
+            'Ретикулярные': 'Ретикулярные',
+            'Разветвленные': 'Разветвленные'
+        }
+        accumulate.append(line_types[pred])
+
+        def handle_one_lines_reticular(image):
+            pred = one_lines_reticular.main(image)
+            reticular_type = {
+                'Один цвет': 'Один цвет',
+                'Больше одного цвета': 'Больше одного цвета'
+            }
+            accumulate.append(reticular_type[pred])
+
+            def handle_one_lines_reticular_one_color(image):
+                pred = one_lines_reticular_one_color.main(image)
+                color = {
+                    'Черные': 'Черный',
+                    'Коричневые': 'Коричневый'
+                }
+                accumulate.append(color[pred])
+
+            def handle_one_lines_reticular_more_one_color(image):
+                pred = one_lines_reticular_several_colors.main(image)
+                color = {
+                    'Пестрый или краптовый': 'Пестрый или краптовый',
+                    'Центральная гиперпигментация': 'Центральная гиперпигментация',
+                    'Периферическая гиперпигментация': 'Периферическая гиперпигментация', 
+                }
+                accumulate.append(color[pred])
+
+            one_lines_reticular_color_handlers = {
+                'Один цвет': handle_one_lines_reticular_one_color,
+                'Больше одного цвета': handle_one_lines_reticular_more_one_color
+            }
+            accumulate.append(one_lines_reticular_color_handlers[pred])
+
+        
+        def handle_one_lines_branched(image):
+            pred = one_lines_branched.main(image, mask=mask)
+            branched_type = {
+                'Коричневые': 'Коричневый',
+                'Черные': 'Чёрный'
+            }
+            accumulate.append(branched_type[pred])
+        
+        def handle_one_lines_parallel(image):
+            pred = one_lines_parallel.main(image)
+            parallel_type = {
+                'Борозды': 'Борозды',
+                'Гребешки': 'Гребешки',
+                'Пересекающиеся гребешки и борозды': 'Пересекающиеся гребешки и борозды'
+            }
+            accumulate.append(parallel_type[pred])
+
+        one_lines_handlers = {
+            'Ретикулярные': handle_one_lines_reticular,
+            'Разветвленные': handle_one_lines_branched,
+            'Параллельные': handle_one_lines_parallel,
+        }
+        if pred in one_lines_handlers:
+            one_lines_handlers[pred](image)
+    
+    def handle_dots(image):
+        pred = one_dots.main(image, mask=mask)
+        dot_colors = {
+            'Коричневый': 'Коричневый',
+            'Серый': 'Серый'
+        }
+        accumulate.append(dot_colors[pred])
+
+    def handle_structureless(image):
+        pred = one_structureless.main(image)
+        one_structureless_type = {
+            'Один цвет': 'Один цвет',
+            'Несколько цветов': 'Несколько цветов'
+        }
+        accumulate.append(one_structureless_type[pred])
+
+        def handle_one_structureless_one_color(image):
+            pred = one_structureless_one_color.main(image)
+            colors = {
+            'Коричневый': 'Коричневый',
+            'Красный': 'Красный',
+            'Синий': 'Синий',
+            'Черный': 'Черный'
+            }
+            accumulate.append(colors[pred])
+
+        def handle_one_structureless_many_color(image):
+            pred = one_structureless_more_than_one_color.main(image, mask=mask)
+            color = {
+                'Коричневый': 'Коричневый',
+                'Красный': 'Красный',
+                'Желтый': 'Желтый'
+            }
+            accumulate.append(color[pred])
+
+        one_structureless_color_type = {
+            'Один цвет': handle_one_structureless_one_color,
+            'Несколько цветов': handle_one_structureless_many_color
+        }
+
+        one_structureless_color_type[pred](image)
+
+    # Определение одного признака
+    if pred == "Один":
         accumulate.append('Один признак')
-        pred_one_which = one.main(image)
+        pred = one.main(image)
 
-        if pred_one_which == 'Бесструктурная область':
-            accumulate.append('Бесструктурная область')
-            pred_one_structureless = one_structureless.main(image)
+        structure_handlers = {
+            'Бесструктурная область': handle_structureless,
+            'Комки': handle_globules,
+            'Линии': handle_one_lines,
+            'Точки': handle_dots,
+        }
 
-            if pred_one_structureless == 'Коричневый':
-                accumulate.append('Коричневый')
-
-
-            elif pred_one_structureless == 'Красный':
-                accumulate.append('Красный')
-            elif pred_one_structureless == 'Синий':
-                accumulate.append('Синий')
-            elif pred_one_structureless == 'Черный':
-                accumulate.append('Черный')
-
-        elif pred_one_which == 'Комки':
-            accumulate.append("Комки")
-            pred_one_globules = one_globules.main(image)
-            if pred_one_globules == 'Желтый-белый':
-                accumulate.append('Желтый-белый')
-            elif pred_one_globules == 'Коричневый':
-                accumulate.append('Коричневый')
-            elif pred_one_globules == 'Красный':
-                accumulate.append('Красный')
-            elif pred_one_globules == 'Оранжевый':
-                accumulate.append('Оранжевый')
-            elif pred_one_globules == "Телесный":
-                accumulate.append("Телесный")
-            elif pred_one_globules == "Черный":
-                accumulate.append("Черный")
-
-        elif pred_one_which == "Круги":
-            accumulate.append("Круги")
+        if pred in structure_handlers:
+            accumulate.append(pred)
+            structure_handlers[pred](image)
+        else:
+            accumulate.append("Круги либо Псевдоподии")
             accumulate.append('Продолжение ветки в разработке')
 
-
-        elif pred_one_which == "Линии":
-            accumulate.append("Линии")
-            pred_one_lines = one_lines.main(image)
-            if pred_one_lines == 'Curved':
-                accumulate.append('Изогнутые')
-            elif pred_one_lines == 'Parallel':
-                accumulate.append('Параллельные')
-            elif pred_one_lines == 'Reticular':
-                accumulate.append('Ретикулярные')
-            elif pred_one_lines == 'Spread':
-                accumulate.append('Разветвленные')
-
-
-        elif pred_one_which == "Точки":
-            accumulate.append("Точки")
-            pred_one_dots = one_dots.main(image, mask)
-            if pred_one_dots == 'brown':
-                accumulate.append('Коричневый')
-            elif pred_one_dots == 'gray':
-                accumulate.append('Серый')
-
-    else:
+    # Обработка нескольких признаков
+    else:   
         accumulate.append('Несколько признаков')
-        tmp = ManyPatterns_DominantPattern.main(image)
+        pred = several.main(image)
 
-        if tmp == 'Комки':
-            accumulate.append("Комки")
-            pred_several_globules = several_globules_symmetricOrAsymmetric.main(image, mask)
-            if pred_several_globules == 'Симметричные':
-                accumulate.append('СИММЕТРИЧНЫЕ')
-            elif pred_several_globules == 'АСИММЕТРИЧНЫЕ':
-                accumulate.append('Асимметричные')
+        def handle_several_globules(image):
+            pred = several_globules.main(image, mask=mask)
+            symmetry_types = {
+                'СИММЕТРИЧНЫЕ': 'Симметричные',
+                'АСИММЕТРИЧНЫЕ': 'Асимметричные'
+            }
+            accumulate.append(symmetry_types[pred])
 
-        elif tmp == "Круги":
-            accumulate.append("Круги")
-            pred_several_circles = two_circles.main(image, mask)
-            if pred_several_circles == 'Brown':
-                accumulate.append('Коричневый')
-            elif pred_several_circles == 'Black or Gray':
-                accumulate.append('Черный или серый')
+            def handle_several_globules_asymmetric(image):
+                pred = several_globules_asymmetric.main(image)
+                color = {
+                    'Другой': 'Другой',
+                    'Меланин': 'Меланин'
+                }
+                accumulate.append(color[pred])
 
-        elif tmp == "Линии":
-            accumulate.append("Линии")
-            pred_several_lines = number_of_signs_lines_full.main(image)
-            if pred_several_lines == 'Curved':
-                accumulate.append('Изогнутые')
-            elif pred_several_lines == 'Parallel':
-                accumulate.append('Параллельные')
-            elif pred_several_lines == 'Radial':
-                accumulate.append('Радиальные')
-            elif pred_several_lines == 'Reticular_or_network':
-                accumulate.append('Ретикулярные или разветвленные')
+            several_globules_handlers ={
+                'АСИММЕТРИЧНЫЕ': handle_several_globules_asymmetric
+            }
 
-        elif tmp == "Точки":
-            accumulate.append("Точки")
-            pred_several_dots = several_dots.main(image)
-            if pred_several_dots == 'Black':
-                accumulate.append('Черный')
-            elif pred_several_dots == 'Brown':
-                accumulate.append('Коричневый')
+            if pred in several_globules_handlers:
+                several_globules_handlers[pred](image)
 
-    final_class = final.main(image)
-    if final_class == 'Melanoma':
-        accumulate.append('Меланома')
-    elif final_class == 'Nevus':
-        accumulate.append('Невус')
-    elif final_class == 'BCC':
-        accumulate.append('Базалиома')
-    elif final_class == 'DF':
-        accumulate.append('Дерматофиброма')
-    elif final_class == 'SebK':
-        accumulate.append('Себорейный кератоз')
+        def handle_several_lines(image):
+            pred = several_lines.main(image, mask=mask)
+            line_types = {
+                'Изогнутые': 'Изогнутые',
+                'Параллельные': 'Параллельные',
+                'Радиальные': 'Радиальные',
+                'Ретикулярные или разветвленные': 'Ретикулярные или разветвленные'
+            }
+            accumulate.append(line_types[pred])
+
+            def handle_several_lines_parallel(image):
+                pred = several_lines_parallel.main(image)
+                type_parallel_lines = {
+                    'Борозды': 'Борозды',
+                    'Гребешки': 'Гребешки'
+                }
+                accumulate.append(type_parallel_lines[pred])
+
+                def handle_several_lines_parallel_furrow(image):
+                    pred = several_lines_parallel_furrow.main(cv2.cvtColor(image, cv2.COLOR_BGR2RGB), mask=mask)
+                    type_parallel_lines_furrow = {
+                        'Симметрия': 'Симметрия',
+                        'Асимметрия': 'Асимметрия'
+                    }
+                    accumulate.append(type_parallel_lines_furrow[pred])
+
+                type_parallel_lines_handlers = {
+                    'Борозды': handle_several_lines_parallel_furrow
+                }
+
+                if pred in type_parallel_lines_handlers:
+                    type_parallel_lines_handlers[pred](image)
+                
+            def handle_several_lines_reticular(image):
+                pred =  several_lines_reticular.main(image)
+                type_reticular_lines = {
+                    'Ассиметричные': 'Ассиметричные',
+                    'Симметричные': 'Симметричные'
+                }
+                accumulate.append(type_reticular_lines[pred])
+
+                def handle_several_lines_reticular_assymetric(image):
+                    pred = several_lines_reticular_asymmetric.main(image, mask=mask)
+                    colors = {
+                        'Один цвет': 'Один цвет',
+                        'Больше одного цвета': 'Больше одного цвета'
+                    }
+
+                    accumulate.append(colors[pred])
+
+                several_lines_reticular_handlers = {
+                    'Ассиметричные': handle_several_lines_reticular_assymetric
+                }
+
+                if pred in several_lines_reticular_handlers:
+                    several_lines_reticular_handlers[pred](image)
+
+
+            several_lines_handler = {
+                'Параллельные': handle_several_lines_parallel,
+                'Ретикулярные или разветвленные': handle_several_lines_reticular
+            }
+            if pred in several_lines_handler:
+                several_lines_handler[pred](image)
+
+        def handle_several_circles(image):
+            pred = several_circles.main(image, mask=mask)
+            circles_type = {
+                'Brown': 'Коричневый',
+                'Black or Gray': 'Черный или серый'
+            }
+            accumulate.append(circles_type[pred])
+        
+        def handle_several_dots(image):
+            pred = several_dots.main(image)
+            several_dots_type = {
+                'Black': 'Черный',
+                'Brown': 'Коричневый'
+            }
+            accumulate.append(several_dots_type[pred])
+
+        several_handlers = {
+            'Комки': handle_several_globules,
+            'Круги': handle_several_circles,
+            'Линии': handle_several_lines,
+            'Точки': handle_several_dots
+        }
+
+        
+        accumulate.append(pred)
+        several_handlers[pred](image)
+
+    # Финальная классификация
+    pred = final.main(image)
+    final_classes = {
+        'Melanoma': 'Меланома',
+        'Nevus': 'Невус',
+        'BCC': 'Базалиома',
+        'DF': 'Дерматофиброма',
+        'SebK': 'Себорейный кератоз'
+    }
+    accumulate.append(final_classes[pred])
+
     return accumulate
 
-
-@app.post("/uploadfile/")
-async def create_upload_file(file: UploadFile = File(...)):
-    with open(file.filename, "wb") as buffer:
-        buffer.write(file.file.read())
-    result = main(file.filename)
-    os.remove(file.filename)
-    return result
-
-# if __name__ == '__main__':
-#     main('26.jpg')
+# @app.post("/uploadfile/")
+# async def create_upload_file(file: UploadFile = File(...)):
+#     with open(file.filename, "wb") as buffer:
+#         buffer.write(file.file.read())
+#     result = main(file.filename)
+#     os.remove(file.filename)
+#     return result

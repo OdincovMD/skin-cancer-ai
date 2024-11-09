@@ -32,7 +32,6 @@ def get_image_features(img: np.ndarray) -> dict:
         channel_nonzero = channel[channel != 0]
         if len(channel_nonzero) == 0:
             channel_nonzero = np.array([0])
-
         features.update({
             f'mean_{color}': np.mean(channel_nonzero),
             f'mean_{color}/area_value': np.mean(channel_nonzero) / area_value,
@@ -74,7 +73,6 @@ def classify_image(img: np.ndarray) -> str:
     features = get_image_features(img)
     df = pd.DataFrame([features])
     pred = clf.predict(df)
-
     return 'Один цвет' if pred[0] == 0 else 'Более одного цвета'
 
 def main(img: np.ndarray) -> str:
@@ -82,9 +80,6 @@ def main(img: np.ndarray) -> str:
     Main function for image classification.
 
     :param img: image to classify
-    :return: classification result
+    :return: 'Один цвет', 'Более одного цвета'
     """
     return classify_image(img)
-
-
-

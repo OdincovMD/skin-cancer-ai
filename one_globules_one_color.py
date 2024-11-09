@@ -74,10 +74,9 @@ def main(img: np.ndarray) -> str:
     Main function for image classification based on features.
 
     :param img: image to classify
-    :return: predicted category of the image
+    :return: 'Желтый-белый', 'Коричневый', 'Красный', 'Оранжевый', 'Телесный', 'Телесный'
     """
     info = ["Желтый-белый", "Коричневый", "Красный", "Оранжевый", "Телесный", "Черный"]
-
     X_temp = [img]
     X_processed, _ = create_dataset(X_temp, [[]])
 
@@ -92,4 +91,3 @@ def main(img: np.ndarray) -> str:
     except ValueError:
         max_prob_index = prediction.index(max(prediction))
         return info[max_prob_index]
-
