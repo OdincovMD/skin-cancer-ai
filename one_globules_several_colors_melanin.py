@@ -188,7 +188,7 @@ def main(img: np.ndarray) -> str:
     Main function for image classification based on features.
 
     :param img: image to classify
-    :return: predicted label ('Цвета расположены асимметрично' or 'Цвета расположены асимметрично')
+    :return: predicted label ('Цвета расположены асимметрично' or 'Цвета расположены симметрично')
     """
     features = get_image_features(img)
     df_features = pd.DataFrame([features])

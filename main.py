@@ -14,8 +14,8 @@ import one_lines_reticular_several_colors
 
 import one_globules
 import one_globules_one_color
-import one_globules_many_color
-import one_globules_more_than_one_color_melanin
+import one_globules_several_colors
+import one_globules_several_colors_melanin
 
 import one_structureless
 import one_structureless_one_color
@@ -57,8 +57,8 @@ def main(path_to_img: str) -> list:
     def handle_globules(image):
         pred = one_globules.main(image)
         globules_color = {
-            'single_color': 'Один цвет',
-            'several_colors': 'Больше одного цвета'
+            'Один цвет': 'Один цвет',
+            'Более одного цвета': 'Более одного цвета'
         }
         accumulate.append(globules_color[pred])
 
@@ -75,31 +75,31 @@ def main(path_to_img: str) -> list:
             accumulate.append(colors[pred])
 
         def handle_globules_many_colors(image):
-            pred = one_globules_many_color.main(image)
+            pred = one_globules_several_colors.main(image)
             colors = {
-                'melanin': 'Меланин',
-                'other': 'Другой пигмент'
+                'Меланин': 'Меланин',
+                'Другой пигмент': 'Другой пигмент'
             }
             accumulate.append(colors[pred])
 
             def handle_globules_many_colors_melanin(image):
-                pred = one_globules_more_than_one_color_melanin.main(image)
+                pred = one_globules_several_colors_melanin.main(image)
                 type_globules = {
-                    'АСИММЕТРИЧНОЕ РАСПОЛОЖЕНИЕ ГЛОБУЛ': 'Ассиметричность',
-                    'СИММЕТРИЧНОЕ РАСПОЛОЖЕНИЕ ГЛОБУЛ': 'Симметричность'
+                    'Цвета расположены асимметрично': 'Цвета расположены асимметрично',
+                    'Цвета расположены симметрично': 'Цвета расположены симметрично'
                 }
                 accumulate.append(type_globules[pred])
 
             one_globules_many_color_handlers = {
-                'melanin': handle_globules_many_colors_melanin,
+                'Меланин': handle_globules_many_colors_melanin,
             }
 
             if pred in one_globules_many_color_handlers:
                 one_globules_many_color_handlers[pred](image)
 
         globules_color = {
-            'single_color': handle_globules_one_color,
-            'several_colors': handle_globules_many_colors
+            'Один цвет': handle_globules_one_color,
+            'Более одного цвета': handle_globules_many_colors
         }
         globules_color[pred](image)
 
