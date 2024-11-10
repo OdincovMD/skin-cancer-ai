@@ -3,9 +3,7 @@ import base64
 import numpy as np
 import torch
 import cv2
-import albumentations as A
 from torchvision import models, transforms
-import torchvision.models as models
 
 # Constants
 MODEL_PATH = os.path.join("weight", "several_globules.pth")
@@ -29,7 +27,6 @@ def load_model():
 
 MODEL = load_model()
 
-
 def detect_globs(image: np.ndarray) -> np.ndarray:
     """
     Detects globules in the input image using OpenCV's SimpleBlobDetector and returns a binary mask.
@@ -46,7 +43,6 @@ def detect_globs(image: np.ndarray) -> np.ndarray:
     params.minDistBetweenBlobs = 0.001
     params.minThreshold, params.minArea = 0, 50
     params.minCircularity = params.minConvexity = params.minInertiaRatio = 0.001
-
     detector = cv2.SimpleBlobDetector_create(params)
     keypoints = detector.detect(image)
 
@@ -98,7 +94,7 @@ def predict_symmetry(image: np.ndarray) -> str:
 
 ## decode_segmentation_mask(data) удалена
 
-def main(image_path: str) -> str:
+def main(image: np.ndarray, mask: np.ndarray) -> str:
     """
     Applies masking and performs symmetry classification on the input image.
 
@@ -109,16 +105,6 @@ def main(image_path: str) -> str:
     Returns:
         str: Predicted label indicating symmetry ("Асимметричные" or "Симметричные").
     """
-    image = cv2.imread(image_path)
-
-    ## project = rf.workspace("neo-dmsux").project("neo-v6wzn")
-    ## model = project.version(2).model
-    ## data = model.predict(image_path).json()
-
-    ## width, height = data['predictions'][0]['image']['width'], data['predictions'][0]['image']['height']
-    ## mask = decode_segmentation_mask(data)
-    mask = cv2.resize(mask, (width, height), interpolation=cv2.INTER_LINEAR)
-
-    ## processed_image = apply_mask(image, mask)
-    result = predict_symmetry(image) ## processed_image
+    image = apply_mask(image, mask)
+    result = predict_symmetry(image)
     return result

@@ -5,8 +5,8 @@ import torch.nn.functional as F
 from torchvision import transforms
 from PIL import Image
 
+path_to_model = 'weight/several.pt'
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-torch.manual_seed(42)
 
 class ConvolutionalNetwork(nn.Module):
     def __init__(self):
@@ -28,18 +28,15 @@ class ConvolutionalNetwork(nn.Module):
         X = self.fc3(X)
         return F.log_softmax(X, dim=1)
 
-def load_model(path_to_model):
-    CNNmodel = ConvolutionalNetwork()
-    state = torch.load(path_to_model, map_location=device)
-    CNNmodel.load_state_dict(state)
-    CNNmodel.to(device)
-    CNNmodel.eval()
-    return CNNmodel
 
-path_to_model = 'weight/ManyPatterns_DominantPattern.pt'
-CNNmodel = load_model(path_to_model)
-
-def predict(image_np: np.ndarray) -> str:
+def main(image_np: np.ndarray) -> str:
+    """
+        Main function to predict dominant pattern in an image.
+        Args:
+            image_np (np.ndarray): Input image as a NumPy array.
+        Returns:
+            str: Predicted class label as a string - one out of: ['Комки', 'Круги', 'Линии', 'Точки'].
+    """
     image = Image.fromarray(image_np)
     transform = transforms.Compose([
         transforms.Resize(990),
@@ -47,19 +44,14 @@ def predict(image_np: np.ndarray) -> str:
         transforms.ToTensor()
     ])
     input_image = transform(image).unsqueeze(0).to(device)
+    CNNmodel = ConvolutionalNetwork()
+    state = torch.load(path_to_model, map_location=device)
+    CNNmodel.load_state_dict(state)
+    CNNmodel.to(device)
+    CNNmodel.eval()
     with torch.no_grad():
         y_pred = CNNmodel(input_image)
-    sm = nn.Softmax(dim=1)
-    prediction = sm(y_pred)
-    predicted_index = torch.argmax(prediction, dim=1).item()
+    predicted_index = torch.argmax(y_pred, dim=1).item()
     classes = {0: 'Комки', 1: 'Круги', 2: 'Линии', 3: 'Точки'}
     predicted_class = classes[predicted_index]
     return predicted_class
-
-def main(image_np: np.ndarray):
-    return predict(image_np)
-
-if __name__ == '__main__':
-    path_to_image = '26.jpg'
-    image_np = np.array(Image.open(path_to_image))
-    print(main(image_np))

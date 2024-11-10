@@ -997,7 +997,3 @@ def predict_hierarchical(img: np.ndarray, preprocess: bool = True, st_dict_folde
 
 def main(img):
     return predict_hierarchical(img, st_dict_folder='weight')
-
-
-if __name__ == "__main__":
-    print(main(cv2.imread('26.jpg')))
