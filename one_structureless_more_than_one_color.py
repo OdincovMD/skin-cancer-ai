@@ -1,16 +1,10 @@
 import cv2
-import numpy as np
 import pandas as pd
-import os
-import requests
-import base64
 from joblib import load
-from roboflow import Roboflow
 
-clf = load('weight/one_structureless_more than 1.joblib')
+clf = load('weight/one_structureless_more_than_one_color.joblib')
 
-
-def clahe_filter(img, limit: float, grid: tuple):
+def clahe_filter(img, limit: float = 10, grid: tuple = (6, 4)):
     """
     Увеличение контрастности изображения с помощью CLAHE.
     :param img: входное изображение
@@ -51,13 +45,12 @@ def feature_from_im(image, mask_of_les):
     features = cv2.meanStdDev(cv2.merge((b, g, r, gray)), mask=result_mask)
     return features[0].flatten().tolist() + features[1].flatten().tolist()
 
-
-def classify_image(img, mask) -> str:
+def main(img, mask) -> str:
     """
     Классификация изображения.
     :param img: изображение для классификации
     :param mask: маска изображения
-    :return: предсказанная метка
+    :return: предсказанная метка 'Коричневый', 'Красный', 'Желтый'
     """
 
     features = feature_from_im(img, mask)
@@ -65,40 +58,8 @@ def classify_image(img, mask) -> str:
     pred = clf.predict(df)
 
     if pred[0] == 1:
-        return 'brown'
+        return 'Коричневый'
     elif pred[0] == 0:
-        return 'red'
+        return 'Красный'
     else:
-        return 'yellow'
-
-
-def main(img, mask):
-    """
-    Вывод метки изображения по пути.
-    :param im: изображение
-    :return: метка изображения
-    """
-    return classify_image(img, mask)
-
-
-if __name__ == '__main__':
-    image_path = "26.jpg"
-    img = cv2.imread(image_path)
-
-    rf = Roboflow(api_key="GmJT3lC4NInRGZJ2iEit")
-    project = rf.workspace("neo-dmsux").project("neo-v6wzn")
-    model = project.version(2).model
-
-    data = model.predict("26.jpg").json()
-    width = data['predictions'][0]['image']['width']
-    height = data['predictions'][0]['image']['height']
-
-    encoded_mask = data['predictions'][0]['segmentation_mask']
-    mask_bytes = base64.b64decode(encoded_mask)
-    mask_array = np.frombuffer(mask_bytes, dtype=np.uint8)
-    mask_image = cv2.imdecode(mask_array, cv2.IMREAD_GRAYSCALE)
-    mask = np.where(mask_image == 1, 255, mask_image)
-    mask = cv2.resize(mask, (width, height), interpolation=cv2.INTER_LINEAR)
-
-    result = main(img, mask)
-    print(result)
+        return 'Желтый'

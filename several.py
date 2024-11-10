@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from torchvision import transforms
 from PIL import Image
 
-path_to_model = 'weight/ManyPatterns_DominantPattern.pt'
+path_to_model = 'weight/several.pt'
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class ConvolutionalNetwork(nn.Module):
@@ -27,6 +27,7 @@ class ConvolutionalNetwork(nn.Module):
         X = F.relu(self.fc2(X))
         X = self.fc3(X)
         return F.log_softmax(X, dim=1)
+
 
 def main(image_np: np.ndarray) -> str:
     """

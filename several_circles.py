@@ -86,7 +86,6 @@ def extract_features(img: np.ndarray, keypoints: list) -> list:
 
     return [b_mean, g_mean, r_mean, b_min, g_min, r_min, b_max, g_max, r_max]
 
-
 def classify_image(features: list, clf) -> str:
     """
     Classify the image based on extracted features using a pre-trained classifier.
@@ -101,9 +100,8 @@ def classify_image(features: list, clf) -> str:
     X = np.array(features).reshape(1, -1)
     y_pred = clf.predict(X)
     return "Коричневый" if y_pred[0] == 0 else "Черный или серый"
-
-clf = load('weight/two_circles.joblib')
-
+  
+clf = load('weight/several_circles.joblib')
 
 def main(img: np.ndarray, mask: np.ndarray) -> str:
     """
@@ -122,26 +120,3 @@ def main(img: np.ndarray, mask: np.ndarray) -> str:
     features = extract_features(masked, keypoints)
     result = classify_image(features, clf)
     return result
-
-
-# if __name__ == "__main__":
-#     img_path = '26.jpg'
-#     img = cv2.imread(img_path)
-#
-#     rf = Roboflow(api_key="GmJT3lC4NInRGZJ2iEit")
-#     project = rf.workspace("neo-dmsux").project("neo-v6wzn")
-#     model = project.version(2).model
-#
-#     data = model.predict("26.jpg").json()
-#     width = data['predictions'][0]['image']['width']
-#     height = data['predictions'][0]['image']['height']
-#
-#     encoded_mask = data['predictions'][0]['segmentation_mask']
-#     mask_bytes = base64.b64decode(encoded_mask)
-#     mask_array = np.frombuffer(mask_bytes, dtype=np.uint8)
-#     mask_image = cv2.imdecode(mask_array, cv2.IMREAD_GRAYSCALE)
-#     mask = np.where(mask_image == 1, 255, mask_image)
-#     mask = cv2.resize(mask, (width, height), interpolation=cv2.INTER_LINEAR)
-#
-#     res = main(img, mask)
-#     print(res)
