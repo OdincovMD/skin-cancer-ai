@@ -77,11 +77,11 @@ def predict_symmetry(image: np.ndarray) -> str:
         image (np.ndarray): Input image as a numpy array.
 
     Returns:
-        str: Predicted label for the image, either "ASYMMETRIC" or "SYMMETRIC".
+        str: Predicted label for the image, either "Асимметричные" or "Симметричные".
     """
     transform = transforms.Compose([
         transforms.ToPILImage(),
-        transforms.Resize((image_size, image_size)),
+        transforms.Resize((IMAGE_SIZE, IMAGE_SIZE)),
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
     ])

@@ -6,7 +6,7 @@ import torch.nn as nn
 from torchvision import transforms, models
 from PIL import Image
 
-PATH_TO_MODEL = os.path.join("weight","several_globules_asymmetrical.pth")
+PATH_TO_MODEL = os.path.join("weight","several_globules_asymmetrical.pt")
 SIZE = 400
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 

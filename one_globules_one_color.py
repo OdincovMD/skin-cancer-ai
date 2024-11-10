@@ -74,7 +74,7 @@ def main(img: np.ndarray) -> str:
     Main function for image classification based on features.
 
     :param img: image to classify
-    :return: 'Желтый-белый', 'Коричневый', 'Красный', 'Оранжевый', 'Телесный', 'Телесный'
+    :return: 'Желтый-белый', 'Коричневый', 'Красный', 'Оранжевый', 'Телесный', 'Черный'
     """
     info = ["Желтый-белый", "Коричневый", "Красный", "Оранжевый", "Телесный", "Черный"]
     X_temp = [img]
