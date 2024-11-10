@@ -4,12 +4,11 @@ import numpy as np
 import torch
 import cv2
 import albumentations as A
-from albumentations.pytorch import ToTensorV2
+from torchvision import models, transforms
 import torchvision.models as models
-from roboflow import Roboflow
 
 # Constants
-MODEL_PATH = os.path.join("weight", "several_globules_symmetricOrAsymmetric.pth")
+MODEL_PATH = os.path.join("weight", "several_globules.pth")
 MODEL_NAME = "resnet50"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 IMAGE_SIZE = 256
@@ -84,32 +83,20 @@ def predict_symmetry(image: np.ndarray) -> str:
     Returns:
         str: Predicted label for the image, either "ASYMMETRIC" or "SYMMETRIC".
     """
-    transform = A.Compose([
-        A.Resize(IMAGE_SIZE, IMAGE_SIZE),
-        A.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-        ToTensorV2()
+    transform = transforms.Compose([
+        transforms.ToPILImage(),
+        transforms.Resize((image_size, image_size)),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
     ])
-    image_tensor = transform(image=image)["image"].to(DEVICE)
+    image_tensor = transform(image)
+    image_tensor = image_tensor.to(DEVICE, non_blocking=True)
     output = MODEL(image_tensor.unsqueeze(0))
     prediction = torch.sigmoid(output) >= 0.5
-    return "АСИММЕТРИЧНЫЕ" if prediction else "СИММЕТРИЧНЫЕ"
+    return "Асимметричные" if prediction else "Симметричные"
 
 
-def decode_segmentation_mask(data):
-    """
-    Decodes a base64-encoded segmentation mask from prediction data and converts it to a binary mask.
-
-    Parameters:
-        data (dict): Prediction data containing base64-encoded segmentation mask and image dimensions.
-
-    Returns:
-        np.ndarray: Decoded binary mask as a numpy array with values 0 and 255, matching image dimensions.
-    """
-    encoded_mask = data['predictions'][0]['segmentation_mask']
-    mask_bytes = base64.b64decode(encoded_mask)
-    mask_array = np.frombuffer(mask_bytes, dtype=np.uint8)
-    mask_image = cv2.imdecode(mask_array, cv2.IMREAD_GRAYSCALE)
-    return np.where(mask_image == 1, 255, mask_image)
+## decode_segmentation_mask(data) удалена
 
 def main(image_path: str) -> str:
     """
@@ -120,25 +107,18 @@ def main(image_path: str) -> str:
         mask (np.ndarray): Segmentation mask for isolating relevant image areas.
 
     Returns:
-        str: Predicted label indicating symmetry ("ASYMMETRIC" or "SYMMETRIC").
+        str: Predicted label indicating symmetry ("Асимметричные" or "Симметричные").
     """
     image = cv2.imread(image_path)
 
-    rf = Roboflow(api_key="GmJT3lC4NInRGZJ2iEit")
-    project = rf.workspace("neo-dmsux").project("neo-v6wzn")
-    model = project.version(2).model
-    data = model.predict(image_path).json()
+    ## project = rf.workspace("neo-dmsux").project("neo-v6wzn")
+    ## model = project.version(2).model
+    ## data = model.predict(image_path).json()
 
-    width, height = data['predictions'][0]['image']['width'], data['predictions'][0]['image']['height']
-    mask = decode_segmentation_mask(data)
+    ## width, height = data['predictions'][0]['image']['width'], data['predictions'][0]['image']['height']
+    ## mask = decode_segmentation_mask(data)
     mask = cv2.resize(mask, (width, height), interpolation=cv2.INTER_LINEAR)
 
-    processed_image = apply_mask(image, mask)
-    result = predict_symmetry(processed_image)
+    ## processed_image = apply_mask(image, mask)
+    result = predict_symmetry(image) ## processed_image
     return result
-
-
-if __name__ == "__main__":
-    image_path = "26.jpg"
-    result = main(image_path)
-    print(result)
