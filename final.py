@@ -996,8 +996,14 @@ def predict_hierarchical(img: np.ndarray, preprocess: bool = True, st_dict_folde
 
 
 def main(img):
+    """
+    Main function to predict the final pattern in an image.
+    
+    Args:
+        img (np.ndarray): Input image as a NumPy array.
+    
+    Returns:
+        str: Predicted class label ('Nevus', 'SebK', 'DF', 'BCC', or 'Melanoma') based on a hierarchical classifier 
+        that combines predictions from multiple models.
+    """
     return predict_hierarchical(img, st_dict_folder='weight')
-
-
-if __name__ == "__main__":
-    print(main(cv2.imread('26.jpg')))
