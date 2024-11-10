@@ -2,20 +2,6 @@ import numpy as np
 import cv2
 from joblib import load
 
-def get_masked_image(img: np.ndarray, mask: np.ndarray) -> np.ndarray:
-    """
-    Apply a binary mask to an image, returning the masked image.
-
-    Args:
-        img (np.ndarray): Input image as a NumPy array.
-        mask (np.ndarray): Binary mask to apply on the image.
-
-    Returns:
-        np.ndarray: The masked image.
-    """
-    masked = cv2.bitwise_and(img, img, mask=mask)
-    return masked
-
 def preprocess_image(img: np.ndarray) -> np.ndarray:
     """
     Preprocess the image by enhancing contrast and applying adaptive thresholding.
@@ -110,11 +96,11 @@ def classify_image(features: list, clf) -> str:
         clf: Pre-trained classifier object.
 
     Returns:
-        str: Classification result ("Brown" or "Black or Gray").
+        str: Classification result ("Коричневый" or "Черный или серый").
     """
     X = np.array(features).reshape(1, -1)
     y_pred = clf.predict(X)
-    return "Brown" if y_pred[0] == 0 else "Black or Gray"
+    return "Коричневый" if y_pred[0] == 0 else "Черный или серый"
 
 clf = load('weight/two_circles.joblib')
 
@@ -128,9 +114,9 @@ def main(img: np.ndarray, mask: np.ndarray) -> str:
         mask (np.ndarray): Binary mask defining the region of interest.
 
     Returns:
-        str: Classification result ("Brown" or "Black or Gray").
+        str: Classification result ("Коричневый" or "Черный или серый").
     """
-    masked = get_masked_image(img, mask)
+    masked = cv2.bitwise_and(img, img, mask=mask)
     preprocessed = preprocess_image(masked)
     keypoints = detect_keypoints(preprocessed)
     features = extract_features(masked, keypoints)
