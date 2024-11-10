@@ -327,8 +327,8 @@ def main(path_to_img: str) -> list:
         def handle_several_circles(image):
             pred = several_circles.main(image, mask=mask)
             circles_type = {
-                'Brown': 'Коричневый',
-                'Black or Gray': 'Черный или серый'
+                'Коричневый': 'Коричневый',
+                'Черный или серый': 'Черный или серый'
             }
             accumulate.append(circles_type[pred])
         
