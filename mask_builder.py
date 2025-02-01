@@ -167,7 +167,7 @@ def main(path_to_image: str)-> np.ndarray:
 
     model = YOLO("weight/mask_builder_yolo.pt")
 
-    results = model(path_to_image, retina_masks=True, save=True)
+    results = model(path_to_image, retina_masks=True, save=False, verbose=False)
 
     orig_img = results[0].orig_img
     height, width = orig_img.shape[:2]

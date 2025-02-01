@@ -65,7 +65,7 @@ def main(img: np.ndarray) -> str:
         ]
     )
     
-    img = Image.fromarray(img)
+    img = Image.fromarray(img[:, :, ::-1])
     img_tensor = transform(img).unsqueeze(0)
 
     models = []

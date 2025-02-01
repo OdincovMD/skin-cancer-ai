@@ -92,7 +92,7 @@ def main(img: np.ndarray, mask: np.ndarray) -> str:
     ])
 
     mask= np.stack([mask] * 3, axis=-1)
-    masked_img = np.where(mask == 255, img, 0)
+    masked_img = np.where(mask == 255, img[:, :, ::-1], 0)
     img = Image.fromarray(masked_img)
     img_tensor = transform(img).unsqueeze(0)
 

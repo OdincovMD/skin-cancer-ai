@@ -61,3 +61,4 @@ typing_extensions==4.12.2
 tzdata==2024.2
 urllib3==2.2.3
 xgboost==2.1.1
+ultralytics
