@@ -7,14 +7,14 @@ from resizeimage import resizeimage
 from PIL import Image
 from typing import Any
 
-WEIGHT_PATH = r'weight/several_lines_radial_pereferic.pth'
+WEIGHT_PATH = r'weight/several_globules_asymmetrical_melanin.pth'
 
 LABELS = {
-    0: 'Тёмная бесструктурная область',
-    1: 'Светлая бесструктурная область'
+    0: 'Больше одного цвета',
+    1: 'Один цвет (коричневый)'
 }
 
-_model_several_lines_radial_pereferic = None
+_model_several_globules_asymmetrical_melanin = None
 
 
 class FourChannelClassifier(nn.Module):
@@ -27,14 +27,18 @@ class FourChannelClassifier(nn.Module):
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
-        # Сверточные блоки 
+        # Сверточные блоки (ResNet-like)
         self.layer1 = self._make_layer(64, 128, num_blocks=2, stride=1)
         self.layer2 = self._make_layer(128, 256, num_blocks=2, stride=2)
         self.layer3 = self._make_layer(256, 512, num_blocks=2, stride=2)
 
         # Adaptive Pooling + Fully Connected
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(512, num_classes)
+        self.fc = nn.Sequential(
+            # nn.Dropout(0.5),
+            nn.Linear(512, num_classes)
+        )
+
 
     def _make_layer(self, in_channels, out_channels, num_blocks, stride):
         layers = []
@@ -64,6 +68,7 @@ class FourChannelClassifier(nn.Module):
         x = torch.flatten(x, 1)
         x = self.fc(x)
         return x
+
     
 def load_model(model_path: str = WEIGHT_PATH) -> FourChannelClassifier:
     """
@@ -89,22 +94,22 @@ def get_model() -> Any:
     Returns:
         Any: The loaded model object.
     """
-    global _model_several_lines_radial_pereferic
-    if not _model_several_lines_radial_pereferic:
-        _model_several_lines_radial_pereferic = load_model()
-    return _model_several_lines_radial_pereferic
+    global _model_several_globules_asymmetrical_melanin
+    if not _model_several_globules_asymmetrical_melanin:
+        _model_several_globules_asymmetrical_melanin = load_model()
+    return _model_several_globules_asymmetrical_melanin
 
 
 def main(img: np.ndarray, mask: np.ndarray) -> str:
     """
-    Main function for classifying an image as Светлая бесструктурная область or Тёмная бесструктурная область.
+    Main function for classifying an image as Больше одного цвета or Один цвет (коричневый).
 
     Args:
         img (np.ndarray): Image array in NumPy format.
         mask (np.ndarray): Mask for the image.
 
     Returns:
-        str: Classification result: "Светлая бесструктурная область" or "Тёмная бесструктурная область".
+        str: Classification result: "Больше одного цвета" or "Один цвет (коричневый)".
 """
 
     # Трансформации изображения

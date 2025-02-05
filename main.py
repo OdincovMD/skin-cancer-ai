@@ -37,6 +37,7 @@ import several_dots
 
 import several_globules
 import several_globules_asymmetrical
+import several_globules_asymmetrical_melanin
 
 import final
 
@@ -227,6 +228,20 @@ def main(path_to_img: str) -> list:
                 'Меланин': 'Меланин'
             }
             accumulate.append(color[pred])
+
+            def handle_several_globules_asymmetric_melanin(image):
+                pred = several_globules_asymmetrical_melanin(image, mask)
+                color = {
+                    'Больше одного цвета': 'Больше одного цвета', 
+                    'Один цвет (коричневый)': 'Один цвет (коричневый)'
+                }
+                accumulate.append(color[pred])
+            several_globules_asymmetrical_handled = {
+                'Меланин': handle_several_globules_asymmetric_melanin,
+                'Другой': lambda: 'Другой'
+            }
+            if pred in several_globules_asymmetrical_handled:
+                several_globules_asymmetrical_handled[pred](image)
 
         several_globules_handlers ={
             'Асимметричные': handle_several_globules_asymmetric
