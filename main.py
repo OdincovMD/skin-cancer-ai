@@ -38,6 +38,7 @@ import several_dots
 import several_globules
 import several_globules_asymmetrical
 import several_globules_asymmetrical_melanin
+import several_globules_asymmetrical_other
 
 import final
 
@@ -230,15 +231,25 @@ def main(path_to_img: str) -> list:
             accumulate.append(color[pred])
 
             def handle_several_globules_asymmetric_melanin(image):
-                pred = several_globules_asymmetrical_melanin(image, mask)
+                pred = several_globules_asymmetrical_melanin.main(image, mask)
                 color = {
                     'Больше одного цвета': 'Больше одного цвета', 
                     'Один цвет (коричневый)': 'Один цвет (коричневый)'
                 }
                 accumulate.append(color[pred])
+
+            def handle_several_globules_asymmetric_other(image):
+                pred = several_globules_asymmetrical_other.main(image, mask)
+                color = {
+                    'Жёлтый или белый': 'Жёлтый или белый', 
+                    'Оранжевый': 'Оранжевый',
+                    'Красный или пурпурный': 'Красный или пурпурный'
+                }
+                accumulate.append(color[pred])
+
             several_globules_asymmetrical_handled = {
                 'Меланин': handle_several_globules_asymmetric_melanin,
-                'Другой': lambda: 'Другой'
+                'Другой': handle_several_globules_asymmetric_other
             }
             if pred in several_globules_asymmetrical_handled:
                 several_globules_asymmetrical_handled[pred](image)
@@ -269,7 +280,7 @@ def main(path_to_img: str) -> list:
             accumulate.append(type_parallel_lines[pred])
 
             def handle_several_lines_parallel_furrow(image):
-                pred = several_lines_parallel_furrow.main(cv2.cvtColor(image, cv2.COLOR_BGR2RGB), mask=mask)
+                pred = several_lines_parallel_furrow.main(image, mask=mask)
                 type_parallel_lines_furrow = {
                     'Симметрия': 'Симметрия',
                     'Асимметрия': 'Асимметрия'
