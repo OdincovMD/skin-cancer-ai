@@ -1,7 +1,7 @@
-weight/
+ml/weight/
 venv/
 .idea/
 .vscode/
-model_weights.pth
-__pycache__/
-runs/
+ml/model_weights.pth
+*/__pycache__/*
+ml/runs/
