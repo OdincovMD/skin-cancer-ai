@@ -1,0 +1,37 @@
+services:
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - frontend
+    networks:
+      - app-network
+    develop:
+        watch:
+          - action: sync
+            path: ./nginx/nginx.conf
+            target: /etc/nginx/nginx.conf
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=development
+      - WATCHPACK_POLLING=true
+    networks:
+      - app-network
+    expose:
+      - "3000"
+    develop:
+      watch:
+        - action: sync
+          path: ./frontend
+          target: /app
+
+networks:
+  app-network:
+    driver: bridge
