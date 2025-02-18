@@ -1,0 +1,8 @@
+redis
+boto3
+sqlalchemy
+fastapi
+uvicorn
+psycopg2-binary
+python-multipart
+
