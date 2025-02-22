@@ -81,7 +81,8 @@ def load_model(model_path: str = WEIGHT_PATH) -> FourChannelClassifier:
     """
     model = FourChannelClassifier(num_classes=3)
     model.load_state_dict(
-        torch.load(model_path, map_location=torch.device('cpu'))
+        torch.load(model_path, map_location=torch.device('cpu')), 
+        strict=False
         )
     model.eval()
     return model

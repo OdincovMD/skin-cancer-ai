@@ -54,7 +54,7 @@ LABEL_MAPPING = {
     0: 'Изогнутые',
     1: 'Параллельные',
     2: 'Радиальные',
-    3: 'Ретикулярные или разветвленные'
+    3: 'Ретикулярные'
 }
 
 def get_skeleton_features(gray_img: np.ndarray) -> dict:
@@ -189,7 +189,7 @@ def main(image: np.ndarray, mask: np.ndarray) -> str:
         image (np.ndarray): The input image.
 
     Returns:
-        str: "Изогнутые", "Параллельные", "Радиальные", "Ретикулярные или разветвленные"
+        str: "Изогнутые", "Параллельные", "Радиальные", "Ретикулярные"
     """
     model = get_model()
     masked_image = cv2.bitwise_and(image, image, mask=mask)
