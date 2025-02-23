@@ -38,16 +38,21 @@ class CustomNeuralNetResNet(torch.nn.Module):
     def forward(self, x):
         return self.net(x)
     
-def main(img: np.ndarray) -> str:
+def main(img: np.ndarray, mask: np.ndarray) -> str:
     """
     Main function for classifying an image by one or multiple features.
 
     Args:
         img (np.ndarray): Image array in numpy format.
+        mask (np.ndarray): Mask for the image.
 
     Returns:
-        str: Classification result: "Несколько" or "Один".
+        str: Classification result: "Несколько признаков" or "Один признак".
     """
+
+    mask = np.stack([mask] * 3, axis=-1)
+    masked_img = np.where(mask == 255, img[:, :, ::-1], 0)
+    img = Image.fromarray(masked_img)
 
     transform = transforms.Compose(
         [
@@ -65,7 +70,6 @@ def main(img: np.ndarray) -> str:
         ]
     )
     
-    img = Image.fromarray(img[:, :, ::-1])
     img_tensor = transform(img).unsqueeze(0)
 
     models = []
@@ -98,4 +102,4 @@ def main(img: np.ndarray) -> str:
         avg_probs = np.mean(np.stack(fold_probs, axis=0), axis=0)
         final_pred_class = avg_probs.argmax(axis=1)[0]
 
-    return ['Несколько', 'Один'][final_pred_class]
+    return ['Несколько признаков', 'Один признак'][final_pred_class]

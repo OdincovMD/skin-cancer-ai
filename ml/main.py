@@ -127,7 +127,7 @@ class ImageClassifier:
         image = cv2.imread(image_path)
         mask = log.log_function_entry_exit(mask_builder.main)(image_path)
 
-        feature_type = self._determine_feature_type(image)
+        feature_type = self._determine_feature_type(image, mask)
 
         structure, properties = (
             self._process_single_feature(image, mask)
@@ -140,8 +140,8 @@ class ImageClassifier:
         return ClassificationResult(feature_type, structure, properties, final_class)
     
     @staticmethod
-    def _determine_feature_type(image) -> FeatureType:
-        feature_type_pred = log.log_function_entry_exit(one_several.main)(image)
+    def _determine_feature_type(image, mask) -> FeatureType:
+        feature_type_pred = log.log_function_entry_exit(one_several.main)(image, mask)
         return FeatureType.SINGLE if feature_type_pred == FeatureType.SINGLE.value else FeatureType.MULTIPLE
 
     def _process_single_feature(self, image, mask) -> tuple[Structure, List[str]]:
