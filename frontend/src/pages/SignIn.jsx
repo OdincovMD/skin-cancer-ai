@@ -2,27 +2,32 @@ import React from "react"
 
 const SignIn = () => {
     return (
-        <div className='wrapper'>
-            <form action="">
-                <h1>Login</h1>
-                <div className="input-box">
-                    <input type="text" placeholder="Username" required />
-                </div>
-                <div className="input-box">
-                    <input type="password" placeholder="Password" required />
-                </div>
+        <div className="flex min-h-screen items-center justify-center bg-gray-100 p-6">
+            <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg">
+                <h2 className="mb-6 text-center text-2xl font-semibold text-gray-700">Sign In</h2>
+                <form className="space-y-4">
 
-                <div className="remember-forgot">
-                    <label><input type="checkbox" />Remember me</label>
-                    <a href="#">Forgot password?</a>
-                </div>
+                    <input
+                        type="text"
+                        placeholder="Login" 
+                        className="w-full rounded-lg border border-gray-300 p-3 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    />
 
-                <button type="submit">Login</button>
+                    <input 
+                        type="password" 
+                        placeholder="Password" 
+                        className="w-full rounded-lg border border-gray-300 p-3 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    />
 
-                <div className="register-link">
-                    <p>Do not have an account? <a href="#">Register</a></p>
-                </div>
-            </form>
+                    <button 
+                        type="submit" 
+                        className="w-full rounded-lg bg-blue-600 px-4 py-3 text-white font-semibold transition hover:bg-blue-700"
+                    >
+                        Sign In
+                    </button>
+
+                </form>
+            </div>
         </div>
     );
 };
