@@ -17,11 +17,11 @@ const App = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className=" bg-gray-50">
       <Header toggleSidebar={toggleSidebar} />
       <Sidebar isOpen={isSidebarOpen} />
       <main
-        className={`pt-16 min-h-screen transition-all duration-300 
+        className={`pt-16  transition-all duration-300 
         ${isSidebarOpen ? 'pl-64' : 'pl-0'}`}
       >
         <div className="p-6">
@@ -40,9 +40,6 @@ const App = () => {
 const Layout = () => {
   return (
     <div>
-      <nav>
-        {/* Navigation links */}
-      </nav>
       <Outlet /> {/* Where nested routes will render */}
     </div>
   );

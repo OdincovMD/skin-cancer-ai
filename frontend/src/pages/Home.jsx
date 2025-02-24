@@ -68,6 +68,7 @@ class Home extends React.Component {
 
   render() {
     return (
+      <div>
       <div className="space-y-6">
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-2xl font-bold text-gray-800 mb-4">
@@ -110,52 +111,70 @@ class Home extends React.Component {
             </p>
           </div>
         </div>
-        <div className="flex flex-col items-center justify-center mt-5">
-          <div>
-            <form ref={(el) => this.myForm = el}>
-                <input type="file" onChange={(event) => { 
-                  this.handleChange(event)
-                }} />
-            </form>
-          </div>
-          
-          {this.state.imageSrc && (
-            <div className="w-1/2 h-auto">
-              <ReactImageMagnify {...{
-                    smallImage: {
-                        alt: 'Загруженное изображение',
-                        isFluidWidth: true,
-                        src: this.state.imageSrc,
-                    },
-                    largeImage: {
-                        src: this.state.imageSrc,
-                        width: 2560,
-                        height: 1920
-                    },
-                    enlargedImagePortalId: '16',
-                    isHintEnabled: true,
-                    shouldHideHintAfterFirstActivation: false,
-                    isActivatedOnTouch: true,
-                }} />
+      </div>
+      <div className="space-y-6 mt-5">
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex flex-col items-center justify-center">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4 text">
+              Загрузите ваше изображение
+            </h2>
+            <div>
+            {!this.state.imageSrc && (
+              <form ref={(el) => this.myForm = el}>
+                  <input type="file" onChange={(event) => { 
+                    this.handleChange(event)
+                  }} />
+              </form>
+            )}
             </div>
-            )
-          }
-          {this.state.imageSrc && (
-            <div id='16'>
+            <div id="small_image" className="w-1/2 h-auto max-w-[600px]">
+            {this.state.imageSrc && (
+                <ReactImageMagnify {...{
+                      smallImage: {
+                          alt: 'Загруженное изображение',
+                          isFluidWidth: true,
+                          src: this.state.imageSrc,
+                          sizes: '(max-width: 480px) 100vw, (max-width: 1200px) 30vw, 360px'
+                      },
+                      largeImage: {
+                          src: this.state.imageSrc,
+                          width: 2560,
+                          height: 1920
+                      },
+                      enlargedImagePortalId: 'enlargened_image',
+                      isHintEnabled: true,
+                      shouldHideHintAfterFirstActivation: false,
+                      isActivatedOnTouch: true,
+                  }}/>
+            )}
             </div>
-          )
-          }
-          <div>
-            <button disabled={!this.state.imageSrc} onClick={() => {
-              this.handleUploadImage()
-              this.myForm.reset()
-              }} className="mt-4 px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors">
-              Обработать изображение
-            </button>
+            {this.state.imageSrc && (
+              <div id="enlargened_image">
+              </div>
+            )}
+            <div>
+            {this.state.imageSrc && (
+              <button onClick={() => {
+                this.handleUploadImage()
+                this.myForm.reset()
+                }} className="mt-4 px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors">
+                Обработать изображение
+              </button>
+            )}
+            </div>
+            <div>
+            {this.state.imageSrc && (
+              <button onClick={() => {
+                this.setState({imageSrc: null})
+              }} className="mt-4 px-6 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors">
+              Удалить изображение
+              </button>
+            )}
+            </div>
           </div>
         </div>
       </div>
-      
+    </div>
     )
 }
 }
