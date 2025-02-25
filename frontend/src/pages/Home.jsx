@@ -2,7 +2,6 @@
 import React from 'react'
 import ReactImageMagnify from "easy-magnify-waft"
 
-
 class Home extends React.Component {
 
   constructor(props) {
@@ -28,6 +27,8 @@ class Home extends React.Component {
     // const ext = fileInfo.name.split(".").pop()
     const stamp = `${day}_${time}_${user}_${fileInfo.name}`
     const fileProcessed = new File([fileInfo], stamp, {type: fileInfo.type});
+
+    this.setState({ formData: fileProcessed })
     
     if (fileProcessed && fileProcessed.type.startsWith('image/')) {
       const reader = new FileReader();
@@ -46,10 +47,10 @@ class Home extends React.Component {
   async handleUploadImage() {
 
     const formData = new FormData();
-    formData.append("file", this.state.imageSrc);
+    formData.append("file", this.state.formData);
 
     try {
-      let response = await fetch(`${BACKEND_URL}/upload`, {
+      let response = await fetch(`http://localhost:9000/uploadfile`, {
         method: 'POST',
         body: formData
       })
@@ -59,7 +60,9 @@ class Home extends React.Component {
         return
       }
 
-      // let responseJSON = await response.json()
+      let responseJSON = await response.json()
+
+      console.log(responseJSON)
     }
     catch (err) {
       alert(`Ошибка: ${err}`)
