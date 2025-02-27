@@ -10,10 +10,10 @@ services:
     networks:
       - app-network
     develop:
-        watch:
-          - action: sync+restart
-            path: ./nginx/nginx.conf
-            target: /etc/nginx/nginx.conf
+      watch:
+        - action: sync+restart
+          path: ./nginx/nginx.conf
+          target: /etc/nginx/nginx.conf
 
   frontend:
     build:
@@ -76,6 +76,11 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - app-network
+    develop:
+      watch:
+        - action: sync+restart
+          path: ./backend
+          target: /app
 
   pgadmin:
     image: dpage/pgadmin4:latest
@@ -99,8 +104,8 @@ services:
       MINIO_ROOT_PASSWORD: MINIO_ROOT_PASSWORD
       MINIO_SERVER_URL: "http://0.0.0.0:9000"
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "1111:9000"
+      - "1112:9001"
     volumes:
       - minio_data:/data
     networks:

@@ -6,16 +6,17 @@ import requests
 import os
 
 from sqlalchemy.orm import Session
-from database import get_db
+from services import get_db
 from crud import create_user, get_user_by_username
 from schema import UserCreateRequest, Login
+
 from minio_client import get_minio_client, upload_file_to_minio
 
 from typing import TYPE_CHECKING, List
 import fastapi as _fastapi
 import sqlalchemy.orm as _orm
 
-import schema as _schemas
+import schemas as _schemas
 import crud as _services
 import models as _models
 from database import engine, get_db
@@ -114,7 +115,7 @@ async def handle_upload(file: UploadFile = File(...)):
     file_path = os.path.join(upload_dir, file.filename)
     response = requests.post(url, files=files)
     return response.json()
-    return {"message": f"Файл {file.filename} успешно загружен", "path": file_path}
+    # return {"message": f"Файл {file.filename} успешно загружен", "path": file_path}
     # return JSONResponse(content={"result": "Бактериальная пневмония", "probability": 0.96})
 
 # @app.delete("/users/{user_id}/")
