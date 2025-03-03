@@ -12,7 +12,7 @@ CREATE TABLE files (
     file_name VARCHAR(255) NOT NULL,
     bucket_name VARCHAR(255) NOT NULL,
     file_path VARCHAR(255) NOT NULL,
-    file_type VARCHAR(50) NOT NULL,  -- Можно расширить типы, если будут другие файлы
+    file_type VARCHAR(50),  -- Можно расширить типы, если будут другие файлы
     uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     patient_id INT REFERENCES patients(patient_id),  -- Связь с таблицей пациентов
     image_type VARCHAR(50),  -- Тип изображения (например, dermoscopic, photograph)
@@ -52,9 +52,13 @@ CREATE TABLE logs (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE users (
-    user_id SERIAL PRIMARY KEY,
-    username VARCHAR(100) UNIQUE,
-    password_hash VARCHAR(255),
-    role VARCHAR(50),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    id SERIAL PRIMARY KEY,
+    login TEXT UNIQUE NOT NULL,
+    "firstName" TEXT NOT NULL,
+    "lastName" TEXT NOT NULL,
+    email TEXT UNIQUE,
+    password TEXT NOT NULL,
+    last_login TIMESTAMP WITH TIME ZONE,
+    last_login_ip TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
