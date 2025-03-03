@@ -1,28 +1,18 @@
-from fastapi import FastAPI, status, UploadFile, File, Depends, HTTPException
+from fastapi import FastAPI, status, UploadFile, File
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import requests
-import os
 
-from sqlalchemy.orm import Session
-from services import get_db
-from crud import create_user, get_user_by_username
-from schema import UserCreateRequest, Login
+# from typing import TYPE_CHECKING, List
+# import fastapi as _fastapi
+# import sqlalchemy.orm as _orm
 
-from minio_client import get_minio_client, upload_file_to_minio
+# import schemas as _schemas
+# import services as _services
 
-from typing import TYPE_CHECKING, List
-import fastapi as _fastapi
-import sqlalchemy.orm as _orm
-
-import schemas as _schemas
-import crud as _services
-import models as _models
-from database import engine, get_db
-
-if TYPE_CHECKING:
-    from sqlalchemy.orm import Session
+# if TYPE_CHECKING:
+#     from sqlalchemy.orm import Session
 
 # class Register(BaseModel):
 #     lastName: str
@@ -38,25 +28,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Создаем все таблицы в базе данных
-_models.Base.metadata.create_all(bind=engine)
-
-BUCKET_NAME = 'doing-stuff'
-#
-# @app.post("/register/")
-# def register(user: UserCreateRequest, db: Session = Depends(get_db)):
-#     db_user = get_user_by_username(db, username=user.username)
-#     if db_user:
-#         raise HTTPException(status_code=400, detail="Пользователь уже существует")
-#     return create_user(db=db, user=user)
-#
-# @app.post("/login/")
-# def login(login_data: Login, db: Session = Depends(get_db)):
-#     user = get_user_by_username(login=login_data.login, password=login_data.password, db=db)
-#     if not user:
-#         raise HTTPException(status_code=401, detail="Неверный логин или пароль")
-#     return {"message": "Авторизация успешна", "user_id": user.user_id}
 
 # """Эмулирование работы базы данных"""
 # main_table = [{"login": "horo", "password": "123456Qw", "firstName": "Nikolay", "lastName": "Kegelik"},
@@ -80,43 +51,31 @@ BUCKET_NAME = 'doing-stuff'
 #     return JSONResponse(content={"isValid": 1, "data": {"firstName": register.firstName, "lastName": register.lastName}}, status_code=status.HTTP_200_OK)
 
 # /users/
-@app.post("/register", response_model=_schemas.User)
-async def handle_register(
-    register: _schemas.CreateUser,
-    db: _orm.Session = _fastapi.Depends(_services.get_db),
-):
-    try:
-        sorted_table = await _services.get_user(db=db, login=register.login, password=register.password)
-        if sorted_table is None:
-            await _services.create_user(user=register, db=db)
-            return JSONResponse(content={"isValid": 1, "data": {"firstName": register.firstName, "lastName": register.lastName}}, status_code=status.HTTP_200_OK)
-        return JSONResponse(content={"isValid": 0}, status_code=status.HTTP_200_OK)
-    except:
-        return JSONResponse(content={"isValid": 0}, status_code=status.HTTP_200_OK)
+# @app.post("/register", response_model=_schemas.User)
+# async def handle_register(
+#     register: _schemas.CreateUser,
+#     db: _orm.Session = _fastapi.Depends(_services.get_db),
+# ):
+#     try: 
+#         sorted_table = await _services.get_user(db=db, login=register.login, password=register.password)
+#         if sorted_table is None:
+#             await _services.create_user(user=register, db=db)
+#             return JSONResponse(content={"isValid": 1, "data": {"firstName": register.firstName, "lastName": register.lastName}}, status_code=status.HTTP_200_OK)
+#         return JSONResponse(content={"isValid": 0}, status_code=status.HTTP_200_OK)
+#     except: 
+#         return JSONResponse(content={"isValid": 0}, status_code=status.HTTP_200_OK)
 
-# /users/{user_id}
-@app.post("/login", response_model=_schemas.User)
-async def handle_login(
-    login_data: _schemas.Login,
-    db: _orm.Session = _fastapi.Depends(_services.get_db)
-):
-    sorted_table = await _services.get_user(db=db, login=login_data.login, password=login_data.password)
-    if sorted_table is None:
-        return JSONResponse(content={"isValid": 0}, status_code=status.HTTP_200_OK)
+# # /users/{user_id} 
+# @app.post("/login", response_model=_schemas.User)
+# async def handle_login(
+#     login_data: _schemas.Login,
+#     db: _orm.Session = _fastapi.Depends(_services.get_db)
+# ):
+#     sorted_table = await _services.get_user(db=db, login=login_data.login, password=login_data.password)
+#     if sorted_table is None:
+#         return JSONResponse(content={"isValid": 0}, status_code=status.HTTP_200_OK)
 
-    return JSONResponse(content={"isValid": 1, "data": {"firstName": sorted_table.firstName, "lastName": sorted_table.lastName}}, status_code=status.HTTP_200_OK)
-
-@app.post("/uploadfile")
-async def handle_upload(file: UploadFile = File(...)):
-    url = "http://ml:8000/uploadfile"
-    upload_dir = "./uploads"
-    os.makedirs(upload_dir, exist_ok=True)
-    files = {"file": (file.filename, file.file, file.content_type)}
-    file_path = os.path.join(upload_dir, file.filename)
-    response = requests.post(url, files=files)
-    return response.json()
-    # return {"message": f"Файл {file.filename} успешно загружен", "path": file_path}
-    # return JSONResponse(content={"result": "Бактериальная пневмония", "probability": 0.96})
+#     return JSONResponse(content={"isValid": 1, "data": {"firstName": sorted_table.firstName, "lastName": sorted_table.lastName}}, status_code=status.HTTP_200_OK)
 
 # @app.delete("/users/{user_id}/")
 # async def delete_user(
@@ -157,3 +116,11 @@ async def handle_upload(file: UploadFile = File(...)):
 #     return _services.update_user(
 #         db, db_user=db_user, user=user
 #     )
+
+@app.post("/uploadfile")
+async def handle_upload(file: UploadFile = File(...)):
+    url = "http://ml:8000/uploadfile"
+    files = {"file": (file.filename, file.file, file.content_type)}
+    response = requests.post(url, files=files)
+    return response.json()
+    # return JSONResponse(content={"result": "Бактериальная пневмония", "probability": 0.96})
