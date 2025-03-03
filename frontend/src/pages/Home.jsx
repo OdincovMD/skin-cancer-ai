@@ -1,6 +1,7 @@
 // pages/Home.jsx
 import React from 'react'
 import ReactImageMagnify from "easy-magnify-waft"
+import { handleUploadImage } from '../asyncActions/uploadImage'
 
 class Home extends React.Component {
 
@@ -10,19 +11,19 @@ class Home extends React.Component {
     this.state = {
       imageSrc: null,
       imageRef: null,
+      formData: null
     }
 
     this.handleChange = this.handleChange.bind(this)
-    this.handleUploadImage = this.handleUploadImage.bind(this)
   }
 
-  async handleChange(event) {
+  handleChange(event) {
     const fileInfo = event.target.files[0] 
     
     var now = new Date()
     const day = now.getDate() + '-' + (now.getMonth() + 1) + '-' + now.getFullYear()
     const time = now.getHours() + '-' + now.getMinutes() + '-' + now.getSeconds()
-    const user = this.state.firstName + this.state.lastName
+    const user = "Ivan"
     // const filename = fileInfo.name.split(".")[0]
     // const ext = fileInfo.name.split(".").pop()
     const stamp = `${day}_${time}_${user}_${fileInfo.name}`
@@ -42,31 +43,6 @@ class Home extends React.Component {
       reader.readAsDataURL(fileInfo)
     }
 
-  }
-
-  async handleUploadImage() {
-
-    const formData = new FormData();
-    formData.append("file", this.state.formData);
-
-    try {
-      let response = await fetch(`http://localhost:9000/uploadfile`, {
-        method: 'POST',
-        body: formData
-      })
-
-      if (!response.ok) {
-        alert(`Произошла ошибка: ${response.status}`)
-        return
-      }
-
-      let responseJSON = await response.json()
-
-      console.log(responseJSON)
-    }
-    catch (err) {
-      alert(`Ошибка: ${err}`)
-    }
   }
 
   render() {
@@ -122,48 +98,49 @@ class Home extends React.Component {
               Загрузите ваше изображение
             </h2>
             <div>
-            {!this.state.imageSrc && (
-              <form ref={(el) => this.myForm = el}>
-                  <input type="file" onChange={(event) => { 
-                    this.handleChange(event)
-                  }} />
-              </form>
-            )}
+              {!this.state.imageSrc && (
+                <form ref={(el) => this.myForm = el}>
+                    <input type="file" onChange={(event) => { 
+                      this.handleChange(event)
+                    }} />
+                </form>
+              )}
             </div>
-            <div id="small_image" className="w-1/2 h-auto max-w-[600px]">
-            {this.state.imageSrc && (
-                <ReactImageMagnify {...{
-                      smallImage: {
-                          alt: 'Загруженное изображение',
-                          isFluidWidth: true,
-                          src: this.state.imageSrc,
-                          sizes: '(max-width: 480px) 100vw, (max-width: 1200px) 30vw, 360px'
-                      },
-                      largeImage: {
-                          src: this.state.imageSrc,
-                          width: 2560,
-                          height: 1920
-                      },
-                      enlargedImagePortalId: 'enlargened_image',
-                      isHintEnabled: true,
-                      shouldHideHintAfterFirstActivation: false,
-                      isActivatedOnTouch: true,
+            <div className="flex flex-row items-center justify-center">
+              <div id="small_image" className="w-1/2 h-auto">
+                {this.state.imageSrc && (
+                  <ReactImageMagnify {...{
+                  smallImage: {
+                      alt: 'Загруженное изображение',
+                      isFluidWidth: true,
+                      src: this.state.imageSrc,
+                  },
+                  largeImage: {
+                      src: this.state.imageSrc,
+                      width: 2560,
+                      height: 1920
+                  },
+                  enlargedImagePortalId: 'enlargened_image',
+                  isHintEnabled: true,
+                  shouldHideHintAfterFirstActivation: false,
+                  isActivatedOnTouch: true,
                   }}/>
-            )}
-            </div>
-            {this.state.imageSrc && (
-              <div id="enlargened_image">
+                )}
               </div>
-            )}
+                {this.state.imageSrc && (
+                <div id="enlargened_image">
+                </div>
+                )}
+            </div>
             <div>
-            {this.state.imageSrc && (
-              <button onClick={() => {
-                this.handleUploadImage()
-                this.myForm.reset()
-                }} className="mt-4 px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors">
-                Обработать изображение
-              </button>
-            )}
+              {this.state.imageSrc && (
+                <button onClick={() => {
+                  handleUploadImage(this.state.formData)
+                  this.myForm.reset()
+                  }} className="mt-4 px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors">
+                  Обработать изображение
+                </button>
+              )}
             </div>
             <div>
             {this.state.imageSrc && (
