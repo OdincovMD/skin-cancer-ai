@@ -4,15 +4,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import requests
 
-from typing import TYPE_CHECKING, List
-import fastapi as _fastapi
-import sqlalchemy.orm as _orm
+# from typing import TYPE_CHECKING, List
+# import fastapi as _fastapi
+# import sqlalchemy.orm as _orm
 
-import schemas as _schemas
-import services as _services
+# import schemas as _schemas
+# import services as _services
 
-if TYPE_CHECKING:
-    from sqlalchemy.orm import Session
+# if TYPE_CHECKING:
+#     from sqlalchemy.orm import Session
 
 # class Register(BaseModel):
 #     lastName: str
@@ -77,14 +77,6 @@ app.add_middleware(
 
 #     return JSONResponse(content={"isValid": 1, "data": {"firstName": sorted_table.firstName, "lastName": sorted_table.lastName}}, status_code=status.HTTP_200_OK)
 
-@app.post("/uploadfile")
-async def handle_upload(file: UploadFile = File(...)):
-    url = "http://ml:8000/uploadfile"
-    files = {"file": (file.filename, file.file, file.content_type)}
-    response = requests.post(url, files=files)
-    return response.json()
-    # return JSONResponse(content={"result": "Бактериальная пневмония", "probability": 0.96})
-
 # @app.delete("/users/{user_id}/")
 # async def delete_user(
 #     user_id: int, db: _orm.Session = _fastapi.Depends(_services.get_db)
@@ -124,3 +116,11 @@ async def handle_upload(file: UploadFile = File(...)):
 #     return _services.update_user(
 #         db, db_user=db_user, user=user
 #     )
+
+@app.post("/uploadfile")
+async def handle_upload(file: UploadFile = File(...)):
+    url = "http://ml:8000/uploadfile"
+    files = {"file": (file.filename, file.file, file.content_type)}
+    response = requests.post(url, files=files)
+    return response.json()
+    # return JSONResponse(content={"result": "Бактериальная пневмония", "probability": 0.96})
