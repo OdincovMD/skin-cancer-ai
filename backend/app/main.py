@@ -1,9 +1,8 @@
-from fastapi import FastAPI, status, UploadFile, File, Depends, HTTPException
+from fastapi import FastAPI, status, UploadFile, File
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import requests
-import os
 
 from typing import TYPE_CHECKING, List
 import fastapi as _fastapi
@@ -77,29 +76,29 @@ files_table = create_files_table(session, engine)
 #     return JSONResponse(content={"isValid": 1, "data": {"firstName": register.firstName, "lastName": register.lastName}}, status_code=status.HTTP_200_OK)
 
 # /users/
-@app.post("/register", response_model=_schemas.User)
-async def handle_register(
-    register: _schemas.CreateUser,
-    db: _orm.Session = _fastapi.Depends(_services.get_db),
-):
-    try:
-        sorted_table = await _services.get_user(db=db, login=register.login, password=register.password)
-        if sorted_table is None:
-            await _services.create_user(user=register, db=db)
-            return JSONResponse(content={"isValid": 1, "data": {"firstName": register.firstName, "lastName": register.lastName}}, status_code=status.HTTP_200_OK)
-        return JSONResponse(content={"isValid": 0}, status_code=status.HTTP_200_OK)
-    except:
-        return JSONResponse(content={"isValid": 0}, status_code=status.HTTP_200_OK)
+# @app.post("/register", response_model=_schemas.User)
+# async def handle_register(
+#     register: _schemas.CreateUser,
+#     db: _orm.Session = _fastapi.Depends(_services.get_db),
+# ):
+#     try: 
+#         sorted_table = await _services.get_user(db=db, login=register.login, password=register.password)
+#         if sorted_table is None:
+#             await _services.create_user(user=register, db=db)
+#             return JSONResponse(content={"isValid": 1, "data": {"firstName": register.firstName, "lastName": register.lastName}}, status_code=status.HTTP_200_OK)
+#         return JSONResponse(content={"isValid": 0}, status_code=status.HTTP_200_OK)
+#     except: 
+#         return JSONResponse(content={"isValid": 0}, status_code=status.HTTP_200_OK)
 
-# /users/{user_id}
-@app.post("/login", response_model=_schemas.User)
-async def handle_login(
-    login_data: _schemas.Login,
-    db: _orm.Session = _fastapi.Depends(_services.get_db)
-):
-    sorted_table = await _services.get_user(db=db, login=login_data.login, password=login_data.password)
-    if sorted_table is None:
-        return JSONResponse(content={"isValid": 0}, status_code=status.HTTP_200_OK)
+# # /users/{user_id} 
+# @app.post("/login", response_model=_schemas.User)
+# async def handle_login(
+#     login_data: _schemas.Login,
+#     db: _orm.Session = _fastapi.Depends(_services.get_db)
+# ):
+#     sorted_table = await _services.get_user(db=db, login=login_data.login, password=login_data.password)
+#     if sorted_table is None:
+#         return JSONResponse(content={"isValid": 0}, status_code=status.HTTP_200_OK)
 
     return JSONResponse(content={"isValid": 1, "data": {"firstName": sorted_table.firstName, "lastName": sorted_table.lastName}}, status_code=status.HTTP_200_OK)
 
@@ -171,3 +170,11 @@ async def handle_upload(file: UploadFile = File(...)):
 #     return _services.update_user(
 #         db, db_user=db_user, user=user
 #     )
+
+@app.post("/uploadfile")
+async def handle_upload(file: UploadFile = File(...)):
+    url = "http://ml:8000/uploadfile"
+    files = {"file": (file.filename, file.file, file.content_type)}
+    response = requests.post(url, files=files)
+    return response.json()
+    # return JSONResponse(content={"result": "Бактериальная пневмония", "probability": 0.96})
