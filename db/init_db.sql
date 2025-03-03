@@ -52,9 +52,13 @@ CREATE TABLE logs (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE users (
-    user_id SERIAL PRIMARY KEY,
-    username VARCHAR(100) UNIQUE,
-    password_hash VARCHAR(255),
-    role VARCHAR(50),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    id SERIAL PRIMARY KEY,
+    login TEXT UNIQUE NOT NULL,
+    "firstName" TEXT NOT NULL,
+    "lastName" TEXT NOT NULL,
+    email TEXT UNIQUE,
+    password TEXT NOT NULL,
+    last_login TIMESTAMP WITH TIME ZONE,
+    last_login_ip TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

@@ -5,21 +5,15 @@ from pydantic import BaseModel
 import requests
 import os
 
-from sqlalchemy.orm import Session
-from services import get_db
-from crud import create_user, get_user_by_username
-from schema import UserCreateRequest, Login
-
-from minio_client import get_minio_client, upload_file_to_minio
-
 from typing import TYPE_CHECKING, List
 import fastapi as _fastapi
 import sqlalchemy.orm as _orm
 
 import schemas as _schemas
-import crud as _services
-import models as _models
-from database import engine, get_db
+import services as _services
+
+from minio_client import get_minio_client, is_file_in_minio, upload_file_to_minio
+from postgres_client import get_postgres_session, is_file_in_db, insert_file_record, create_files_table
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -39,10 +33,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Создаем все таблицы в базе данных
-_models.Base.metadata.create_all(bind=engine)
+BUCKET_NAME = "example-bucket"
 
-BUCKET_NAME = 'doing-stuff'
+# Получаем подключения
+s3_client = get_minio_client()
+session, engine = get_postgres_session()
+
 #
 # @app.post("/register/")
 # def register(user: UserCreateRequest, db: Session = Depends(get_db)):
@@ -108,14 +104,24 @@ async def handle_login(
 
 @app.post("/uploadfile")
 async def handle_upload(file: UploadFile = File(...)):
-    url = "http://ml:8000/uploadfile"
+    # url = "http://ml:8000/uploadfile"
     upload_dir = "./uploads"
     os.makedirs(upload_dir, exist_ok=True)
     files = {"file": (file.filename, file.file, file.content_type)}
     file_path = os.path.join(upload_dir, file.filename)
-    response = requests.post(url, files=files)
-    return response.json()
-    # return {"message": f"Файл {file.filename} успешно загружен", "path": file_path}
+    file_name = file.filename
+
+    with open(file_path, "wb") as buffer:
+        buffer.write(await file.read())
+    # Проверка наличия файла в MinIO
+    if is_file_in_minio(s3_client, BUCKET_NAME, file_name):
+        return {"message": f"Файл {file.filename} уже существует в MinIO"}
+    else:
+    # Загружаем файл в MinIO
+        upload_file_to_minio(s3_client, BUCKET_NAME, file_name)
+    # response = requests.post(url, files=files)
+    # return response.json()
+        return {"message": f"Файл {file.filename} успешно загружен", "path": file_path}
     # return JSONResponse(content={"result": "Бактериальная пневмония", "probability": 0.96})
 
 # @app.delete("/users/{user_id}/")
