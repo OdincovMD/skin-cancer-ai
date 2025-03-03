@@ -30,6 +30,23 @@ def is_file_in_minio(s3_client, bucket_name, file_name):
     except ClientError:
         return False
 
+def create_bucket_if_not_exists(s3_client, bucket_name):
+    # Create a bucket in MinIO
+    try:
+        s3 = get_minio_client()
+
+        # Check if the bucket already exists
+        response = s3.list_buckets()
+        existing_buckets = [bucket['Name'] for bucket in response.get('Buckets', [])]
+
+        if bucket_name in existing_buckets:
+            print(f"Bucket {bucket_name} already exists")
+        else:
+            s3.create_bucket(Bucket=bucket_name)
+            print(f"Bucket {bucket_name} created successfully")
+    except NoCredentialsError:
+        print("Credentials not available")
+
 def upload_file_to_minio(s3_client, bucket_name, file_name):
     """Загружает файл в MinIO."""
     try:
@@ -37,3 +54,6 @@ def upload_file_to_minio(s3_client, bucket_name, file_name):
         print(f"Файл {file_name} успешно загружен в MinIO.")
     except Exception as e:
         print(f"Ошибка при загрузке файла {file_name} в MinIO: {e}")
+
+
+

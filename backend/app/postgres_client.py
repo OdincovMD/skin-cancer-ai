@@ -29,7 +29,7 @@ def create_files_table(session, engine):
     files_table = Table(
         "files",
         metadata,
-        Column("id", Integer, primary_key=True),
+        Column("file_id", Integer, primary_key=True),
         Column("file_name", String(255), nullable=False),
         Column("bucket_name", String(255), nullable=False),
         Column("file_path", Text, nullable=False),

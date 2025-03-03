@@ -12,7 +12,7 @@ import sqlalchemy.orm as _orm
 import schemas as _schemas
 import services as _services
 
-from minio_client import get_minio_client, is_file_in_minio, upload_file_to_minio
+from minio_client import get_minio_client, is_file_in_minio, upload_file_to_minio, create_bucket_if_not_exists
 from postgres_client import get_postgres_session, is_file_in_db, insert_file_record, create_files_table
 
 if TYPE_CHECKING:
@@ -38,7 +38,8 @@ BUCKET_NAME = "example-bucket"
 # Получаем подключения
 s3_client = get_minio_client()
 session, engine = get_postgres_session()
-
+# Создаем таблицу (если её нет)
+files_table = create_files_table(session, engine)
 #
 # @app.post("/register/")
 # def register(user: UserCreateRequest, db: Session = Depends(get_db)):
@@ -105,23 +106,30 @@ async def handle_login(
 @app.post("/uploadfile")
 async def handle_upload(file: UploadFile = File(...)):
     # url = "http://ml:8000/uploadfile"
-    upload_dir = "./uploads"
-    os.makedirs(upload_dir, exist_ok=True)
+    upload_dir = "uploads"
+    # os.makedirs(upload_dir, exist_ok=True)
     files = {"file": (file.filename, file.file, file.content_type)}
     file_path = os.path.join(upload_dir, file.filename)
     file_name = file.filename
-
+    create_bucket_if_not_exists(s3_client, BUCKET_NAME)
     with open(file_path, "wb") as buffer:
         buffer.write(await file.read())
+    # Проверка наличия записи в базе данных
+    if is_file_in_db(session, files_table, file_name):
+        print(f"Файл {file_name} уже записан в базе данных.")
+    else:
+        # Добавляем запись в базу данных
+        insert_file_record(session, files_table, file_name, BUCKET_NAME)
     # Проверка наличия файла в MinIO
-    if is_file_in_minio(s3_client, BUCKET_NAME, file_name):
+    if is_file_in_minio(s3_client, BUCKET_NAME, file_path):
         return {"message": f"Файл {file.filename} уже существует в MinIO"}
     else:
     # Загружаем файл в MinIO
-        upload_file_to_minio(s3_client, BUCKET_NAME, file_name)
+        upload_file_to_minio(s3_client, BUCKET_NAME, file_path)
     # response = requests.post(url, files=files)
     # return response.json()
         return {"message": f"Файл {file.filename} успешно загружен", "path": file_path}
+
     # return JSONResponse(content={"result": "Бактериальная пневмония", "probability": 0.96})
 
 # @app.delete("/users/{user_id}/")

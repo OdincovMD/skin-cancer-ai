@@ -12,7 +12,7 @@ CREATE TABLE files (
     file_name VARCHAR(255) NOT NULL,
     bucket_name VARCHAR(255) NOT NULL,
     file_path VARCHAR(255) NOT NULL,
-    file_type VARCHAR(50) NOT NULL,  -- Можно расширить типы, если будут другие файлы
+    file_type VARCHAR(50),  -- Можно расширить типы, если будут другие файлы
     uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     patient_id INT REFERENCES patients(patient_id),  -- Связь с таблицей пациентов
     image_type VARCHAR(50),  -- Тип изображения (например, dermoscopic, photograph)
