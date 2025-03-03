@@ -2,7 +2,9 @@ from fastapi import FastAPI, status, UploadFile, File
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+import os
 import requests
+
 
 from typing import TYPE_CHECKING, List
 import fastapi as _fastapi
@@ -100,13 +102,13 @@ files_table = create_files_table(session, engine)
 #     if sorted_table is None:
 #         return JSONResponse(content={"isValid": 0}, status_code=status.HTTP_200_OK)
 
-    return JSONResponse(content={"isValid": 1, "data": {"firstName": sorted_table.firstName, "lastName": sorted_table.lastName}}, status_code=status.HTTP_200_OK)
+#  return JSONResponse(content={"isValid": 1, "data": {"firstName": sorted_table.firstName, "lastName": sorted_table.lastName}}, status_code=status.HTTP_200_OK)
 
 @app.post("/uploadfile")
 async def handle_upload(file: UploadFile = File(...)):
-    # url = "http://ml:8000/uploadfile"
+    url = "http://ml:8000/uploadfile"
     upload_dir = "uploads"
-    # os.makedirs(upload_dir, exist_ok=True)
+    os.makedirs(upload_dir, exist_ok=True)
     files = {"file": (file.filename, file.file, file.content_type)}
     file_path = os.path.join(upload_dir, file.filename)
     file_name = file.filename
@@ -125,11 +127,9 @@ async def handle_upload(file: UploadFile = File(...)):
     else:
     # Загружаем файл в MinIO
         upload_file_to_minio(s3_client, BUCKET_NAME, file_path)
-    # response = requests.post(url, files=files)
-    # return response.json()
-        return {"message": f"Файл {file.filename} успешно загружен", "path": file_path}
-
-    # return JSONResponse(content={"result": "Бактериальная пневмония", "probability": 0.96})
+    response = requests.post(url, files=files)
+    return response.json()
+    # return {"message": f"Файл {file.filename} успешно загружен", "path": file_path}
 
 # @app.delete("/users/{user_id}/")
 # async def delete_user(
@@ -170,11 +170,3 @@ async def handle_upload(file: UploadFile = File(...)):
 #     return _services.update_user(
 #         db, db_user=db_user, user=user
 #     )
-
-@app.post("/uploadfile")
-async def handle_upload(file: UploadFile = File(...)):
-    url = "http://ml:8000/uploadfile"
-    files = {"file": (file.filename, file.file, file.content_type)}
-    response = requests.post(url, files=files)
-    return response.json()
-    # return JSONResponse(content={"result": "Бактериальная пневмония", "probability": 0.96})
