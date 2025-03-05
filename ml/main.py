@@ -293,10 +293,10 @@ async def create_upload_file(file: UploadFile = File(...)):
         logger.error(f"Ошибка при обработке файла {file.filename}: {e}")
         raise HTTPException(status_code=500, detail="Ошибка при обработке файла")
 
-    finally:
-        if os.path.exists(file_path):
-            os.remove(file_path)
-            logger.info(f"Файл {file_path} удален")
+    # finally:
+        # if os.path.exists(file_path):
+        #     os.remove(file_path)
+        #     logger.info(f"Файл {file_path} удален")
 
 # if __name__ == '__main__':
 #     import uvicorn

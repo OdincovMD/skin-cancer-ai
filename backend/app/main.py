@@ -122,11 +122,12 @@ async def handle_upload(file: UploadFile = File(...)):
         # Добавляем запись в базу данных
         insert_file_record(session, files_table, file_name, BUCKET_NAME)
     # Проверка наличия файла в MinIO
-    if is_file_in_minio(s3_client, BUCKET_NAME, file_path):
-        return {"message": f"Файл {file.filename} уже существует в MinIO"}
-    else:
-    # Загружаем файл в MinIO
+    if not is_file_in_minio(s3_client, BUCKET_NAME, file_path):
         upload_file_to_minio(s3_client, BUCKET_NAME, file_path)
+    #     return {"message": f"Файл {file.filename} уже существует в MinIO"}
+    # else:
+    # # Загружаем файл в MinIO
+    #     upload_file_to_minio(s3_client, BUCKET_NAME, file_path)
     response = requests.post(url, files=files)
     return response.json()
     # return {"message": f"Файл {file.filename} успешно загружен", "path": file_path}

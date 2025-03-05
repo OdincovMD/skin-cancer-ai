@@ -7,3 +7,4 @@ ml/model_weights.pth
 ml/runs/
 node_modules
 log
+uploads
