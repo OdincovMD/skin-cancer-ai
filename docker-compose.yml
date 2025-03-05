@@ -9,11 +9,11 @@ services:
       - frontend
     networks:
       - app-network
-    develop:
-      watch:
-        - action: sync+restart
-          path: ./nginx/nginx.conf
-          target: /etc/nginx/nginx.conf
+    # develop:
+    #   watch:
+    #     - action: sync+restart
+    #       path: ./nginx/nginx.conf
+    #       target: /etc/nginx/nginx.conf
 
   frontend:
     build:
@@ -41,12 +41,13 @@ services:
    networks:
    - app-network
    volumes:
+  #  - ./ml/uploads:/app/uploads
    - ./log:/app/log
-   develop:
-     watch:
-       - action: sync+restart
-         path: ./ml
-         target: /app
+  #  develop:
+  #    watch:
+  #      - action: sync+restart
+  #        path: ./ml
+  #        target: /app
 
   backend:
     build:
@@ -56,13 +57,11 @@ services:
       - "9000:9000"
     networks:
       - app-network
-#    volumes:
-#      - minio_data:/app/uploads
-    develop:
-      watch:
-        - action: sync+restart
-          path: ./backend
-          target: /app
+    # develop:
+    #   watch:
+    #     - action: sync+restart
+    #       path: ./backend
+    #       target: /app
 
   postgres:
     build:
@@ -80,11 +79,11 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - app-network
-    develop:
-      watch:
-        - action: sync+restart
-          path: ./backend
-          target: /app
+    # develop:
+    #   watch:
+    #     - action: sync+restart
+    #       path: ./db
+    #       target: /app
 
   pgadmin:
     image: dpage/pgadmin4:latest

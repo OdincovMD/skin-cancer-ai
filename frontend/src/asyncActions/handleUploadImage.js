@@ -1,9 +1,9 @@
 import { BACKEND_URL } from "../imports/URLS"
 
-export const handleUploadImage = async (image) => {
+export const handleUploadImage = async (fileData) => {
 
-    const formData = new FormData();
-    formData.append("file", image);
+    const formData = new FormData()
+    formData.append("file", fileData)
 
     try {
       let response = await fetch(`${BACKEND_URL}/uploadfile`, {

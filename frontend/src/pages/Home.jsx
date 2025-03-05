@@ -1,5 +1,5 @@
 // pages/Home.jsx
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import ReactImageMagnify from "easy-magnify-waft"
 import { handleUploadImage } from '../asyncActions/handleUploadImage'
 import { useSelector } from 'react-redux'
@@ -8,24 +8,32 @@ const Home = () => {
 
   const userInfo = useSelector(state => state.user)
   
+  const [fileData, setFileData] = useState(null)
   const [imageSrc, setImageSrc] = useState(null)
-  const [formData, setFormData] = useState(null)
-  var myForm = null
 
-  const handleChange = (event) => {
+  // useEffect(() => {
+  //   console.log(fileData)
+  // }, [fileData])
+
+  // useEffect(() => {
+  //   console.log(imageSrc)
+  // }, [imageSrc])
+
+  const handleChange = async (event) => {
+
+    // Это для чтения информации о файле и подготовки файла к отправке на бэк
     const fileInfo = event.target.files[0] 
-    
     var now = new Date()
     const day = now.getDate() + '-' + (now.getMonth() + 1) + '-' + now.getFullYear()
     const time = now.getHours() + '-' + now.getMinutes() + '-' + now.getSeconds()
-    const user = userInfo.name + "-" + userInfo.surname
+    const user = userInfo.name + '-' + userInfo.surname
     // const filename = fileInfo.name.split(".")[0]
     // const ext = fileInfo.name.split(".").pop()
     const stamp = `${day}_${time}_${user}_${fileInfo.name}`
     const fileProcessed = new File([fileInfo], stamp, {type: fileInfo.type});
-
-    setFormData(fileProcessed)
+    setFileData(fileProcessed)
     
+    // Это для отображения изображения на сайте
     if (fileProcessed && fileProcessed.type.startsWith('image/')) {
       const reader = new FileReader();
 
@@ -33,7 +41,7 @@ const Home = () => {
         setImageSrc(e.target.result)
       }
 
-      reader.readAsDataURL(fileInfo)
+      reader.readAsDataURL(fileProcessed)
     }
 
   }
@@ -46,8 +54,10 @@ const Home = () => {
             Загрузите ваше изображение
           </h2>
           <div>
-            {!imageSrc && (
-              <form ref={(el) => {myForm = el}}>
+            {
+            !imageSrc &&
+            (
+              <form>
                   <input type="file" onChange={(event) => { 
                     handleChange(event)
                   }} />
@@ -83,8 +93,7 @@ const Home = () => {
           <div>
             {imageSrc && (
               <button onClick={() => {
-                handleUploadImage(formData)
-                myForm.reset()
+                handleUploadImage(fileData)
                 }} className="mt-4 px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors">
                 Обработать изображение
               </button>
@@ -94,6 +103,7 @@ const Home = () => {
           {imageSrc && (
             <button onClick={() => {
               setImageSrc(null)
+              setImageData(null)
             }} className="mt-4 px-6 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors">
             Удалить изображение
             </button>
@@ -154,4 +164,4 @@ const Home = () => {
   )
 }
 
-export default Home;
+export default Home
