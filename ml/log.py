@@ -1,6 +1,8 @@
 import logging
-from functools import wraps
+import os
 import time
+
+from functools import wraps
 
 
 class Logger():
@@ -12,7 +14,7 @@ class Logger():
             level=logging.INFO,
             format="[%(asctime)s][%(name)s][%(levelname)s]: [%(message)s]",
             handlers=[
-                logging.FileHandler("log.txt"),  
+                logging.FileHandler(os.path.join('log', 'log.txt'), 'a'),
                 logging.StreamHandler(), 
             ],
         )

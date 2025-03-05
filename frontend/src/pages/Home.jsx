@@ -30,7 +30,7 @@ const Home = () => {
       const reader = new FileReader();
 
       reader.onload = (e) => {
-        setImageSrc(e)
+        setImageSrc(e.target.result)
       }
 
       reader.readAsDataURL(fileInfo)

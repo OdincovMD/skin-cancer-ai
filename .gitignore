@@ -6,3 +6,4 @@ ml/model_weights.pth
 */__pycache__/*
 ml/runs/
 node_modules
+log

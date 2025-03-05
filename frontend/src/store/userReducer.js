@@ -1,5 +1,5 @@
 const defaultUser = {
-    name: null,
+    name: "dummy",
     surname: null,
     error: null
     // email: null,

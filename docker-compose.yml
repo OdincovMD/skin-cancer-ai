@@ -40,6 +40,8 @@ services:
    - "8000:8000"
    networks:
    - app-network
+   volumes:
+   - ./log:/app/log
    develop:
      watch:
        - action: sync+restart
