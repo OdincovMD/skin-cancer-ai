@@ -10,6 +10,7 @@ const Home = () => {
   
   const [fileData, setFileData] = useState(null)
   const [imageSrc, setImageSrc] = useState(null)
+<<<<<<< HEAD
 
   // useEffect(() => {
   //   console.log(fileData)
@@ -18,6 +19,17 @@ const Home = () => {
   // useEffect(() => {
   //   console.log(imageSrc)
   // }, [imageSrc])
+=======
+  var myForm = null
+
+  useEffect(() => {
+    console.log(fileData)
+  }, [fileData])
+
+  useEffect(() => {
+    console.log(imageSrc)
+  }, [imageSrc])
+>>>>>>> f20d4eb397534418572ce6602e8d3467ad8bd266
 
   const handleChange = async (event) => {
 
@@ -57,7 +69,11 @@ const Home = () => {
             {
             !imageSrc &&
             (
+<<<<<<< HEAD
               <form>
+=======
+              <form ref={(el) => {myForm = el}}>
+>>>>>>> f20d4eb397534418572ce6602e8d3467ad8bd266
                   <input type="file" onChange={(event) => { 
                     handleChange(event)
                   }} />
@@ -102,6 +118,7 @@ const Home = () => {
           <div>
           {imageSrc && (
             <button onClick={() => {
+              myForm.reset()
               setImageSrc(null)
               setImageData(null)
             }} className="mt-4 px-6 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors">

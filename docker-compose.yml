@@ -57,11 +57,19 @@ services:
       - "9000:9000"
     networks:
       - app-network
+<<<<<<< HEAD
     # develop:
     #   watch:
     #     - action: sync+restart
     #       path: ./backend
     #       target: /app
+=======
+    develop:
+      watch:
+        - action: sync+restart
+          path: ./backend
+          target: /app
+>>>>>>> f20d4eb397534418572ce6602e8d3467ad8bd266
 
   postgres:
     build:
