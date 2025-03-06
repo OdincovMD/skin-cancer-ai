@@ -7,10 +7,11 @@ import { useSelector } from 'react-redux'
 const Home = () => {
 
   const userInfo = useSelector(state => state.user)
+  const defaultResult = {feature_type: null, structure: null, properties: [], final_class: null}
   
   const [fileData, setFileData] = useState(null)
   const [imageSrc, setImageSrc] = useState(null)
-<<<<<<< HEAD
+  const [classificationResult, setClassificationResult] = useState(defaultResult)
 
   // useEffect(() => {
   //   console.log(fileData)
@@ -19,17 +20,10 @@ const Home = () => {
   // useEffect(() => {
   //   console.log(imageSrc)
   // }, [imageSrc])
-=======
-  var myForm = null
 
   useEffect(() => {
-    console.log(fileData)
-  }, [fileData])
-
-  useEffect(() => {
-    console.log(imageSrc)
-  }, [imageSrc])
->>>>>>> f20d4eb397534418572ce6602e8d3467ad8bd266
+    console.log(classificationResult)
+  }, [classificationResult])
 
   const handleChange = async (event) => {
 
@@ -58,8 +52,53 @@ const Home = () => {
 
   }
 
-  const classification = userInfo.name 
-    ?<div className="space-y-6 mt-5">
+  const info = 
+  <div className="space-y-6">
+    <div className="bg-white rounded-lg shadow-md p-6">
+      <h2 className="text-2xl font-bold text-gray-800 mb-4">
+        Диагностика новообразований кожи
+      </h2>
+      <div className="grid md:grid-cols-2 gap-6">
+        <div className="space-y-4">
+          <p className="text-gray-600">
+            Наш сервис помогает в ранней диагностике новообразований кожи с использованием
+            современных технологий машинного обучения.
+          </p>
+          <div className="space-y-2">
+            <h3 className="font-semibold text-gray-700">Преимущества ранней диагностики:</h3>
+            <ul className="list-disc list-inside text-gray-600 space-y-1">
+              <li>Раннее выявление потенциальных проблем</li>
+              <li>Быстрая предварительная оценка</li>
+              <li>Возможность своевременного обращения к специалисту</li>
+              <li>Регулярный мониторинг изменений</li>
+            </ul>
+          </div>
+        </div>
+        <div className="relative h-64 md:h-auto">
+          <img
+            src="/images/example.jpg"
+            alt="Пример новообразования"
+            className="rounded-lg object-cover w-full h-full"
+          />
+          <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white p-2 rounded-b-lg">
+            <p className="text-sm">
+              Пример новообразования
+            </p>
+          </div>
+        </div>
+      </div>
+      <div className="mt-6 p-4 bg-yellow-50 rounded-lg border border-yellow-100">
+        <p className="text-sm text-yellow-800">
+          <strong>Важно:</strong> Данный сервис не является заменой
+          профессиональной медицинской консультации. При наличии любых сомнений
+          обязательно обратитесь к квалифицированному дерматологу.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  const uploadImage = userInfo.name ?
+    <div className="space-y-6 mt-5">
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="flex flex-col items-center justify-center">
           <h2 className="text-2xl font-bold text-gray-800 mb-4 text">
@@ -69,11 +108,7 @@ const Home = () => {
             {
             !imageSrc &&
             (
-<<<<<<< HEAD
               <form>
-=======
-              <form ref={(el) => {myForm = el}}>
->>>>>>> f20d4eb397534418572ce6602e8d3467ad8bd266
                   <input type="file" onChange={(event) => { 
                     handleChange(event)
                   }} />
@@ -109,7 +144,7 @@ const Home = () => {
           <div>
             {imageSrc && (
               <button onClick={() => {
-                handleUploadImage(fileData)
+                handleUploadImage(fileData).then((response) => setClassificationResult(response))
                 }} className="mt-4 px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors">
                 Обработать изображение
               </button>
@@ -128,55 +163,27 @@ const Home = () => {
           </div>
         </div>
       </div>
-    </div>
-    : null
+    </div> :
+    null
+
+  const result = classificationResult.final_class ?
+    <div className="space-y-6 mt-5">
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="flex flex-col items-center justify-center">
+          <h2 className="text-2xl font-bold text-gray-800 mb-4 text">
+            Результат классификации
+          </h2>
+          <p>{console.log(classificationResult)}</p>
+        </div>
+      </div>
+    </div> :
+    null
 
   return (
     <div>
-    <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">
-          Диагностика новообразований кожи
-        </h2>
-        <div className="grid md:grid-cols-2 gap-6">
-          <div className="space-y-4">
-            <p className="text-gray-600">
-              Наш сервис помогает в ранней диагностике новообразований кожи с использованием
-              современных технологий машинного обучения.
-            </p>
-            <div className="space-y-2">
-              <h3 className="font-semibold text-gray-700">Преимущества ранней диагностики:</h3>
-              <ul className="list-disc list-inside text-gray-600 space-y-1">
-                <li>Раннее выявление потенциальных проблем</li>
-                <li>Быстрая предварительная оценка</li>
-                <li>Возможность своевременного обращения к специалисту</li>
-                <li>Регулярный мониторинг изменений</li>
-              </ul>
-            </div>
-          </div>
-          <div className="relative h-64 md:h-auto">
-            <img
-              src="/images/example.jpg"
-              alt="Пример новообразования"
-              className="rounded-lg object-cover w-full h-full"
-            />
-            <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white p-2 rounded-b-lg">
-              <p className="text-sm">
-                Пример новообразования
-              </p>
-            </div>
-          </div>
-        </div>
-        <div className="mt-6 p-4 bg-yellow-50 rounded-lg border border-yellow-100">
-          <p className="text-sm text-yellow-800">
-            <strong>Важно:</strong> Данный сервис не является заменой
-            профессиональной медицинской консультации. При наличии любых сомнений
-            обязательно обратитесь к квалифицированному дерматологу.
-          </p>
-        </div>
-      </div>
-    </div>
-    {classification}
+    {info} 
+    {uploadImage}
+    {result}
   </div>
   )
 }

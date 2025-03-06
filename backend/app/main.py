@@ -110,7 +110,6 @@ async def handle_upload(file: UploadFile = File(...)):
     # upload_dir = "uploads"
     # os.makedirs(upload_dir, exist_ok=True)
     files = {"file": (file.filename, file.file, file.content_type)}
-<<<<<<< HEAD
     # file_path = os.path.join(upload_dir, file.filename)
     # file_name = file.filename
     # create_bucket_if_not_exists(s3_client, BUCKET_NAME)
@@ -129,26 +128,6 @@ async def handle_upload(file: UploadFile = File(...)):
     # # else:
     # # # Загружаем файл в MinIO
     # #     upload_file_to_minio(s3_client, BUCKET_NAME, file_path)
-=======
-    file_path = os.path.join(upload_dir, file.filename)
-    file_name = file.filename
-    create_bucket_if_not_exists(s3_client, BUCKET_NAME)
-    with open(file_path, "wb") as buffer:
-        buffer.write(await file.read())
-    # Проверка наличия записи в базе данных
-    if is_file_in_db(session, files_table, file_name):
-        print(f"Файл {file_name} уже записан в базе данных.")
-    else:
-        # Добавляем запись в базу данных
-        insert_file_record(session, files_table, file_name, BUCKET_NAME)
-    # Проверка наличия файла в MinIO
-    if not is_file_in_minio(s3_client, BUCKET_NAME, file_path):
-        upload_file_to_minio(s3_client, BUCKET_NAME, file_path)
-    #     return {"message": f"Файл {file.filename} уже существует в MinIO"}
-    # else:
-    # # Загружаем файл в MinIO
-    #     upload_file_to_minio(s3_client, BUCKET_NAME, file_path)
->>>>>>> f20d4eb397534418572ce6602e8d3467ad8bd266
     response = requests.post(url, files=files)
     return response.json()
     # # return {"message": f"Файл {file.filename} успешно загружен", "path": file_path}

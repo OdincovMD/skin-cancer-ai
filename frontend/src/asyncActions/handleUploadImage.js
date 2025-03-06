@@ -18,7 +18,7 @@ export const handleUploadImage = async (fileData) => {
 
       let responseJSON = await response.json()
 
-      console.log(responseJSON)
+      // console.log(responseJSON)
 
       return responseJSON
     }
