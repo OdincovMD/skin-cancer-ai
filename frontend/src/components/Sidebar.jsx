@@ -8,7 +8,7 @@ const Sidebar = ({ isOpen }) => {
     { text: 'Войти', path: '/signin' },
     { text: 'Регистрация', path: '/signup' },
     { text: 'О нас', path: '/about' },
-    { text: 'Настройки', path: '/settings' },
+    // { text: 'Настройки', path: '/settings' },
   ]
 
   return (
