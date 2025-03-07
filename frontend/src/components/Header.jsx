@@ -1,9 +1,9 @@
 // components/Header.jsx
 import React from 'react'
-import {Link} from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 
-// 
+import { SIGN_IN } from '../imports/ENDPOINTS'
 
 const Header = ({ toggleSidebar }) => {
 
@@ -23,13 +23,13 @@ const Header = ({ toggleSidebar }) => {
 
         <div className="ml-auto flex items-center space-x-4">
           <span className="text-gray-600">{userInfo.name && `${userInfo.name} ${userInfo.surname}`}</span>
+          {userInfo.name && <div className="w-8 h-8 rounded-full bg-gray-300"></div>}
           <Link
-            to={'/signin'}
+            to={SIGN_IN}
             className="text-gray-600"
           >
             <span className="block truncate">{!userInfo.name && `Войдите, чтобы получить доступ к системе`}</span>
           </Link>
-          <div className="w-8 h-8 rounded-full bg-gray-300"></div>
         </div>
       </div>
     </header>
