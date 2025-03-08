@@ -6,6 +6,7 @@ from src.database import Base
 
 class User(Base):
     __tablename__ = "users"
+
     id = Column(Integer, primary_key=True, index=True)
     lastName = Column(String, index=True)
     firstName = Column(String, index=True)
@@ -39,5 +40,4 @@ class ClassificationResults(Base):
 
     user = relationship("User", back_populates="classification_results")
     file = relationship("File", back_populates="classification_results")
-
 
