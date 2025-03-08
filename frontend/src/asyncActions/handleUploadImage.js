@@ -1,12 +1,14 @@
 import { BACKEND_URL } from "../imports/URLS"
+import { UPLOAD_FILE } from "../imports/ENDPOINTS"
 
-export const handleUploadImage = async (fileData) => {
+export const handleUploadImage = async ({id, fileData}) => {
 
     const formData = new FormData()
+    formData.append("user_id", id)
     formData.append("file", fileData)
 
     try {
-      let response = await fetch(`${BACKEND_URL}/uploadfile`, {
+      let response = await fetch(`${BACKEND_URL}${UPLOAD_FILE}`, {
         method: 'POST',
         body: formData
       })
@@ -17,8 +19,6 @@ export const handleUploadImage = async (fileData) => {
       }
 
       let responseJSON = await response.json()
-
-      // console.log(responseJSON)
 
       return responseJSON
     }

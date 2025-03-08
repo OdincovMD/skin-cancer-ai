@@ -1,13 +1,14 @@
 // components/Sidebar.jsx
 import React from 'react'
 import { Link } from 'react-router-dom'
+import { HOME, SIGN_IN, SIGN_UP, ABOUT } from '../imports/ENDPOINTS'
 
 const Sidebar = ({ isOpen }) => {
   const menuItems = [
-    { text: 'Главная', path: '/' },
-    { text: 'Войти', path: '/signin' },
-    { text: 'Регистрация', path: '/signup' },
-    { text: 'О нас', path: '/about' },
+    { text: 'Главная', path: HOME },
+    { text: 'Войти', path: SIGN_IN },
+    { text: 'Регистрация', path: SIGN_UP },
+    { text: 'О нас', path: ABOUT },
     // { text: 'Настройки', path: '/settings' },
   ]
 

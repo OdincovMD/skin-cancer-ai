@@ -1,6 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from pydantic import BaseModel as PBaseModel
 
 from src.config import settings
 
@@ -29,3 +30,18 @@ class BaseModel(Base):
     def __repr__(self):
         cols = [f"{col}={getattr(self, col)}" for col in self.__table__.columns.keys()]
         return f"<{self.__class__.__name__} {','.join(cols)}>"
+    
+
+# Модель Pydantic для входных данных
+
+class UserSignUp(PBaseModel):
+    lastName: str
+    firstName: str
+    login: str
+    email: str
+    password: str
+
+class Credentials(PBaseModel):
+    login: str
+    password: str
+
