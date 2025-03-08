@@ -1,9 +1,13 @@
 from src.models import Base, File, ClassificationResults, User 
+from passlib.context import CryptContext
 from src.database import session_factory, sync_engine
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from typing import Union, Dict
+from typing import Union, Dict, List
+from datetime import datetime
 
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 class SyncOrm:
     @staticmethod
@@ -55,19 +59,36 @@ class SyncOrm:
                 raise
 
     @staticmethod
-    def get_classification_requests(user_id: int, limit: int = 3):
+    def get_classification_requests(user_id: int, limit: int = 3) -> List[Dict[str, Union[str, datetime]]]:
         """
         Возвращает последние запросы на классификацию для пользователя.
         """
         with session_factory() as session:
             query = (
-                select(ClassificationResults)
+                select(
+                    ClassificationResults.request_date,
+                    File.file_name,
+                    ClassificationResults.status,
+                    ClassificationResults.result
+                )
+                .join(File, ClassificationResults.file_id == File.file_id)
                 .where(ClassificationResults.user_id == user_id)
                 .order_by(ClassificationResults.request_date.desc())
                 .limit(limit)
             )
             result = session.execute(query)
-            return result.scalars().all()
+
+            return [
+                {
+                    "request_date": row.request_date,
+                    "file_name": row.file_name,
+                    "status": row.status,
+                    "result": row.result,
+                }
+                for row in result
+            ]
+
+
 
     @staticmethod
     def get_file_id_by_name(file_name: str) -> int:
@@ -92,12 +113,14 @@ class SyncOrm:
         """
         with session_factory() as session:
             try:
+                hashed_password = pwd_context.hash(password)
+
                 user = User(
                     lastName=lastName,
                     firstName=firstName,
                     login=login,
                     email=email,
-                    password=password
+                    password=hashed_password
                 )
                 session.add(user)
                 session.commit()
@@ -120,3 +143,30 @@ class SyncOrm:
             except Exception as e:
                 session.rollback()
                 return f"Ошибка при регистрации пользователя: {e}"
+            
+    @staticmethod
+    def signin_user(login: str, password: str) -> Union[Dict[str, Union[int, str]], str]:
+        """
+        Ищет пользователя по логину и проверяет пароль.
+
+        Возвращает:
+        - В случае успеха: словарь с данными пользователя (id, lastName, firstName, email).
+        - В случае ошибки: строку с описанием ошибки.
+        """
+        with session_factory() as session:
+            try:
+                user = session.query(User).filter(User.login == login).first()
+                if not user:
+                    return "Пользователь не зарегистрирован."
+
+                if password == user.password:
+                    return "Неверный пароль."
+
+                return {
+                    "id": user.id,
+                    "lastName": user.lastName,
+                    "firstName": user.firstName,
+                    "email": user.email,
+                }
+            except Exception as e:
+                return f"Ошибка при входе: {e}"

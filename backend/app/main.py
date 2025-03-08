@@ -2,6 +2,7 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import os
 import requests
+from src.database import UserSignUp
 
 from minio_client import get_minio_client, is_file_in_minio, upload_file_to_minio, create_bucket_if_not_exists
 from src.queries.orm import SyncOrm
@@ -30,7 +31,7 @@ s3_client = get_minio_client()
 SyncOrm.create_tables()
 
 @app.post("/signup")
-async def signup(user_data: UserSignup):
+async def signup(user_data: UserSignUp):
     try:
         result = SyncOrm.register_user(
             firstName=user_data.firstName,
@@ -69,6 +70,46 @@ async def signup(user_data: UserSignup):
             },
             "error": f"Ошибка при регистрации пользователя: {str(e)}",
         }
+    
+@app.post("/signin")
+async def signin_user(credentials):
+    try:
+        result = SyncOrm.signin(
+            login=credentials.get("login"),
+            password=credentials.get("password")
+        )
+
+        if isinstance(result, str):
+            return {
+                "userData": {
+                    "id": None,
+                    "firstName": None,
+                    "lastName": None,
+                    "email": None,
+                },
+                "error": result,
+            }
+
+        return {
+            "userData": {
+                "id": result["id"],
+                "firstName": result["firstName"],
+                "lastName": result["lastName"],
+                "email": result["email"],
+            },
+            "error": None,
+        }
+
+    except Exception as e:
+        return {
+            "userData": {
+                "id": None,
+                "firstName": None,
+                "lastName": None,
+                "email": None,
+            },
+            "error": f"Ошибка при входе: {str(e)}",
+        }
 
 @app.post("/uploadfile")
 async def handle_upload(file: UploadFile = File(...)):
@@ -91,10 +132,7 @@ async def handle_upload(file: UploadFile = File(...)):
         # Загружаем файл в MinIO
         upload_file_to_minio(s3_client, BUCKET_NAME, file_path)
 
-    # ID пользователя (предположим, что он доступен в запросе или через аутентификацию)
     user_id = 1 
-    # INSERT INTO users (id, "lastName", "firstName", login, email, password, created_at)
-    # VALUES (1, 'Сосал?', 'Сосал!', 'Сосал!!', 'john.doe@example.com', 'password123', NOW());
 
     try:
         file_id = SyncOrm.get_file_id_by_name(file_name=file_name)
