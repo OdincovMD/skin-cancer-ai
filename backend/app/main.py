@@ -17,19 +17,27 @@ app.add_middleware(
 
 BUCKET_NAME = "bucket"
 
+from pydantic import BaseModel
+class UserSignup(BaseModel):
+    firstName: str
+    lastName: str
+    login: str
+    email: str
+    password: str
+
 # Подключение
 s3_client = get_minio_client()
 SyncOrm.create_tables()
 
 @app.post("/signup")
-async def signup(user_data):
+async def signup(user_data: UserSignup):
     try:
         result = SyncOrm.register_user(
-            lastName=user_data.get("lastName"),
-            firstName=user_data.get("firstName"),
-            login=user_data.get("login"),
-            email=user_data.get("email"),
-            password=user_data.get("password")
+            firstName=user_data.firstName,
+            lastName=user_data.lastName,
+            login=user_data.login,
+            email=user_data.email,
+            password=user_data.password
         )
 
         if isinstance(result, str):

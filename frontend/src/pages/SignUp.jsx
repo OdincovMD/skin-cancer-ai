@@ -10,10 +10,14 @@ const SignUp = () => {
 
   const dispatch = useDispatch()
 
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false)
+
+  const [firstName, setFirstName] = useState(null)
+  const [lastName, setLastName] = useState(null)
+  const [login, setLogin] = useState(null)
+  const [email, setEmail] = useState(null)  
   const [password, setPassword] = useState(null)
   const [repPassword, setRepPassword] = useState(null)
-  const [isPasswordVisible, setIsPasswordVisible] = useState(false)
-  var [firstName, lastName, email, login] = [null, null, null, null]
 
   const togglePasswordVisibility = () => {
     setIsPasswordVisible((prevState) => !prevState);
@@ -21,8 +25,11 @@ const SignUp = () => {
   
   const handleSubmit = (event) => {
     event.preventDefault()
-    dispatch(onVerify({firstName: firstName, lastName: lastName, email: email, login: login, password: password}, SIGN_UP))
-    [firstName, email, login, myForm] = [null, null, null, null]
+    dispatch(onVerify({ data: { firstName, lastName, email, login, password }, endpoint: SIGN_UP }))
+    setFirstName(null)
+    setLastName(null)
+    setLogin(null)
+    setEmail(null)
     setPassword(null)
     setRepPassword(null)
   }
@@ -38,7 +45,7 @@ const SignUp = () => {
             placeholder="Имя" 
             className="w-full rounded-lg border border-gray-300 p-3 outline-blue-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             required
-            onChange={(ans) => { firstName = ans.target.value }}
+            onChange={(ans) => { setFirstName(ans.target.value) }}
           />
 
           <input 
@@ -46,7 +53,7 @@ const SignUp = () => {
             placeholder="Фамилия" 
             className="w-full rounded-lg border border-gray-300 p-3 outline-blue-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             required
-            onChange={(ans) => { lastName = ans.target.value }}
+            onChange={(ans) => { setLastName(ans.target.value) }}
           />
 
           <input 
@@ -54,7 +61,7 @@ const SignUp = () => {
             placeholder="Логин" 
             className="w-full rounded-lg border border-gray-300 p-3 outline-blue-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             required
-            onChange={(ans) => { login = ans.target.value }}
+            onChange={(ans) => { setLogin(ans.target.value) }}
           />
 
           <input 
@@ -63,7 +70,7 @@ const SignUp = () => {
             pattern="[0-9A-z_\.]+@[A-z]{2,}\.[A-z]+"
             className="w-full rounded-lg border border-gray-300 p-3 outline-blue-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             required
-            onChange={(ans) => { email = ans.target.value }}
+            onChange={(ans) => { setEmail(ans.target.value) }}
           />
           
           <div

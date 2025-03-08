@@ -47,7 +47,7 @@ services:
    - ./log:/app/log
   #  develop:
   #    watch:
-  #      - action: sync+restart
+  #      - action: rebuild
   #        path: ./ml
   #        target: /app
 
@@ -67,7 +67,7 @@ services:
 #      - minio_data:/app/uploads
     develop:
       watch:
-        - action: sync+restart
+        - action: rebuild
           path: ./backend
           target: /app
 
