@@ -1,8 +1,10 @@
 // pages/Home.jsx
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState } from "react"
 import ReactImageMagnify from "easy-magnify-waft"
-import { handleUploadImage } from '../asyncActions/handleUploadImage'
-import { useSelector } from 'react-redux'
+
+import { handleUploadImage } from "../asyncActions/handleUploadImage"
+import { useSelector } from "react-redux"
+import TreeComponent from "../components/Tree"
 
 const Home = () => {
 
@@ -30,15 +32,15 @@ const Home = () => {
     // Это для чтения информации о файле и подготовки файла к отправке на бэк
     const fileInfo = event.target.files[0] 
     var now = new Date()
-    const day = now.getDate() + '-' + (now.getMonth() + 1) + '-' + now.getFullYear()
-    const time = now.getHours() + '-' + now.getMinutes() + '-' + now.getSeconds()
+    const day = now.getDate() + "-" + (now.getMonth() + 1) + "-" + now.getFullYear()
+    const time = now.getHours() + "-" + now.getMinutes() + "-" + now.getSeconds()
     const user = userInfo.userData.id
     const stamp = `${day}_${time}_${user}_${fileInfo.name}`
     const fileProcessed = new File([fileInfo], stamp, {type: fileInfo.type});
     setFileData(fileProcessed)
     
     // Это для отображения изображения на сайте
-    if (fileProcessed && fileProcessed.type.startsWith('image/')) {
+    if (fileProcessed && fileProcessed.type.startsWith("image/")) {
       const reader = new FileReader();
 
       reader.onload = (e) => {
@@ -118,7 +120,7 @@ const Home = () => {
               {imageSrc && (
                 <ReactImageMagnify {...{
                 smallImage: {
-                    alt: 'Загруженное изображение',
+                    alt: "Загруженное изображение",
                     isFluidWidth: true,
                     src: imageSrc,
                 },
@@ -127,7 +129,7 @@ const Home = () => {
                     width: 2560,
                     height: 1920
                 },
-                enlargedImagePortalId: 'enlargened_image',
+                enlargedImagePortalId: "enlargened_image",
                 isHintEnabled: true,
                 shouldHideHintAfterFirstActivation: false,
                 isActivatedOnTouch: true,
@@ -170,7 +172,7 @@ const Home = () => {
           <h2 className="text-2xl font-bold text-gray-800 mb-4 text">
             Результат классификации
           </h2>
-          <p>{console.log(classificationResult)}</p>
+          <TreeComponent />
         </div>
       </div>
     </div> :

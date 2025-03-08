@@ -9,7 +9,8 @@ RUN npm install && \
     npm install -D tailwindcss postcss autoprefixer && \
     npm install lucide-react && \
     npx tailwindcss init -p && \
-    npm install easy-magnify-waft
+    npm install easy-magnify-waft && \
+    npm install react-d3-tree
 
 COPY . .
 

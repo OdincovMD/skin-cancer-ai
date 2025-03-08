@@ -1,14 +1,15 @@
-import React, { useState } from 'react'
-import { useDispatch } from "react-redux"
-import { Link } from "react-router-dom"
-import { Eye, EyeOff} from 'lucide-react'
+import React, { useState } from "react"
+import { useDispatch, useSelector } from "react-redux"
+import { Link, Navigate } from "react-router-dom"
+import { Eye, EyeOff } from "lucide-react"
 
 import { onVerify } from "../asyncActions/onVerify"
-import { SIGN_IN, SIGN_UP } from "../imports/ENDPOINTS"
+import { HOME, SIGN_IN, SIGN_UP } from "../imports/ENDPOINTS"
 
 const SignUp = () => {
 
   const dispatch = useDispatch()
+  const userInfo = useSelector(state => state.user)
 
   const [isPasswordVisible, setIsPasswordVisible] = useState(false)
 
@@ -100,12 +101,16 @@ const SignUp = () => {
             onChange={(ans) => { setRepPassword( ans.target.value ) }}
           />
 
-          <p>{(password != repPassword) && 'Пароли не совпадают'}</p>
+          <p>{(password != repPassword) && "Пароли не совпадают"}</p>
 
           {/* <div className="flex items-center gap-2">
             <input id="allowEmail" type="checkbox" className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
             <label htmlFor="allowEmail" className="text-gray-600">I want to join the newsletter</label>
           </div> */}
+
+          <div className="text-red-500">
+            {userInfo.error}
+          </div>
           
           <button 
             type="submit" 
@@ -123,6 +128,10 @@ const SignUp = () => {
             >
               <span className="underline ml-1 transition hover:text-blue-700">{`Вход`}</span>
            </Link>
+          </div>
+
+          <div>
+            {userInfo.userData.id ? <Navigate to={HOME}/> : null}
           </div>
 
         </form>

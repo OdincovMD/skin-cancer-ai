@@ -16,14 +16,19 @@ const defaultUser = {
 const userSlice = createSlice({
   name: "user",
   initialState: defaultUser,
-  reducers: {},
+  reducers: {
+    defaultState: (state) => { 
+      return defaultUser
+    }
+  },
   extraReducers: (builder) => {
     builder
       .addCase(onVerify.fulfilled, (state, action) => {
-        state.userData = action.payload.userData;
-        state.error = action.payload.error;
+        state.userData = action.payload.userData
+        state.error = action.payload.error
       })
   }
 })
 
+export const { defaultState } = userSlice.actions
 export const userReducer = userSlice.reducer

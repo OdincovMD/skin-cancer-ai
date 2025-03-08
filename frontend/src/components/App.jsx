@@ -1,13 +1,13 @@
 // components/App.jsx
-import React, { useState } from 'react'
-import { Routes, Route } from 'react-router-dom'
-import Header from './Header.jsx'
-import Sidebar from './Sidebar.jsx'
+import React, { useState } from "react"
+import { Routes, Route } from "react-router-dom"
+import Header from "./Header.jsx"
+import Sidebar from "./Sidebar.jsx"
 
-import Home from '../pages/Home'
-import SignIn from '../pages/SignIn'
-import SignUp from '../pages/SignUp'
-import About from '../pages/About'
+import Home from "../pages/Home"
+import SignIn from "../pages/SignIn"
+import SignUp from "../pages/SignUp"
+import About from "../pages/About"
 
 const App = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
@@ -22,7 +22,7 @@ const App = () => {
       <Sidebar isOpen={isSidebarOpen} />
       <main
         className={`pt-16  transition-all duration-300 
-        ${isSidebarOpen ? 'pl-64' : 'pl-0'}`}
+        ${isSidebarOpen ? "pl-64" : "pl-0"}`}
       >
         <div className="p-6">
           <Routes path="/" element={<Layout />}>
