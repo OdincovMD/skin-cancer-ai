@@ -33,8 +33,6 @@ const Home = () => {
     const day = now.getDate() + '-' + (now.getMonth() + 1) + '-' + now.getFullYear()
     const time = now.getHours() + '-' + now.getMinutes() + '-' + now.getSeconds()
     const user = userInfo.userData.id
-    // const filename = fileInfo.name.split(".")[0]
-    // const ext = fileInfo.name.split(".").pop()
     const stamp = `${day}_${time}_${user}_${fileInfo.name}`
     const fileProcessed = new File([fileInfo], stamp, {type: fileInfo.type});
     setFileData(fileProcessed)

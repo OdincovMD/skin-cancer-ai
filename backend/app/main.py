@@ -1,5 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
+import io
 import os
 import requests
 
@@ -52,6 +53,7 @@ async def signup(user_data: UserSignUp):
             },
             "error": None,
         }
+    
     except Exception as e:
         return {
             "userData": {
@@ -104,16 +106,16 @@ async def signin_user(credentials: Credentials):
         }
 
 @app.post("/uploadfile")
-async def handle_upload(user_id: int = Form(), file: UploadFile = File(...)):
+async def handle_upload(user_id: int = Form(), file: UploadFile = Form()):
 
     upload_dir = "uploads"
     os.makedirs(upload_dir, exist_ok=True)
     file_path = os.path.join(upload_dir, file.filename)
     file_name = file.filename
-    files = {"file": (file_name, file.file, file.content_type)}
-    with open(file_path, "wb") as buffer:
-        buffer.write(await file.read())
+    file_content = await file.read()
 
+    with open(file_path, "wb") as buffer:
+        buffer.write(file_content)
 
     create_bucket_if_not_exists(s3_client, BUCKET_NAME)
     SyncOrm.insert_file_record(file_name=file_name, bucket_name=BUCKET_NAME)
@@ -129,8 +131,8 @@ async def handle_upload(user_id: int = Form(), file: UploadFile = File(...)):
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-
     url = "http://ml:8000/uploadfile"
+    files = {"file": (file_name, io.BytesIO(file_content), file.content_type)}
     try:
         response = requests.post(url, files=files)
         result = response.json()
@@ -141,5 +143,4 @@ async def handle_upload(user_id: int = Form(), file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Ошибка при отправке файла в ML-сервис: {str(e)}")
     
     SyncOrm.create_classification_request(user_id=user_id, file_id=file_id, status=status, result=str(result) if result else None)
-    response = requests.post(url, files=files)
-    return response.json()
+    return result

@@ -16,7 +16,6 @@ const SignIn = () => {
     event.preventDefault()
     dispatch(onVerify({data: {login: login, password: password}, endpoint: SIGN_IN }))
     setLogin(null)
-    setEmail(null)
     setPassword(null)
   }
 

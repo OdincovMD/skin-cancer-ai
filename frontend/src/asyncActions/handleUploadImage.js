@@ -20,8 +20,6 @@ export const handleUploadImage = async ({id, fileData}) => {
 
       let responseJSON = await response.json()
 
-      // console.log(responseJSON)
-
       return responseJSON
     }
     catch (err) {

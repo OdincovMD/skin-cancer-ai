@@ -1,7 +1,7 @@
 from src.models import Base, File, ClassificationResults, User 
 from passlib.context import CryptContext
 from src.database import session_factory, sync_engine
-from sqlalchemy import select
+from sqlalchemy import select, inspect
 from sqlalchemy.exc import IntegrityError
 from typing import Union, Dict, List
 from datetime import datetime
@@ -13,8 +13,10 @@ class SyncOrm:
     @staticmethod
     def create_tables():
         """Создание и сброс всех таблиц в базе данных."""
-        Base.metadata.drop_all(sync_engine)
-        Base.metadata.create_all(sync_engine)
+        table_names = inspect(sync_engine).get_table_names()
+        if not table_names:
+            Base.metadata.create_all(sync_engine)
+        # Base.metadata.drop_all(sync_engine)
 
     @staticmethod
     def insert_file_record(file_name: str, bucket_name: str):

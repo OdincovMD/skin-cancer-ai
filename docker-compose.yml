@@ -34,22 +34,22 @@ services:
           path: ./frontend
           target: /app
 
-  # ml:
-  #  build:
-  #    context: ./ml
-  #    dockerfile: Dockerfile
-  #  ports:
-  #  - "8000:8000"
-  #  networks:
-  #  - app-network
-  #  volumes:
-  # #  - ./ml/uploads:/app/uploads
-  #  - ./log:/app/log
-  # #  develop:
-  # #    watch:
-  # #      - action: sync+restart
-  # #        path: ./ml
-  # #        target: /app
+  ml:
+   build:
+     context: ./ml
+     dockerfile: Dockerfile
+   ports:
+   - "8000:8000"
+   networks:
+   - app-network
+   volumes:
+  #  - ./ml/uploads:/app/uploads
+   - ./log:/app/log
+  #  develop:
+  #    watch:
+  #      - action: sync+restart
+  #        path: ./ml
+  #        target: /app
 
   backend:
     build:
@@ -63,13 +63,13 @@ services:
       - app-network
     # depends_on:
     #   - ml
-#    volumes:
-#      - minio_data:/app/uploads
-    develop:
-      watch:
-        - action: rebuild
-          path: ./backend
-          target: /app
+  #  volumes:
+  #    - minio_data:/app/uploads
+    # develop:
+    #   watch:
+    #     - action: rebuild
+    #       path: ./backend
+    #       target: /app
 
   postgres:
     image: postgres:latest
