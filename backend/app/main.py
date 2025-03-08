@@ -21,6 +21,46 @@ BUCKET_NAME = "bucket"
 s3_client = get_minio_client()
 SyncOrm.create_tables()
 
+@app.post("/signup")
+async def signup(user_data):
+    try:
+        result = SyncOrm.register_user(
+            lastName=user_data.get("lastName"),
+            firstName=user_data.get("firstName"),
+            login=user_data.get("login"),
+            email=user_data.get("email"),
+            password=user_data.get("password")
+        )
+
+        if isinstance(result, str):
+            return {
+                "userData": {
+                    "id": None,
+                    "firstName": None,
+                    "lastName": None,
+                    "email": None,
+                },
+                "error": result,
+            }
+        return {
+            "userData": {
+                "id": result["id"],
+                "firstName": result["firstName"],
+                "lastName": result["lastName"],
+                "email": result["email"],
+            },
+            "error": None,
+        }
+    except Exception as e:
+        return {
+            "userData": {
+                "id": None,
+                "firstName": None,
+                "lastName": None,
+                "email": None,
+            },
+            "error": f"Ошибка при регистрации пользователя: {str(e)}",
+        }
 
 @app.post("/uploadfile")
 async def handle_upload(file: UploadFile = File(...)):

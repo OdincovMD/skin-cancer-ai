@@ -17,13 +17,21 @@ const SignUp = () => {
 
   const togglePasswordVisibility = () => {
     setIsPasswordVisible((prevState) => !prevState);
-}
+  }
+  
+  const handleSubmit = (event) => {
+    event.preventDefault()
+    dispatch(onVerify({firstName: firstName, lastName: lastName, email: email, login: login, password: password}, SIGN_UP))
+    [firstName, email, login, myForm] = [null, null, null, null]
+    setPassword(null)
+    setRepPassword(null)
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-100 p-6">
       <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg">
         <h2 className="mb-6 text-center text-2xl font-semibold text-gray-700">Регистрация</h2>
-        <form className="space-y-4">
+        <form className="space-y-4" onSubmit={handleSubmit}>
 
           <input 
             type="text" 
@@ -96,12 +104,6 @@ const SignUp = () => {
             type="submit" 
             className={`w-full rounded-lg px-4 py-3 text-white font-semibold transition ${"bg-blue-600  hover:bg-blue-700"}`}
             disabled={!(password == repPassword)}
-            onClick={ () => {
-              dispatch(onVerify({firstName: firstName, lastName: lastName, email: email, login: login, password: password}, SIGN_UP))
-              [firstName, email, login, myForm] = [null, null, null, null]
-              setPassword(null)
-              setRepPassword(null)
-          }}
           >
             Зарегестрироваться
           </button>
