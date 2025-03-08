@@ -3,7 +3,7 @@ const defaultUser = {
       id: null,
       firstName: null,
       lastName: null,
-      // email: null,
+      email: null,
       // avatar: null,
     },
     error: null,

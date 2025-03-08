@@ -21,9 +21,9 @@ const Home = () => {
   //   console.log(imageSrc)
   // }, [imageSrc])
 
-  useEffect(() => {
-    console.log(classificationResult)
-  }, [classificationResult])
+  // useEffect(() => {
+  //   console.log(classificationResult)
+  // }, [classificationResult])
 
   const handleChange = async (event) => {
 
@@ -32,7 +32,7 @@ const Home = () => {
     var now = new Date()
     const day = now.getDate() + '-' + (now.getMonth() + 1) + '-' + now.getFullYear()
     const time = now.getHours() + '-' + now.getMinutes() + '-' + now.getSeconds()
-    const user = userInfo.name + '-' + userInfo.surname
+    const user = userInfo.userData.id
     // const filename = fileInfo.name.split(".")[0]
     // const ext = fileInfo.name.split(".").pop()
     const stamp = `${day}_${time}_${user}_${fileInfo.name}`
@@ -97,7 +97,7 @@ const Home = () => {
     </div>
   </div>
 
-  const uploadImage = userInfo.name ?
+  const uploadImage = userInfo.userData.id ?
     <div className="space-y-6 mt-5">
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="flex flex-col items-center justify-center">

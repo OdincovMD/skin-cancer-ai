@@ -51,7 +51,8 @@ const SignUp = () => {
 
           <input 
             type="email" 
-            placeholder="Электронная почта" 
+            placeholder="Электронная почта"
+            pattern="[0-9A-z_\.]+@[A-z]{2,}\.[A-z]+"
             className="w-full rounded-lg border border-gray-300 p-3 outline-blue-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             required
             onChange={(ans) => { email = ans.target.value }}
@@ -96,7 +97,7 @@ const SignUp = () => {
             className={`w-full rounded-lg px-4 py-3 text-white font-semibold transition ${"bg-blue-600  hover:bg-blue-700"}`}
             disabled={!(password == repPassword)}
             onClick={ () => {
-              dispatch(onVerify({firstName: firstName, email: email, login: login, password: password}, SIGN_UP))
+              dispatch(onVerify({firstName: firstName, lastName: lastName, email: email, login: login, password: password}, SIGN_UP))
               [firstName, email, login, myForm] = [null, null, null, null]
               setPassword(null)
               setRepPassword(null)

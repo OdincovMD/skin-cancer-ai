@@ -22,13 +22,13 @@ const Header = ({ toggleSidebar }) => {
         <h1 className="ml-4 text-xl font-bold text-gray-800">Skin</h1>
 
         <div className="ml-auto flex items-center space-x-4">
-          <span className="text-gray-600">{userInfo.name && `${userInfo.name} ${userInfo.surname}`}</span>
-          {userInfo.name && <div className="w-8 h-8 rounded-full bg-gray-300"></div>}
+          <span className="text-gray-600">{userInfo.userData.id && `${userInfo.userData.firstName} ${userInfo.userData.lastName}`}</span>
+          {userInfo.userData.id && <div className="w-8 h-8 rounded-full bg-gray-300"></div>}
           <Link
             to={SIGN_IN}
             className="text-gray-600"
           >
-            <span className="block truncate">{!userInfo.name && `Войдите, чтобы получить доступ к системе`}</span>
+            <span className="block truncate">{!userInfo.userData.id && `Войдите, чтобы получить доступ к системе`}</span>
           </Link>
         </div>
       </div>

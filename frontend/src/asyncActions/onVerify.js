@@ -9,7 +9,7 @@ export const onVerify = async (data, endpoint) => {
         id: null,
         firstName: null,
         lastName: null,
-        // email: null,
+        email: null,
         // avatar: null,
       },
       error: null,
