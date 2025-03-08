@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useState } from 'react'
 import { useDispatch } from "react-redux"
 import { Link } from "react-router-dom"
 
@@ -37,7 +37,7 @@ const SignIn = () => {
             type="password"
             placeholder="Пароль"
             className="w-full rounded-lg border border-gray-300 p-3 outline-blue-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            onChange={(ans) => { setLogin(ans.target.value) }}
+            onChange={(ans) => { setPassword(ans.target.value) }}
           />
 
           <button

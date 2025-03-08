@@ -159,7 +159,7 @@ class SyncOrm:
                 if not user:
                     return "Пользователь не зарегистрирован."
 
-                if password == user.password:
+                if not pwd_context.verify(password, user.password):
                     return "Неверный пароль."
 
                 return {

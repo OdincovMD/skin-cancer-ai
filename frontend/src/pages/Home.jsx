@@ -144,7 +144,7 @@ const Home = () => {
           <div>
             {imageSrc && (
               <button onClick={() => {
-                handleUploadImage(fileData).then((response) => setClassificationResult(response))
+                handleUploadImage({id: userInfo.userData.id, fileData: fileData}).then((response) => setClassificationResult(response))
                 }} className="mt-4 px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors">
                 Обработать изображение
               </button>

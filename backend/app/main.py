@@ -1,9 +1,9 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
 import os
 import requests
-from src.database import UserSignUp
 
+from src.database import UserSignUp, Credentials
 from minio_client import get_minio_client, is_file_in_minio, upload_file_to_minio, create_bucket_if_not_exists
 from src.queries.orm import SyncOrm
 
@@ -17,14 +17,6 @@ app.add_middleware(
 )
 
 BUCKET_NAME = "bucket"
-
-from pydantic import BaseModel
-class UserSignup(BaseModel):
-    firstName: str
-    lastName: str
-    login: str
-    email: str
-    password: str
 
 # Подключение
 s3_client = get_minio_client()
@@ -72,11 +64,11 @@ async def signup(user_data: UserSignUp):
         }
     
 @app.post("/signin")
-async def signin_user(credentials):
+async def signin_user(credentials: Credentials):
     try:
-        result = SyncOrm.signin(
-            login=credentials.get("login"),
-            password=credentials.get("password")
+        result = SyncOrm.signin_user(
+            login=credentials.login,
+            password=credentials.password
         )
 
         if isinstance(result, str):
@@ -112,7 +104,7 @@ async def signin_user(credentials):
         }
 
 @app.post("/uploadfile")
-async def handle_upload(file: UploadFile = File(...)):
+async def handle_upload(user_id: int = Form(), file: UploadFile = File(...)):
 
     upload_dir = "uploads"
     os.makedirs(upload_dir, exist_ok=True)
@@ -131,8 +123,6 @@ async def handle_upload(file: UploadFile = File(...)):
     else:
         # Загружаем файл в MinIO
         upload_file_to_minio(s3_client, BUCKET_NAME, file_path)
-
-    user_id = 1 
 
     try:
         file_id = SyncOrm.get_file_id_by_name(file_name=file_name)

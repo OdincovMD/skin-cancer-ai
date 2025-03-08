@@ -1,9 +1,10 @@
 import { BACKEND_URL } from "../imports/URLS"
 import { UPLOAD_FILE } from "../imports/ENDPOINTS"
 
-export const handleUploadImage = async (fileData) => {
+export const handleUploadImage = async ({id, fileData}) => {
 
     const formData = new FormData()
+    formData.append("user_id", id)
     formData.append("file", fileData)
 
     try {

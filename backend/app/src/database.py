@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from pydantic import BaseModel
+from pydantic import BaseModel as PBaseModel
 
 from src.config import settings
 
@@ -34,10 +34,14 @@ class BaseModel(Base):
 
 # Модель Pydantic для входных данных
 
-class UserSignUp(BaseModel):
+class UserSignUp(PBaseModel):
     lastName: str
     firstName: str
     login: str
     email: str
+    password: str
+
+class Credentials(PBaseModel):
+    login: str
     password: str
 
