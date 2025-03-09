@@ -172,7 +172,7 @@ const Home = () => {
           <h2 className="text-2xl font-bold text-gray-800 mb-4 text">
             Результат классификации
           </h2>
-          <TreeComponent />
+          <TreeComponent classificationResult={classificationResult}/>
         </div>
       </div>
     </div> :
