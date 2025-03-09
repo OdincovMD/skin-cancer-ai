@@ -6,6 +6,8 @@ import { handleUploadImage } from "../asyncActions/handleUploadImage"
 import { useSelector } from "react-redux"
 import TreeComponent from "../components/Tree"
 
+import { getValues } from "../imports/HELPERS"
+
 const Home = () => {
 
   const userInfo = useSelector(state => state.user)
@@ -172,6 +174,7 @@ const Home = () => {
           <h2 className="text-2xl font-bold text-gray-800 mb-4 text">
             Результат классификации
           </h2>
+          <p>{getValues(classificationResult).reduce((accumulator, currentValue) => (accumulator + "->" + currentValue))}</p>
           <TreeComponent classificationResult={classificationResult}/>
         </div>
       </div>
@@ -183,7 +186,7 @@ const Home = () => {
     {info} 
     {uploadImage}
     {result}
-  </div>
+    </div>
   )
 }
 

@@ -8,6 +8,7 @@ import Home from "../pages/Home"
 import SignIn from "../pages/SignIn"
 import SignUp from "../pages/SignUp"
 import About from "../pages/About"
+import Profile from "../pages/Profile"
 
 const App = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
@@ -30,6 +31,7 @@ const App = () => {
             <Route path="/signin" element={<SignIn />} />
             <Route path="/signup" element={<SignUp />} />
             <Route path="/about" element={<About />} />
+            <Route path="/profile" element={<Profile />} />
           </Routes>
         </div>
       </main>

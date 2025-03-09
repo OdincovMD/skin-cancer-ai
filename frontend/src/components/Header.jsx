@@ -3,7 +3,7 @@ import React, { useDebugValue } from "react"
 import { Link } from "react-router-dom"
 import { useDispatch, useSelector } from "react-redux"
 
-import { SIGN_IN } from "../imports/ENDPOINTS"
+import { SIGN_IN, PROFILE } from "../imports/ENDPOINTS"
 import { defaultState } from "../store/userReducer"
 
 const Header = ({ toggleSidebar }) => {
@@ -33,15 +33,21 @@ const Header = ({ toggleSidebar }) => {
             null
           }}
         >
-          <span className="text-gray-600">{userInfo.userData.id && `${userInfo.userData.firstName} ${userInfo.userData.lastName}`}</span>
-          {userInfo.userData.id && <div className="w-8 h-8 rounded-full bg-gray-300"></div>}
-          <Link
-            to={SIGN_IN}
-            className="text-gray-600"
-          >
-            <span className="block truncate">{!userInfo.userData.id && `Войдите, чтобы получить доступ к системе`}</span>
-          </Link>
-
+          { userInfo.userData.id ? (
+              <Link
+                to={PROFILE}
+                className="text-gray-600"
+              >
+                <span className="block truncate">{`${userInfo.userData.firstName} ${userInfo.userData.lastName}`}</span>
+              </Link>
+            ) : (
+              <Link
+                to={SIGN_IN}
+                className="text-gray-600"
+              >
+                <span className="block truncate">{`Войдите, чтобы получить доступ к системе`}</span>
+              </Link>
+          )}
         </div>
       </div>
     </header>
