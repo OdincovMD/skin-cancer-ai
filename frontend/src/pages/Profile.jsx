@@ -52,8 +52,6 @@ const Profile = () => {
     const fileName = file_name.exec(historyResponse["file_name"])
     const result = requestDate ? JSON.parse(historyResponse["result"]) : {}
 
-    console.log(result["detail"])
-
     return ( 
       <ul className="flex flex-row justify-between items-center rounded-lg border border-gray-900 p-3">
         <li 
@@ -114,9 +112,9 @@ const Profile = () => {
 
   const profilePicture = 
     <div className="space-y-6 flex-shrink-0">
-      <div className="bg-white rounded-lg shadow-md p-6 h-full">
+      <div className="bg-white rounded-lg shadow-md p-6 h-[220px]">
         <img
-          src="/images/PP.png"
+          src={userInfo.userData.id == 1 ? "/images/PP.png" : "/images/image.png"}
           alt="Фотография профиля"
           className="rounded-lg object-cover w-full h-full"
         />

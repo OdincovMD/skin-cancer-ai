@@ -12,6 +12,7 @@ const SignUp = () => {
   const userInfo = useSelector(state => state.user)
 
   const [isPasswordVisible, setIsPasswordVisible] = useState(false)
+  const [isHintVisible, setIsHintVisible] = useState(false)
 
   const [firstName, setFirstName] = useState(null)
   const [lastName, setLastName] = useState(null)
@@ -68,7 +69,7 @@ const SignUp = () => {
           <input 
             type="email" 
             placeholder="Электронная почта"
-            pattern="[0-9A-z_\.]+@[A-z]{2,}\.[A-z]+"
+            pattern="[0-9A-z_\.]{1,30}@[A-z\.]{2,20}\.[A-z]+"
             className="w-full rounded-lg border border-gray-300 p-3 outline-blue-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             required
             onChange={(ans) => { setEmail(ans.target.value) }}
@@ -85,6 +86,8 @@ const SignUp = () => {
               pattern="[0-9A-z]{8,}"
               required
               onChange={(ans) => { setPassword( ans.target.value ) }}
+              onFocus={() => { setIsHintVisible(true) }}
+              onBlur={() => { setIsHintVisible(false) }}
             />
             <button 
               type="button"
@@ -93,6 +96,11 @@ const SignUp = () => {
               {isPasswordVisible ? ( <EyeOff size={20} aria-hidden="true" /> ) : ( <Eye size={20} aria-hidden="true" /> )}
             </button>
           </div>
+          { isHintVisible &&
+              <p className="text-gray-400 text-sm">
+                Пароль должен содержать только цифры и буквы латиницы, минимальная длина - 8 символов.
+              </p>
+          }
 
           <input 
             type="password" 

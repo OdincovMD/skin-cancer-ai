@@ -61,6 +61,7 @@ const Home = () => {
       reader.readAsDataURL(fileProcessed)
     }
 
+    setClassificationResult(defaultResult)
   }
 
   const info = 
@@ -161,7 +162,12 @@ const Home = () => {
           </div>
         </div>
         }
-        {imageSrc && !isImageLoading && !classificationResult.final_class &&
+        {classificationResult.hasOwnProperty("detail") &&
+          <p className="text-red-600">
+            {classificationResult.detail}
+          </p>
+        }
+        {(imageSrc && !isImageLoading && !classificationResult.final_class && !classificationResult.hasOwnProperty("detail")) &&
           <div>
             <button 
               onClick={() => {
@@ -213,7 +219,7 @@ const Home = () => {
         <img
           src="/images/loading.gif"
           alt="Процесс загрузки"
-          className="rounded-lg object-cover w-10 h-10"
+          className="rounded-lg object-cover w-8 h-8"
         />
         <div className="font-semibold text-gray-700">
           Подождите, ваше изображение обрабатывается...

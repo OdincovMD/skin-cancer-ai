@@ -44,7 +44,7 @@ const Header = ({ toggleSidebar }) => {
                   </p>
                   <div className="w-8 h-8 rounded-full overflow-hidden inline-block">
                     <img
-                      src="/images/PP.png"
+                      src={userInfo.userData.id == 1 ? "/images/PP.png" : "/images/image.png"}
                       alt="Profile Picture"
                       className="w-full h-full object-cover"
                     />
