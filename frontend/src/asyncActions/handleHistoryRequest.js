@@ -3,6 +3,8 @@ import { GET_HISTORY } from "../imports/ENDPOINTS"
 
 export const handleHistoryRequest = async (user_id) => {
 
+  const data = { user_id: user_id }
+
   try {
     let response = await fetch(`${BACKEND_URL}${GET_HISTORY}`, {
       method: "POST",
@@ -10,7 +12,7 @@ export const handleHistoryRequest = async (user_id) => {
         "Content-type": "application/json",
         "accept": "application/json"
       },
-      body: JSON.stringify(user_id)
+      body: JSON.stringify(data)
     })
 
     if (!response.ok) {

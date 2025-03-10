@@ -4,7 +4,7 @@ import { useDispatch, useSelector  } from "react-redux"
 import { Link, Navigate } from "react-router-dom"
 
 import { HOME, SIGN_IN, SIGN_UP, ABOUT } from "../imports/ENDPOINTS"
-import { defaultState } from "../store/userReducer"
+import { defaultState, noError } from "../store/userReducer"
 
 const Sidebar = ({ isOpen }) => {
 
@@ -14,12 +14,14 @@ const Sidebar = ({ isOpen }) => {
   const pathname = window.location.pathname
 
   const menuItemsLogged = [
+    { text: "О нас", path: ABOUT },
     { text: "Выйти", path: SIGN_IN}
   ]
 
   const menuItemsNotLogged = [
     { text: "Войти", path: SIGN_IN },
     { text: "Регистрация", path: SIGN_UP },
+    { text: "О нас", path: ABOUT },
   ]
 
   const menuItemsShow = userInfo.userData.id ?
@@ -29,7 +31,7 @@ const Sidebar = ({ isOpen }) => {
   const menuItems = [
     { text: "Главная", path: HOME },
     ...menuItemsShow,
-    { text: "О нас", path: ABOUT },
+    ,
   ]
 
   return (
@@ -44,13 +46,13 @@ const Sidebar = ({ isOpen }) => {
               <li 
                 key={index} 
                 onClick={() => {
-                  pathname != item.path ? 
-                  dispatch(defaultState()) : 
-                  null
-                  item.text == "Выйти" ? (
-                    <Navigate to={SIGN_IN}/>
-                  ) : 
-                  null
+                  if (pathname != item.path) { 
+                    dispatch(noError())
+                  }
+                  if (item.text == "Выйти") {
+                    dispatch(defaultState())
+                    return <Navigate to={SIGN_IN}/>
+                  }
                 }}>
                 <Link
                   to={item.path}

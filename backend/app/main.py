@@ -1,5 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
+import json
 import io
 import os
 import requests
@@ -142,7 +143,7 @@ async def handle_upload(user_id: int = Form(), file: UploadFile = Form()):
         status = "error"
         raise HTTPException(status_code=500, detail=f"Ошибка при отправке файла в ML-сервис: {str(e)}")
     
-    SyncOrm.create_classification_request(user_id=user_id, file_id=file_id, status=status, result=str(result) if result else None)
+    SyncOrm.create_classification_request(user_id=user_id, file_id=file_id, status=status, result=json.dumps(result, ensure_ascii=True) if result else None)
     return result
 
 @app.post("/gethistory")

@@ -1,5 +1,6 @@
-import { BACKEND_URL } from "../imports/URLS"
 import { createAsyncThunk } from "@reduxjs/toolkit"
+
+import { BACKEND_URL } from "../imports/URLS"
 
 export const onVerify = createAsyncThunk("user/onVerify", async ({data, endpoint}) => {
 
@@ -11,7 +12,7 @@ export const onVerify = createAsyncThunk("user/onVerify", async ({data, endpoint
         email: null,
         // avatar: null,
       },
-      error: null,
+      error: null
     }
 
     try {
@@ -25,13 +26,13 @@ export const onVerify = createAsyncThunk("user/onVerify", async ({data, endpoint
       })
 
       if (!response.ok) {
-        requestState.error = `Ошибка бэкенда: ${response.status}`
+        requestState.error = response.status
         return requestState
       }
       
       var responseJSON = await response.json()
       if (responseJSON.error) {
-        requestState.error = `Ошибка данных: ${responseJSON.error}`
+        requestState.error = responseJSON.error
         return requestState
       }
 

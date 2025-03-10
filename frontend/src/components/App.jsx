@@ -1,6 +1,8 @@
 // components/App.jsx
 import React, { useState } from "react"
+import { useDispatch, useSelector } from "react-redux"
 import { Routes, Route } from "react-router-dom"
+
 import Header from "./Header.jsx"
 import Sidebar from "./Sidebar.jsx"
 
@@ -10,7 +12,12 @@ import SignUp from "../pages/SignUp"
 import About from "../pages/About"
 import Profile from "../pages/Profile"
 
+
 const App = () => {
+
+  const dispatch = useDispatch()
+  const userInfo = useSelector(state => state.user)
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
 
   const toggleSidebar = () => {
@@ -31,7 +38,7 @@ const App = () => {
             <Route path="/signin" element={<SignIn />} />
             <Route path="/signup" element={<SignUp />} />
             <Route path="/about" element={<About />} />
-            <Route path="/profile" element={<Profile />} />
+            <Route path="/profile" element={userInfo.userData.id ? <Profile /> : <SignIn />} />
           </Routes>
         </div>
       </main>

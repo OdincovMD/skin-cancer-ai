@@ -3,8 +3,6 @@ export const convertToD3Tree = ({node, reference, index}) => {
   const currentKey = reference[index]
   const nextKey = reference[index + 1]
   
-  console.log(node, nextKey)
-  
   const currentLeaf = node[nextKey]
   ? {
     name: currentKey,

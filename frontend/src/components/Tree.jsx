@@ -8,7 +8,7 @@ const renderNode = ({ nodeDatum, toggleNode }) => {
   const toHighlight = (nodeDatum.children && (nodeDatum.children.length > 0)) || nodeDatum.attributes?.final
   const nodeColor = toHighlight ? "#99ff99" : "white"
   const fontWeight = toHighlight ? 600 : 400
-  const textColor = toHighlight ? "black" : "gray"
+  const color = toHighlight ? "black" : "gray"
   const strokeWidth = toHighlight ? "2" : "1"
 
   const textOffsetX = nodeDatum.attributes?.final ? 0 : 0
@@ -33,7 +33,7 @@ const renderNode = ({ nodeDatum, toggleNode }) => {
       fontSize="24"
       strokeWidth={strokeWidth}
       fontWeight={fontWeight}
-      textColor={textColor}
+      color={color}
     >
       {nodeDatum.name}
     </text>
@@ -41,20 +41,21 @@ const renderNode = ({ nodeDatum, toggleNode }) => {
   )
 }
 
-const TreeComponent = (classificationResult) => {
+const TreeComponent = ({classificationResult, displaySize, nodeSize, zoom, translate}) => {
 
   const startingPoint = "Начало"
   const values = [startingPoint, ...getValues(classificationResult)]
   const treeData = convertToD3Tree({node: classificationTree, reference: values, index: 0})
-  
-  console.log(treeData)
 
   return (
-    <div style={{ width: "100%", height: "500px" }}>
+
+    <div style={displaySize}>
       <Tree 
         data={treeData} 
+        zoom={zoom}
+        translate={translate}
         orientation="horizontal"
-        nodeSize={{ x: 300, y: 100 }}
+        nodeSize={nodeSize}
         separation={{ siblings: 2, nonSiblings: 3 }}
         renderCustomNodeElement={renderNode}
       />

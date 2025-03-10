@@ -4,7 +4,7 @@ import { Link } from "react-router-dom"
 import { useDispatch, useSelector } from "react-redux"
 
 import { SIGN_IN, PROFILE } from "../imports/ENDPOINTS"
-import { defaultState } from "../store/userReducer"
+import { defaultState, noError } from "../store/userReducer"
 
 const Header = ({ toggleSidebar }) => {
 
@@ -26,10 +26,10 @@ const Header = ({ toggleSidebar }) => {
         <h1 className="ml-4 text-xl font-bold text-gray-800">Skin</h1>
 
         <div 
-          className="ml-auto flex items-center space-x-4" 
+          className="ml-auto flex flex-row items-center space-x-4" 
           onClick={() => {
             pathname != SIGN_IN ? 
-            dispatch(defaultState()) : 
+            dispatch(noError()) : 
             null
           }}
         >
@@ -38,12 +38,23 @@ const Header = ({ toggleSidebar }) => {
                 to={PROFILE}
                 className="text-gray-600"
               >
-                <span className="block truncate">{`${userInfo.userData.firstName} ${userInfo.userData.lastName}`}</span>
+                <div className="flex flex-row items-center">
+                  <p className="inline-block mr-2 text-gray-900 hover:text-gray-500">
+                    {`${userInfo.userData.firstName}`}
+                  </p>
+                  <div className="w-8 h-8 rounded-full overflow-hidden inline-block">
+                    <img
+                      src="/images/PP.png"
+                      alt="Profile Picture"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                </div>
               </Link>
             ) : (
               <Link
                 to={SIGN_IN}
-                className="text-gray-600"
+                className="text-gray-900 hover:text-gray-500"
               >
                 <span className="block truncate">{`Войдите, чтобы получить доступ к системе`}</span>
               </Link>

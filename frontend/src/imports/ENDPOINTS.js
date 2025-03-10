@@ -5,4 +5,4 @@ export const ABOUT = "/about"
 export const PROFILE = "/profile"
 
 export const UPLOAD_FILE = "/uploadfile"
-expost const GET_HISTORY = "/gethistory"
+export const GET_HISTORY = "/gethistory"
