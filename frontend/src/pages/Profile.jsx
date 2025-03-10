@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { handleHistoryRequest } from "../asyncActions/handleHistoryRequest"
 
-import { getValues } from "../imports/HELPERS"
+import { getValues, mappingInfoRU } from "../imports/HELPERS"
 
 import TreeComponent from "../components/Tree"
 
@@ -10,16 +10,6 @@ const Profile = () => {
   
   const dispatch = useDispatch()
   const userInfo = useSelector(state => state.user)
-
-  const mappingInfo = {
-    firstName: "Имя",
-    lastName: "Фамилия",
-    email: "Электронная почта",
-    request_date: "Дата запроса",
-    file_name: "Файл",
-    status: "Файл был обработан?",
-    result: "Результат классификации"
-  }
 
   // request_date, file_name, status, result
   const [history, setHistory] = useState([])
@@ -30,10 +20,10 @@ const Profile = () => {
 
   const showInfo = (field) => {
     return (
-      mappingInfo[field] ?
+      mappingInfoRU[field] ?
         <div className="flex flex-row justify-start items-center gap-[10px]">
           <div className="rounded-lg border w-[170px] border-gray-300 p-3 outline-blue-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
-            <span className="block truncate">{mappingInfo[field]}</span>
+            <span className="block truncate">{mappingInfoRU[field]}</span>
           </div>
           <div className="rounded-lg border flex-grow border-gray-300 p-3 outline-blue-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
             <span className="block truncate">{userInfo.userData[field]}</span>
@@ -48,9 +38,9 @@ const Profile = () => {
     const data_time = new RegExp("^(?<data>.*)T(?<time>.*)\\..*\\+(?<correction>.*)$")
     const file_name = new RegExp("^(?:.*?_){3}(?<filename>.*)$")
 
-    const requestDate = data_time.exec(historyResponse["request_date"])
-    const fileName = file_name.exec(historyResponse["file_name"])
-    const result = requestDate ? JSON.parse(historyResponse["result"]) : {}
+    const requestDate = data_time.exec(historyResponse.request_date)
+    const fileName = file_name.exec(historyResponse.file_name)
+    const result = requestDate ? JSON.parse(historyResponse.result) : {}
 
     return ( 
       <ul className="flex flex-row justify-between items-center rounded-lg border border-gray-900 p-3">
@@ -61,7 +51,7 @@ const Profile = () => {
           {
             requestDate ? 
             `${requestDate.groups.data}, ${requestDate.groups.time}` :
-            mappingInfo["request_date"]
+            mappingInfoRU.request_date
           }
         </li>
         <li 
@@ -69,9 +59,9 @@ const Profile = () => {
           className="w-[10%] text-center"
         >
           {
-            requestDate ? 
+            fileName ? 
             `${fileName.groups.filename}` :
-            mappingInfo["file_name"]
+            mappingInfoRU.file_name
           }
         </li>
         <li 
@@ -79,7 +69,7 @@ const Profile = () => {
           className="flex flex-col justify-center items-center gap-[10px] w-[55%] text-center"
         > 
           {
-          (historyResponse["status"] == "error") &&
+          (historyResponse.status == "error") &&
           <p className="text-red-600">
             Произошла ошибка со стороны бэкенда. Свяжитесь с администрацией сайта.
           </p>
@@ -101,7 +91,7 @@ const Profile = () => {
             {
               !result.hasOwnProperty("detail") && ((Object.keys(result).length > 0) ?
               <TreeComponent classificationResult={result} displaySize={{width: "100%", height: "300px"}} nodeSize={{x: 300, y: 50}} zoom={0.4} translate={{x: 50, y: 180}}/> :
-              mappingInfo["result"])
+              mappingInfoRU.result)
             }
           </div>
           }
@@ -156,10 +146,10 @@ const Profile = () => {
               onClick={() => {
                 handleHistoryRequest(userInfo.userData.id).then((response) => setHistory([
                   {
-                    request_date: mappingInfo.request_date,
-                    file_name: mappingInfo.file_name,
-                    status: mappingInfo.status,
-                    result: mappingInfo.result,
+                    request_date: mappingInfoRU.request_date,
+                    file_name: mappingInfoRU.file_name,
+                    status: mappingInfoRU.status,
+                    result: mappingInfoRU.result,
                   },
                   ...response
                   ]))

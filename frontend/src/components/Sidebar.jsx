@@ -1,7 +1,7 @@
 // components/Sidebar.jsx
 import React from "react"
 import { useDispatch, useSelector  } from "react-redux"
-import { Link, Navigate } from "react-router-dom"
+import { Link, useNavigate, useLocation } from "react-router-dom"
 
 import { HOME, SIGN_IN, SIGN_UP, ABOUT } from "../imports/ENDPOINTS"
 import { defaultState, noError } from "../store/userReducer"
@@ -10,8 +10,9 @@ const Sidebar = ({ isOpen }) => {
 
   const dispatch = useDispatch()
   const userInfo = useSelector(state => state.user)
+  const navigate = useNavigate()
 
-  const pathname = window.location.pathname
+  const pathname = useLocation()
 
   const menuItemsLogged = [
     { text: "О нас", path: ABOUT },
@@ -45,13 +46,13 @@ const Sidebar = ({ isOpen }) => {
             {menuItems.map((item, index) => (
               <li 
                 key={index} 
-                onClick={() => {
+                onClick={async () => {
                   if (pathname != item.path) { 
                     dispatch(noError())
                   }
                   if (item.text == "Выйти") {
                     dispatch(defaultState())
-                    return <Navigate to={SIGN_IN}/>
+                    navigate(SIGN_IN)
                   }
                 }}>
                 <Link
