@@ -26,4 +26,4 @@ export const handleUploadImage = async ({id, fileData}) => {
       alert(`Ошибка: ${err}`)
       return {result: null}
     }
-  }
+}

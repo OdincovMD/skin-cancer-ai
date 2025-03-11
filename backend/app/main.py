@@ -1,10 +1,11 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
+import json
 import io
 import os
 import requests
 
-from src.database import UserSignUp, Credentials
+from src.database import UserSignUp, Credentials, GetHistoryRequest
 from minio_client import get_minio_client, is_file_in_minio, upload_file_to_minio, create_bucket_if_not_exists
 from src.queries.orm import SyncOrm
 
@@ -142,5 +143,14 @@ async def handle_upload(user_id: int = Form(), file: UploadFile = Form()):
         status = "error"
         raise HTTPException(status_code=500, detail=f"Ошибка при отправке файла в ML-сервис: {str(e)}")
     
-    SyncOrm.create_classification_request(user_id=user_id, file_id=file_id, status=status, result=str(result) if result else None)
+    SyncOrm.create_classification_request(user_id=user_id, file_id=file_id, status=status, result=json.dumps(result, ensure_ascii=True) if result else None)
     return result
+
+@app.post("/gethistory")
+async def get_history(request: GetHistoryRequest):
+    print(request)
+    try:
+        history = SyncOrm.get_classification_requests(request.user_id)
+        return history
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка при получении истории: {str(e)}")

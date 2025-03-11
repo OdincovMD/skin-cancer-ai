@@ -45,3 +45,5 @@ class Credentials(PBaseModel):
     login: str
     password: str
 
+class GetHistoryRequest(PBaseModel):
+    user_id: int
