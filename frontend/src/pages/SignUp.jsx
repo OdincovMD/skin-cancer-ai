@@ -1,38 +1,61 @@
-import React, { useState } from 'react'
-import { useDispatch } from "react-redux"
-import { Link } from "react-router-dom"
-import { Eye, EyeOff} from 'lucide-react'
+import React, { useEffect, useState } from "react"
+import { useDispatch, useSelector } from "react-redux"
+import { Link, useNavigate } from "react-router-dom"
+import { Eye, EyeOff } from "lucide-react"
 
 import { onVerify } from "../asyncActions/onVerify"
-import { SIGN_IN, SIGN_UP } from "../imports/ENDPOINTS"
+import { HOME, SIGN_IN, SIGN_UP } from "../imports/ENDPOINTS"
+import { mappingInfo } from "../imports/HELPERS"
 
 const SignUp = () => {
 
+  const defaultFormState = {
+    firstName: null,
+    lastName: null,
+    login: null,
+    email: null,
+    password: null,
+    repPassword: null
+  }
+
+  const [formState, setFormState] = useState(defaultFormState)
+
   const dispatch = useDispatch()
+  const userInfo = useSelector(state => state.user)
+  const navigate = useNavigate()
 
   const [isPasswordVisible, setIsPasswordVisible] = useState(false)
-
-  const [firstName, setFirstName] = useState(null)
-  const [lastName, setLastName] = useState(null)
-  const [login, setLogin] = useState(null)
-  const [email, setEmail] = useState(null)  
-  const [password, setPassword] = useState(null)
-  const [repPassword, setRepPassword] = useState(null)
+  const [isPasswordValid, setIsPasswordValid] = useState(false)
+  const [arePasswordsSame, setArePasswordsSame] = useState(false)
 
   const togglePasswordVisibility = () => {
-    setIsPasswordVisible((prevState) => !prevState);
+    setIsPasswordVisible((prevState) => !prevState)
   }
   
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault()
-    dispatch(onVerify({ data: { firstName, lastName, email, login, password }, endpoint: SIGN_UP }))
-    setFirstName(null)
-    setLastName(null)
-    setLogin(null)
-    setEmail(null)
-    setPassword(null)
-    setRepPassword(null)
+    event.target.reset()
+
+    dispatch(onVerify({ 
+      data: { 
+        [mappingInfo.FIRST_NAME]: formState.firstName,
+        [mappingInfo.LAST_NAME]: formState.lastName,
+        [mappingInfo.EMAIL]: formState.email,
+        [mappingInfo.LOGIN]: formState.login,
+        [mappingInfo.PASSWORD]: formState.password
+      },
+       endpoint: SIGN_UP 
+    }))
+    setFormState(defaultFormState)
+    userInfo.userData.id && navigate(HOME)
   }
+
+  useEffect(() => {
+
+    formState.password && setIsPasswordValid(formState.password.match(/[0-9A-z]{8,}/)),
+    setArePasswordsSame(formState.password == formState.repPassword)
+
+  }, [formState])
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-100 p-6">
@@ -45,7 +68,7 @@ const SignUp = () => {
             placeholder="Имя" 
             className="w-full rounded-lg border border-gray-300 p-3 outline-blue-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             required
-            onChange={(ans) => { setFirstName(ans.target.value) }}
+            onChange={(ans) => { setFormState({...formState, firstName: ans.target.value}) }}
           />
 
           <input 
@@ -53,7 +76,7 @@ const SignUp = () => {
             placeholder="Фамилия" 
             className="w-full rounded-lg border border-gray-300 p-3 outline-blue-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             required
-            onChange={(ans) => { setLastName(ans.target.value) }}
+            onChange={(ans) => { setFormState({...formState, lastName: ans.target.value}) }}
           />
 
           <input 
@@ -61,16 +84,15 @@ const SignUp = () => {
             placeholder="Логин" 
             className="w-full rounded-lg border border-gray-300 p-3 outline-blue-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             required
-            onChange={(ans) => { setLogin(ans.target.value) }}
+            onChange={(ans) => { setFormState({...formState, login: ans.target.value}) }}
           />
 
           <input 
             type="email" 
             placeholder="Электронная почта"
-            pattern="[0-9A-z_\.]+@[A-z]{2,}\.[A-z]+"
             className="w-full rounded-lg border border-gray-300 p-3 outline-blue-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             required
-            onChange={(ans) => { setEmail(ans.target.value) }}
+            onChange={(ans) => { setFormState({...formState, email: ans.target.value}) }}
           />
           
           <div
@@ -83,7 +105,7 @@ const SignUp = () => {
               className="w-full border-none focus:outline-none"
               pattern="[0-9A-z]{8,}"
               required
-              onChange={(ans) => { setPassword( ans.target.value ) }}
+              onChange={(ans) => { setFormState({...formState, password: ans.target.value}) }}
             />
             <button 
               type="button"
@@ -92,25 +114,44 @@ const SignUp = () => {
               {isPasswordVisible ? ( <EyeOff size={20} aria-hidden="true" /> ) : ( <Eye size={20} aria-hidden="true" /> )}
             </button>
           </div>
+          { formState.password && !isPasswordValid &&
+              <p 
+                className="text-gray-400 text-sm animate-slideIn opacity-0"
+                style={{ "--delay": 0 + "s" }}
+              >
+                Пароль должен содержать только цифры и буквы латиницы, минимальная длина - 8 символов.
+              </p>
+          }
 
           <input 
             type="password" 
             placeholder="Подтвердите пароль" 
             className="w-full rounded-lg border border-gray-300 p-3 outline-blue-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            onChange={(ans) => { setRepPassword( ans.target.value ) }}
+            onChange={(ans) => { setFormState({...formState, repPassword: ans.target.value}) }}
           />
 
-          <p>{(password != repPassword) && 'Пароли не совпадают'}</p>
+          {!arePasswordsSame &&
+            <p
+              className="text-gray-400 animate-slideIn opacity-0"
+              style={{ "--delay": 0 + "s" }}
+            >
+              Пароли не совпадают
+            </p>
+          }
 
-          {/* <div className="flex items-center gap-2">
-            <input id="allowEmail" type="checkbox" className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-            <label htmlFor="allowEmail" className="text-gray-600">I want to join the newsletter</label>
-          </div> */}
+          {userInfo.error &&
+            <div 
+              className="text-red-500 animate-slideIn opacity-0"
+              style={{ "--delay": 0 + "s" }}
+            >
+              {userInfo.error}
+            </div>
+          }
           
           <button 
             type="submit" 
-            className={`w-full rounded-lg px-4 py-3 text-white font-semibold transition ${"bg-blue-600  hover:bg-blue-700"}`}
-            disabled={!(password == repPassword)}
+            className={`w-full rounded-lg px-4 py-3 text-white font-semibold transition bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400`}
+            disabled={!(formState.firstName && formState.lastName && formState.login && formState.email && isPasswordValid && arePasswordsSame)}
           >
             Зарегестрироваться
           </button>
@@ -124,7 +165,6 @@ const SignUp = () => {
               <span className="underline ml-1 transition hover:text-blue-700">{`Вход`}</span>
            </Link>
           </div>
-
         </form>
       </div>
     </div>

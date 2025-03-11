@@ -11,19 +11,78 @@ const defaultUser = {
       // avatar: null,
     },
     error: null,
+    isRememberMeChecked: false,
+    isLoading: false
 }
 
 const userSlice = createSlice({
   name: "user",
   initialState: defaultUser,
-  reducers: {},
+  reducers: {
+    defaultState: (state) => {
+      sessionStorage.removeItem('userInfo')
+      localStorage.removeItem('userInfo')
+      return defaultUser
+    },
+    onPageReload: (state) => {
+      const userInfoSession = sessionStorage.getItem('userInfo')
+
+      const storage = userInfoSession ? sessionStorage : localStorage
+      const userInfo = storage.getItem('userInfo')
+
+      if (userInfo) {
+        const parsedData = JSON.parse(userInfo)
+        state.userData = parsedData.userData
+        state.error = null
+        state.isRememberMeChecked = parsedData.isRememberMeChecked
+        state.isLoading = parsedData.isLoading
+
+        storage.setItem('userInfo', JSON.stringify({
+          userData: state.userData,
+          error: state.error,
+          isRememberMeChecked: state.isRememberMeChecked,
+          isLoading: state.isLoading
+        }))
+      }
+    },
+    toggleRememberMe: (state) => {
+      const oldStorage = state.isRememberMeChecked ? localStorage : sessionStorage
+      const newStorage = state.isRememberMeChecked ? sessionStorage : localStorage
+
+      const userInfo = oldStorage.getItem('userInfo')
+      if (userInfo) {
+        newStorage.setItem('userInfo', userInfo)
+        oldStorage.removeItem('userInfo')
+      }
+
+      state.isRememberMeChecked = !state.isRememberMeChecked
+    },
+    noError: (state) => {
+      return {...state, error: null}
+    }
+  },
   extraReducers: (builder) => {
     builder
+      .addCase(onVerify.pending, (state) => {
+        state.error = null
+        state.isLoading = true
+      })
       .addCase(onVerify.fulfilled, (state, action) => {
-        state.userData = action.payload.userData;
-        state.error = action.payload.error;
+        state.userData = action.payload.userData
+        state.error = action.payload.error
+        state.isLoading = false
+
+        const storage = state.isRememberMeChecked ? localStorage : sessionStorage
+
+        storage.setItem('userInfo', JSON.stringify({
+          userData: state.userData,
+          error: state.error,
+          isRememberMeChecked: state.isRememberMeChecked,
+          isLoading: false
+        }))
       })
   }
 })
 
+export const { defaultState, onPageReload, toggleRememberMe, noError } = userSlice.actions
 export const userReducer = userSlice.reducer
