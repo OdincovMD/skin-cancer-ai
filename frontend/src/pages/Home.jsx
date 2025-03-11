@@ -124,10 +124,20 @@ const Home = () => {
         </h2>
         {!imageSrc &&
           <div>
-            <form>
-                <input type="file" onChange={(event) => { 
-                  handleChange(event)
-                }} />
+            <form className="mt-2">
+                <label
+                  className="relative inline-block"
+                >
+                  <input
+                  type="file"
+                  className="absolute -z-10 opacity-0 block w-0 h-0"
+                  onChange={(event) => { 
+                    handleChange(event)
+                  }} />
+                  <span className="cursor-pointer rounded-lg px-4 py-3 text-white font-semibold transition bg-blue-500 hover:bg-blue-600">
+                    Выберите файл
+                  </span>
+                </label>
             </form>
           </div>
         }
