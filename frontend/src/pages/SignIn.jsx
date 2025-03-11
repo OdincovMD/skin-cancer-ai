@@ -84,7 +84,8 @@ const SignIn = () => {
 
           <button
             type="submit"
-            className="w-full rounded-lg bg-blue-600 px-4 py-3 text-white font-semibold transition hover:bg-blue-700"
+            className="w-full rounded-lg px-4 py-3 text-white font-semibold transition bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400"
+            disabled={!(formState.login && formState.password)}
           >
             Войти
           </button>

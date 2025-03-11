@@ -1,20 +1,13 @@
 // components/App.jsx
 import React, { useEffect, useState } from "react"
 import { useDispatch, useSelector } from "react-redux"
-import { Routes, Route, Navigate } from "react-router-dom"
 
 import { onPageReload } from "../store/userReducer.js"
 
 import Header from "./Header.jsx"
 import Sidebar from "./Sidebar.jsx"
-import Home from "../pages/Home"
-import SignIn from "../pages/SignIn"
-import SignUp from "../pages/SignUp"
-import About from "../pages/About"
-import Profile from "../pages/Profile"
 
-import { SIGN_IN, PROFILE } from "../imports/ENDPOINTS.js"
-
+import AppRoutes from "./Routes.jsx"
 
 const App = () => {
 
@@ -40,25 +33,11 @@ const App = () => {
         ${isSidebarOpen ? "pl-64" : "pl-0"}`}
       >
         <div className="p-6">
-          <Routes path="/" element={<Layout />}>
-            <Route index element={<Home />}/>
-            <Route path="/signin" element={userInfo.userData.id ?  <Navigate to={PROFILE} /> : <SignIn />} />
-            <Route path="/signup" element={userInfo.userData.id ?  <Navigate to={PROFILE} /> : <SignUp />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/profile" element={userInfo.userData.id ? <Profile /> : <Navigate to={SIGN_IN} />}/>
-          </Routes>
+          <AppRoutes />
         </div>
       </main>
     </div>
   )
 }
-
-const Layout = () => {
-  return (
-    <div>
-      <Outlet /> {/* Where nested routes will render */}
-    </div>
-  );
- }
 
 export default App
