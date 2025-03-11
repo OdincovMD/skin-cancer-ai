@@ -150,8 +150,8 @@ const SignUp = () => {
           
           <button 
             type="submit" 
-            className={`w-full rounded-lg px-4 py-3 text-white font-semibold transition bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400`}
-            disabled={!(formState.firstName && formState.lastName && formState.login && formState.email && isPasswordValid && arePasswordsSame)}
+            className="w-full rounded-lg px-4 py-3 text-white font-semibold transition bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400"
+            disabled={!(formState.firstName && formState.lastName && formState.login && formState.email && formState.password && isPasswordValid && arePasswordsSame)}
           >
             Зарегестрироваться
           </button>

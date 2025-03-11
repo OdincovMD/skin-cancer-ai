@@ -22,10 +22,10 @@ const Profile = () => {
     return (
       mappingInfoRU[field] ?
         <div className="flex flex-row justify-start items-center gap-[10px]">
-          <div className="rounded-lg border w-[170px] border-gray-300 p-3 outline-blue-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
-            <span className="block truncate">{mappingInfoRU[field]}</span>
+          <div className="rounded-lg border-none w-[170px] p-3">
+            <span className="block truncate font-semibold">{mappingInfoRU[field]}</span>
           </div>
-          <div className="rounded-lg border flex-grow border-gray-300 p-3 outline-blue-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+          <div className="rounded-lg border flex-grow border-gray-300 p-3">
             <span className="block truncate">{userInfo.userData[field]}</span>
           </div>
         </div> :
@@ -106,7 +106,7 @@ const Profile = () => {
         <img
           src={userInfo.userData.id == 1 ? "/images/PP.png" : "/images/image.png"}
           alt="Фотография профиля"
-          className="rounded-lg object-cover w-full h-full"
+          className="rounded-lg object-cover w-full h-full border border-gray-700"
         />
       </div>
     </div>
