@@ -1,4 +1,4 @@
-import { BACKEND_URL } from "../imports/URLS"
+import { env } from "../imports/ENV"
 import { UPLOAD_FILE } from "../imports/ENDPOINTS"
 
 export const handleUploadImage = async ({id, fileData}) => {
@@ -8,7 +8,7 @@ export const handleUploadImage = async ({id, fileData}) => {
     formData.append("file", fileData)
 
     try {
-      let response = await fetch(`${BACKEND_URL}${UPLOAD_FILE}`, {
+      let response = await fetch(`${env.BACKEND_URL}${UPLOAD_FILE}`, {
         method: 'POST',
         body: formData
       })
