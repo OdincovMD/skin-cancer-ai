@@ -1,6 +1,5 @@
+import { env } from "../imports/ENV"
 import { createAsyncThunk } from "@reduxjs/toolkit"
-
-import { BACKEND_URL } from "../imports/URLS"
 
 export const onVerify = createAsyncThunk("user/onVerify", async ({data, endpoint}) => {
 
@@ -16,7 +15,7 @@ export const onVerify = createAsyncThunk("user/onVerify", async ({data, endpoint
     }
 
     try {
-      let response = await fetch(`${BACKEND_URL}${endpoint}`, {
+      let response = await fetch(`${env.BACKEND_URL}${endpoint}`, {
         method: "POST",
         headers: {
           "Content-type": "application/json",

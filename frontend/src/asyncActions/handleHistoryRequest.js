@@ -1,4 +1,4 @@
-import { BACKEND_URL } from "../imports/URLS"
+import { env } from "../imports/ENV"
 import { GET_HISTORY } from "../imports/ENDPOINTS"
 
 export const handleHistoryRequest = async (user_id) => {
@@ -6,7 +6,7 @@ export const handleHistoryRequest = async (user_id) => {
   const data = { user_id: user_id }
 
   try {
-    let response = await fetch(`${BACKEND_URL}${GET_HISTORY}`, {
+    let response = await fetch(`${env.BACKEND_URL}${GET_HISTORY}`, {
       method: "POST",
       headers: {
         "Content-type": "application/json",

@@ -75,7 +75,7 @@ const Profile = () => {
           </p>
           }
           {
-          result.hasOwnProperty("detail") && 
+          (historyResponse.status != "error") && result.hasOwnProperty("detail") && 
           <p className="text-red-600">
             Произошла ошибка обработки фотографии. Свяжитесь с администрацией сайта.
           </p>
