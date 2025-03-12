@@ -19,6 +19,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+      - BACKEND_URL=${BACKEND_URL}
     environment:
       - NODE_ENV=development
       - WATCHPACK_POLLING=true
@@ -43,7 +45,7 @@ services:
    networks:
    - app-network
    volumes:
-  #  - ./ml/uploads:/app/uploads
+   - ./ml/weight:/app/weight
    - ./log:/app/log
   #  develop:
   #    watch:
@@ -77,9 +79,9 @@ services:
     restart: always
     shm_size: 128mb
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: postgres
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASS}
+      - POSTGRES_DB=${DB_NAME}
     ports:
       - "5432:5432"
     volumes:

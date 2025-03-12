@@ -132,16 +132,15 @@ async def handle_upload(user_id: int = Form(), file: UploadFile = Form()):
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-    url = "http://ml:8000/uploadfile"
+    url = os.getenv("ML_URL") + '/uploadfile'
     files = {"file": (file_name, io.BytesIO(file_content), file.content_type)}
     try:
         response = requests.post(url, files=files)
         result = response.json()
         status = "completed"
     except requests.exceptions.RequestException as e:
-        result = None
         status = "error"
-        raise HTTPException(status_code=500, detail=f"Ошибка при отправке файла в ML-сервис: {str(e)}")
+        result = {"detail": f"Ошибка при отправке файла в ML-сервис"}
     
     SyncOrm.create_classification_request(user_id=user_id, file_id=file_id, status=status, result=json.dumps(result, ensure_ascii=True) if result else None)
     return result
