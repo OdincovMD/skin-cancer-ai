@@ -1,20 +1,21 @@
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { Link, useNavigate } from "react-router-dom"
 import { Eye, EyeOff } from "lucide-react"
 
 import { onVerify } from "../asyncActions/onVerify"
-import { toggleRememberMe } from "../store/userReducer"
 import { HOME, SIGN_IN, SIGN_UP } from "../imports/ENDPOINTS"
 import { mappingInfo } from "../imports/HELPERS"
+import { noError, toggleRememberMe } from "../store/userReducer"
 
 const SignIn = () => {
 
   const defaultFormState = {
-    login: null,
-    password: null,
+    login: "",
+    password: "",
   }
 
+  const [isRequestPending, setIsRequestPending] = useState(false)
   const [formState, setFormState] = useState(defaultFormState)
 
   const dispatch = useDispatch()
@@ -27,18 +28,25 @@ const SignIn = () => {
     setIsPasswordVisible((prevState) => !prevState)
   }
 
+  useEffect(() => {
+    if (!isRequestPending && userInfo.error) {
+      dispatch(noError())
+    }
+  }, [formState])
+
   const handleSubmit = async (event) => {
     event.preventDefault()
-    event.target.reset()
 
+    setIsRequestPending(true)
     dispatch(onVerify({ 
       data: {
         [mappingInfo.LOGIN]: formState.login,
         [mappingInfo.PASSWORD]: formState.password
       },
-        endpoint: SIGN_IN
+      endpoint: SIGN_IN
     }))
-    setFormState(defaultFormState)
+    setIsRequestPending(false)
+
     userInfo.userData.id && navigate(HOME)
   }
 
@@ -46,7 +54,10 @@ const SignIn = () => {
     <div className="flex min-h-screen items-center justify-center bg-gray-100 p-6">
       <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg">
         <h2 className="mb-6 text-center text-2xl font-semibold text-gray-700">Вход в систему</h2>
-        <form className="flex flex-col justify-center items-center space-y-4" onSubmit={handleSubmit}>
+        <form 
+          className="flex flex-col justify-center items-center space-y-4"
+          onSubmit={handleSubmit}
+        >
 
           <input
             type="text"
@@ -85,7 +96,7 @@ const SignIn = () => {
           <button
             type="submit"
             className="w-full rounded-lg px-4 py-3 text-white font-semibold transition bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400"
-            disabled={!(formState.login && formState.password)}
+            disabled={!(formState.login && formState.password) || userInfo.error}
           >
             Войти
           </button>
@@ -107,10 +118,10 @@ const SignIn = () => {
           </div>
 
           <div className="flex flex-row items-center justify-center">
-            <span className="block truncate white">Еще не зарегестрированы?</span>
+            <span className="block truncate white">Еще не зарегистрированы?</span>
             <Link
               to={SIGN_UP}
-              className="text-blue-600"
+              className="text-blue-600 cursor-pointer"
             >
               <span className="underline ml-1 transition hover:text-blue-900">{`Регистрация`}</span>
             </Link>

@@ -6,18 +6,20 @@ import { Eye, EyeOff } from "lucide-react"
 import { onVerify } from "../asyncActions/onVerify"
 import { HOME, SIGN_IN, SIGN_UP } from "../imports/ENDPOINTS"
 import { mappingInfo } from "../imports/HELPERS"
+import { noError } from "../store/userReducer"
 
 const SignUp = () => {
 
   const defaultFormState = {
-    firstName: null,
-    lastName: null,
-    login: null,
-    email: null,
-    password: null,
-    repPassword: null
+    [mappingInfo.FIRST_NAME]: "",
+    [mappingInfo.LAST_NAME]: "",
+    [mappingInfo.LOGIN]: "",
+    [mappingInfo.EMAIL]: "",
+    [mappingInfo.PASSWORD]: "",
+    [mappingInfo.REP_PASSWORD]: ""
   }
 
+  const [isRequestPending, setIsRequestPending] = useState(false)
   const [formState, setFormState] = useState(defaultFormState)
 
   const dispatch = useDispatch()
@@ -31,11 +33,22 @@ const SignUp = () => {
   const togglePasswordVisibility = () => {
     setIsPasswordVisible((prevState) => !prevState)
   }
+
+  useEffect(() => {
+    if (!isRequestPending && userInfo.error) {
+      dispatch(noError())
+    }
+  }, [formState])
+
+  useEffect(() => {
+    console.log(arePasswordsSame, isPasswordValid)
+    console.log(formState)
+  }, [formState])
   
   const handleSubmit = async (event) => {
     event.preventDefault()
-    event.target.reset()
-
+    
+    setIsRequestPending(true)
     dispatch(onVerify({ 
       data: { 
         [mappingInfo.FIRST_NAME]: formState.firstName,
@@ -44,24 +57,26 @@ const SignUp = () => {
         [mappingInfo.LOGIN]: formState.login,
         [mappingInfo.PASSWORD]: formState.password
       },
-       endpoint: SIGN_UP 
+      endpoint: SIGN_UP 
     }))
-    setFormState(defaultFormState)
+    setIsRequestPending(false)
+
     userInfo.userData.id && navigate(HOME)
   }
 
   useEffect(() => {
-
-    formState.password && setIsPasswordValid(formState.password.match(/[0-9A-z]{8,}/)),
+    setIsPasswordValid(formState.password.match(/[0-9A-z]{8,}/))
     setArePasswordsSame(formState.password == formState.repPassword)
-
   }, [formState])
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-100 p-6">
       <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg">
         <h2 className="mb-6 text-center text-2xl font-semibold text-gray-700">Регистрация</h2>
-        <form className="space-y-4" onSubmit={handleSubmit}>
+        <form 
+          className="space-y-4" 
+          onSubmit={handleSubmit}
+        >
 
           <input 
             type="text" 
@@ -153,14 +168,14 @@ const SignUp = () => {
             className="w-full rounded-lg px-4 py-3 text-white font-semibold transition bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400"
             disabled={!(formState.firstName && formState.lastName && formState.login && formState.email && formState.password && isPasswordValid && arePasswordsSame)}
           >
-            Зарегестрироваться
+            Зарегистрироваться
           </button>
 
           <div className="flex flex-row items-center justify-center">
-            <span className="block truncate white">Уже зарегестрированы?</span>
+            <span className="block truncate white">Уже зарегистрированы?</span>
             <Link
               to={SIGN_IN}
-              className="text-blue-600"
+              className="text-blue-600 cursor-pointer"
             >
               <span className="underline ml-1 transition hover:text-blue-700">{`Вход`}</span>
            </Link>

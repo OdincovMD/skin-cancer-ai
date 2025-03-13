@@ -47,11 +47,11 @@ services:
    volumes:
    - ./ml/weight:/app/weight
    - ./log:/app/log
-  #  develop:
-  #    watch:
-  #      - action: sync+restart
-  #        path: ./ml
-  #        target: /app
+   develop:
+     watch:
+       - action: sync
+         path: ./ml
+         target: /app
 
   backend:
     build:
@@ -65,13 +65,11 @@ services:
       - app-network
     # depends_on:
     #   - ml
-  #  volumes:
-  #    - minio_data:/app/uploads
-    # develop:
-    #   watch:
-    #     - action: rebuild
-    #       path: ./backend
-    #       target: /app
+    develop:
+      watch:
+        - action: sync
+          path: ./backend
+          target: /app
 
   postgres:
     image: postgres:latest

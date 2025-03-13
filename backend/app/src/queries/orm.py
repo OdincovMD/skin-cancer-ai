@@ -137,9 +137,9 @@ class SyncOrm:
             except IntegrityError as e:
                 session.rollback()
                 if "ix_users_login" in str(e):
-                    return f"Ошибка: Пользователь с таким логином уже зарегестрирован."
+                    return f"Ошибка: Пользователь с таким логином уже зарегистрирован."
                 elif "ix_users_email" in str(e):
-                    return f"Ошибка: Пользователь с такой почтой уже зарегестрирован."
+                    return f"Ошибка: Пользователь с такой почтой уже зарегистрирован."
                 else:
                     return f"Ошибка при регистрации пользователя: {e}"
             except Exception as e:
