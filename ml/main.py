@@ -7,6 +7,8 @@ from typing import List
 
 import cv2
 from fastapi import FastAPI, File, UploadFile, HTTPException
+from concurrent.futures import ThreadPoolExecutor
+import asyncio
 
 # Локальные модули
 from log import Logger
@@ -276,6 +278,8 @@ classifier = ImageClassifier()
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)  
 
+executor = ThreadPoolExecutor(max_workers=4)
+
 @app.post("/uploadfile")
 async def create_upload_file(file: UploadFile = File(...)):
     file_path = os.path.join(UPLOAD_DIR, file.filename)
@@ -285,7 +289,7 @@ async def create_upload_file(file: UploadFile = File(...)):
             content = await file.read()
             buffer.write(content)
 
-        result = classifier.classify(file_path)
+        result = await asyncio.get_event_loop().run_in_executor(executor, classifier.classify, file_path)
         logger.info(f"Файл {file.filename} успешно обработан: {result}")
         return result.__dict__
 

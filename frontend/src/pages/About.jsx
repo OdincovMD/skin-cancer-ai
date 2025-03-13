@@ -21,7 +21,7 @@ const About = () => {
         <h2 className="text-2xl font-semibold text-gray-700 mt-6 mb-2">Университет</h2>
         <p className="text-gray-600 text-lg mb-6">НИЯУ МИФИ</p>
 
-        <h3 className="italic">
+        <h3 className="italic text-gray-600 text-lg mb-8">
           С полным деревом классификации вы можете ознакомиться по
            <a 
               href="https://miro.com/app/board/uXjVMwEeFQ8=/"
@@ -31,6 +31,16 @@ const About = () => {
               ссылке
            </a>.
         </h3>
+
+        <h4 className="italic text-gray-600">
+          <a
+            href="https://t.me/horokami"
+            target="_blank"
+            className="text-blue-600 underline ml-1 transition hover:text-blue-900"
+          >
+            Не работает?
+          </a>
+        </h4>
       </div>
     </div>
   );

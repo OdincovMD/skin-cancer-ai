@@ -3,7 +3,7 @@ from torchvision.transforms import transforms
 import numpy as np
 from resizeimage import resizeimage
 from PIL import Image
-
+import gc
 
 class CustomNeuralNetResNet(torch.nn.Module):
     """
@@ -72,19 +72,15 @@ def main(img: np.ndarray, mask: np.ndarray) -> str:
     
     img_tensor = transform(img).unsqueeze(0)
 
-    models = []
-    for fold in range(5):
-        model = CustomNeuralNetResNet(2)
-        model.load_state_dict(torch.load(f'weight/one_several_{fold+1}.pth', 
-                                         map_location=torch.device('cpu'))) 
-        models.append(model)
-
     voting = 'soft'
 
     fold_preds = []
     fold_probs = []
 
-    for model in models:
+    for fold in range(5):
+        model = CustomNeuralNetResNet(2)
+        model.load_state_dict(torch.load(f'weight/one_several_{fold+1}.pth', 
+                                         map_location=torch.device('cpu'))) 
         model.eval()
         with torch.no_grad():
             output = model(img_tensor)
@@ -92,6 +88,8 @@ def main(img: np.ndarray, mask: np.ndarray) -> str:
             fold_probs.append(probs.cpu().numpy())  # Для soft voting
             pred_class = probs.argmax(dim=1).cpu().numpy()[0]
             fold_preds.append(pred_class)
+        del model
+        gc.collect()
 
     # Majority voting: выбор класса с наибольшим количеством голосов
     if voting == 'majority':

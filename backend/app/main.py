@@ -4,6 +4,7 @@ import json
 import io
 import os
 import requests
+import httpx
 
 from src.database import UserSignUp, Credentials, GetHistoryRequest
 from minio_client import get_minio_client, is_file_in_minio, upload_file_to_minio, create_bucket_if_not_exists
@@ -135,12 +136,19 @@ async def handle_upload(user_id: int = Form(), file: UploadFile = Form()):
     url = os.getenv("ML_URL") + '/uploadfile'
     files = {"file": (file_name, io.BytesIO(file_content), file.content_type)}
     try:
-        response = requests.post(url, files=files)
-        result = response.json()
-        status = "completed"
-    except requests.exceptions.RequestException as e:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(60.0)) as client:  # Тайм-аут 60 секунд
+            response = await client.post(url, files=files)
+            result = response.json()
+            status = "completed"
+    except httpx.TimeoutException as e:
+        status = "error"
+        result = {"detail": f"Тайм-аут при отправке файла в ML-сервис"}
+    except httpx.RequestError as e:
         status = "error"
         result = {"detail": f"Ошибка при отправке файла в ML-сервис"}
+    except Exception as e:
+        status = "error"
+        result = {"detail": f"Неизвестная ошибка: {str(e)}"}
     
     SyncOrm.create_classification_request(user_id=user_id, file_id=file_id, status=status, result=json.dumps(result, ensure_ascii=True) if result else None)
     return result

@@ -13,10 +13,10 @@ class SyncOrm:
     @staticmethod
     def create_tables():
         """Создание и сброс всех таблиц в базе данных."""
+        # Base.metadata.drop_all(sync_engine)
         table_names = inspect(sync_engine).get_table_names()
         if not table_names:
             Base.metadata.create_all(sync_engine)
-        # Base.metadata.drop_all(sync_engine)
 
     @staticmethod
     def insert_file_record(file_name: str, bucket_name: str):
