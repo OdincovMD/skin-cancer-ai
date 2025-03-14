@@ -11,8 +11,7 @@ const defaultUser = {
       // avatar: null,
     },
     error: null,
-    isRememberMeChecked: false,
-    isLoading: false
+    isRememberMeChecked: false
 }
 
 const userSlice = createSlice({
@@ -35,13 +34,11 @@ const userSlice = createSlice({
         state.userData = parsedData.userData
         state.error = null
         state.isRememberMeChecked = parsedData.isRememberMeChecked
-        state.isLoading = parsedData.isLoading
 
         storage.setItem('userInfo', JSON.stringify({
           userData: state.userData,
           error: state.error,
-          isRememberMeChecked: state.isRememberMeChecked,
-          isLoading: state.isLoading
+          isRememberMeChecked: state.isRememberMeChecked
         }))
       }
     },
@@ -65,12 +62,10 @@ const userSlice = createSlice({
     builder
       .addCase(onVerify.pending, (state) => {
         state.error = null
-        state.isLoading = true
       })
       .addCase(onVerify.fulfilled, (state, action) => {
         state.userData = action.payload.userData
         state.error = action.payload.error
-        state.isLoading = false
 
         const storage = state.isRememberMeChecked ? localStorage : sessionStorage
 
@@ -78,7 +73,6 @@ const userSlice = createSlice({
           userData: state.userData,
           error: state.error,
           isRememberMeChecked: state.isRememberMeChecked,
-          isLoading: false
         }))
       })
   }

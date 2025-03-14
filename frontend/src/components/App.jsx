@@ -14,10 +14,10 @@ const App = () => {
   const dispatch = useDispatch()
   const userInfo = useSelector(state => state.user)
 
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
   useEffect(() => {
-    dispatch(onPageReload()); // Восстанавливаем состояние при загрузке приложения
+    dispatch(onPageReload())
   }, [dispatch]);
 
   const toggleSidebar = () => {

@@ -13,10 +13,10 @@ class SyncOrm:
     @staticmethod
     def create_tables():
         """Создание и сброс всех таблиц в базе данных."""
+        # Base.metadata.drop_all(sync_engine)
         table_names = inspect(sync_engine).get_table_names()
         if not table_names:
             Base.metadata.create_all(sync_engine)
-        # Base.metadata.drop_all(sync_engine)
 
     @staticmethod
     def insert_file_record(file_name: str, bucket_name: str):
@@ -137,9 +137,9 @@ class SyncOrm:
             except IntegrityError as e:
                 session.rollback()
                 if "ix_users_login" in str(e):
-                    return f"Ошибка: Пользователь с таким логином уже зарегестрирован."
+                    return f"Ошибка: Пользователь с таким логином уже зарегистрирован."
                 elif "ix_users_email" in str(e):
-                    return f"Ошибка: Пользователь с такой почтой уже зарегестрирован."
+                    return f"Ошибка: Пользователь с такой почтой уже зарегистрирован."
                 else:
                     return f"Ошибка при регистрации пользователя: {e}"
             except Exception as e:
