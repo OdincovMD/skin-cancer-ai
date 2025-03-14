@@ -3,17 +3,14 @@ services:
     build:
       context: ./nginx
       dockerfile: Dockerfile
+    environment:
+      - HOST=${HOST}
     ports:
-      - "80:80"
+      - "90:80"
     depends_on:
       - frontend
     networks:
       - app-network
-    # develop:
-    #   watch:
-    #     - action: sync+restart
-    #       path: ./nginx/nginx.conf
-    #       target: /etc/nginx/nginx.conf
 
   frontend:
     build:
@@ -47,11 +44,6 @@ services:
    volumes:
    - ./ml/weight:/app/weight
    - ./log:/app/log
-  #  develop:
-  #    watch:
-  #      - action: sync+restart
-  #        path: ./ml
-  #        target: /app
 
   backend:
     build:
@@ -63,16 +55,6 @@ services:
     - "9000:9000"
     networks:
       - app-network
-    # depends_on:
-    #   - ml
-  #  volumes:
-  #    - minio_data:/app/uploads
-    # develop:
-    #   watch:
-    #     - action: rebuild
-    #       path: ./backend
-    #       target: /app
-
   postgres:
     image: postgres:latest
     container_name: postgres
@@ -83,30 +65,11 @@ services:
       - POSTGRES_PASSWORD=${DB_PASS}
       - POSTGRES_DB=${DB_NAME}
     ports:
-      - "5432:5432"
+      - "7178:${DB_PORT}"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - app-network
-    # develop:
-    #   watch:
-    #     - action: sync+restart
-    #       path: ./db
-    #       target: /app
-
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: pgadmin
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@example.com
-      PGADMIN_DEFAULT_PASSWORD: admin
-    ports:
-      - "5050:80"
-    depends_on:
-      - postgres
-    networks:
-      - app-network
-
   minio:
     image: minio/minio
     container_name: minio
@@ -120,14 +83,6 @@ services:
       - "1112:9001"
     volumes:
       - minio_data:/data
-    networks:
-      - app-network
-
-  redis:
-    image: redis
-    container_name: redis
-    ports:
-      - "6379:6379"
     networks:
       - app-network
 

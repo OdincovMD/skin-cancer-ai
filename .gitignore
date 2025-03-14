@@ -9,3 +9,5 @@ node_modules
 log
 uploads
 Full_tree.png
+.env
+start.sh
