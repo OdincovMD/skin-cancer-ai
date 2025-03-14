@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 import json
 import io
 import os
-import requests
 import httpx
 
 from src.database import UserSignUp, Credentials, GetHistoryRequest

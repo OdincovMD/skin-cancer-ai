@@ -1,10 +1,11 @@
 # minio_client.py
 import boto3
+import os
 from botocore.exceptions import ClientError
 
-MINIO_URL = "http://minio:9000"
-MINIO_ACCESS_KEY = "MINIO_ROOT_USER"
-MINIO_SECRET_KEY = "MINIO_ROOT_PASSWORD"
+MINIO_URL = os.getenv("MINIO_URL")
+MINIO_ACCESS_KEY = os.getenv("MINIO_USER")
+MINIO_SECRET_KEY = os.getenv("MINIO_PASSWORD")
 
 # Подключение к MinIO
 def get_minio_client():

@@ -9,6 +9,7 @@ services:
       - "90:80"
     depends_on:
       - frontend
+      - backend
     networks:
       - app-network
 
@@ -23,8 +24,6 @@ services:
       - WATCHPACK_POLLING=true
     networks:
       - app-network
-    depends_on:
-      - backend
     expose:
       - "3000"
     develop:
@@ -37,8 +36,8 @@ services:
    build:
      context: ./ml
      dockerfile: Dockerfile
-   ports:
-   - "8000:8000"
+   expose:
+   - "8000"
    networks:
    - app-network
    volumes:
@@ -51,8 +50,8 @@ services:
       dockerfile: Dockerfile
     env_file:
       - .env
-    ports:
-    - "9000:9000"
+    expose:
+    - "9000"
     networks:
       - app-network
   postgres:
@@ -75,11 +74,12 @@ services:
     container_name: minio
     command: server --console-address ":9001" /data
     environment:
-      MINIO_ROOT_USER: MINIO_ROOT_USER
-      MINIO_ROOT_PASSWORD: MINIO_ROOT_PASSWORD
+      MINIO_ROOT_USER: ${MINIO_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD}
       MINIO_SERVER_URL: "http://0.0.0.0:9000"
+    expose:
+      - "9000"
     ports:
-      - "1111:9000"
       - "1112:9001"
     volumes:
       - minio_data:/data
