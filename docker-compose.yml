@@ -3,6 +3,8 @@ services:
     build:
       context: ./nginx
       dockerfile: Dockerfile
+    environment:
+      - HOST=${HOST}
     ports:
       - "90:80"
     depends_on:
