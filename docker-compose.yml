@@ -6,25 +6,13 @@ services:
     environment:
       - HOST=${HOST}
     ports:
-      - "90:80"
-      - "443:443"
+      - "90:90"  # Правильное пробрасывание порта
     depends_on:
       - frontend
       - backend
-    networks:
-      - app-network
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
       - ./nginx/html:/var/www/html
-      - certbot-etc:/etc/letsencrypt
-  certbot:
-    image: certbot/certbot
-    volumes:
-      - certbot-etc:/etc/letsencrypt
-      - ./nginx/html:/var/www/html
-    command: certonly --webroot --webroot-path=/var/www/html --email ${EMAIL}--agree-tos --no-eff-email -d ${DOMAIN} --keep-until-expiring
-    depends_on:
-      - nginx
     networks:
       - app-network
   frontend:
@@ -106,4 +94,3 @@ networks:
 volumes:
   postgres_data:
   minio_data:
-  certbot-etc:
