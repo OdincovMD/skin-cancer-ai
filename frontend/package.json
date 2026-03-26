@@ -10,10 +10,11 @@
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.0.1",
-    "cssnano": "^7.0.6",
+    "easy-magnify-waft": "^2.0.2",
     "lucide-react": "^0.460.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-d3-tree": "^3.6.6",
     "react-redux": "^9.0.1",
     "react-router-dom": "^6.20.1"
   },

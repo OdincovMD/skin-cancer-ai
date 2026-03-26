@@ -33,7 +33,6 @@ export const getValues = (obj) => {
 
 const snake = ["FIRST_NAME", "LAST_NAME", "LOGIN", "EMAIL",  "PASSWORD", "REP_PASSWORD", "REQUEST_DATE", "FILE_NAME", "STATUS", "RESULT",]
 const camel = ["firstName", "lastName", "login", "email", "password", "repPassword", "request_date", "file_name", "status", "result", ]
-const ru = ["Имя", "Фамилия", "Логин", "Электронная почта", "Пароль", "Повторите пароль", "Дата запроса", "Файл", "Статус", "Результат классификации",]
 
 const combineKeys = (key1, key2) => {
   var result = {}
@@ -46,5 +45,4 @@ const combineKeys = (key1, key2) => {
 }
 
 export const mappingInfo = combineKeys(snake, camel)
-export const mappingInfoRU = combineKeys(camel, ru)
 

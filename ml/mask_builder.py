@@ -135,12 +135,8 @@ def get_prediction(image_path: str) -> np.ndarray:
 
     transformed_image = torch.tensor(image, dtype=torch.float32).unsqueeze(0)
     
-    model = UNet()
-    model.load_state_dict(
-        torch.load("weight/mask_builder_unet.pth", weights_only=True, map_location=torch.device('cpu'))
-        )
-    model.eval()
-    
+    model = _get_unet()
+
     with torch.no_grad():
         output = model(transformed_image)
         pred = torch.sigmoid(output)
@@ -148,6 +144,39 @@ def get_prediction(image_path: str) -> np.ndarray:
         pred = pred.cpu().numpy()[0, 0]  # Convert to numpy, get the first channel
     
     return pred
+
+
+_yolo_model = None
+_unet_model = None
+
+
+def _get_yolo():
+    global _yolo_model
+    if _yolo_model is None:
+        _yolo_model = YOLO("weight/mask_builder_yolo.pt")
+    return _yolo_model
+
+
+def _get_unet() -> UNet:
+    global _unet_model
+    if _unet_model is None:
+        m = UNet()
+        m.load_state_dict(
+            torch.load(
+                "weight/mask_builder_unet.pth",
+                weights_only=True,
+                map_location=torch.device("cpu"),
+            )
+        )
+        m.eval()
+        _unet_model = m
+    return _unet_model
+
+
+def ensure_mask_models_warm() -> None:
+    _get_yolo()
+    _get_unet()
+
 
 def main(path_to_image: str)-> np.ndarray:
     """
@@ -165,9 +194,15 @@ def main(path_to_image: str)-> np.ndarray:
         The segmentation mask resized to the original image dimensions, in the form of a NumPy array.
     """ 
 
-    model = YOLO("weight/mask_builder_yolo.pt")
+    model = _get_yolo()
 
-    results = model(path_to_image, retina_masks=True, save=False, verbose=False)
+    results = model(
+        path_to_image,
+        device="cpu",
+        retina_masks=True,
+        save=False,
+        verbose=False,
+    )
 
     orig_img = results[0].orig_img
     height, width = orig_img.shape[:2]

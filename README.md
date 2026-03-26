@@ -1,152 +1,164 @@
-# Melanoma Detection using Kittler's Method
+# Обнаружение меланомы методом Киттлера
 
-[www.skin-cancer-ai.ru](https://skin-cancer-ai.ru) — Visit the project website for more information and to access the full system.
+[www.skin-cancer-ai.ru](https://skin-cancer-ai.ru) — сайт проекта: описание и доступ к системе.
 
-## Project Description
-This project is designed for the automated recognition of melanoma in dermatoscopic images using Kittler's method. [Kittler's method](https://www.researchgate.net/publication/224895107_Dermatoscopy_of_unpigmented_lesions_of_the_skin_A_new_classification_of_vessel_morphology_based_on_pattern_analysis) is based on analyzing the hierarchical structure of image features, allowing for the construction of a detailed decision tree.
+## Описание проекта
 
-The analysis process begins with image preprocessing, including normalization, noise removal, and segmentation. The models then analyze key morphological features such as the presence and distribution of globules, dots, lines, reticular structures, and other patterns characteristic of melanoma. Based on the detected characteristics, a sequence of decisions is made, represented in the form of a tree. This tree allows the user not only to see the final classification result but also to understand which features were crucial in the diagnostic process.
+Проект предназначен для автоматического распознавания меланомы на дерматоскопических изображениях с использованием метода Киттлера. [Метод Киттлера](https://www.researchgate.net/publication/224895107_Dermatoscopy_of_unpigmented_lesions_of_the_skin_A_new_classification_of_vessel_morphology_based_on_pattern_analysis) опирается на анализ иерархической структуры признаков изображения и позволяет построить подробное дерево решений.
 
-The chosen approach ensures interpretability of the results, which is especially important in medical applications where understanding why a model arrived at a particular conclusion is essential. Thus, this project not only automates the image analysis process but also makes it transparent and explainable for specialists.
+Анализ начинается с предобработки: нормализация, подавление шума, сегментация. Затем модели анализируют ключевые морфологические признаки — глобулы, точки, линии, сетчатые структуры и другие паттерны, характерные для меланомы. По найденным признакам строится цепочка решений в виде дерева. Так пользователь видит не только итоговый класс, но и то, какие признаки повлияли на вывод.
 
-## Project Structure
+Такой подход повышает интерпретируемость результатов — в медицинских задачах важно понимать, почему модель пришла к конкретному заключению. Проект не только автоматизирует анализ, но и делает его прозрачным для специалистов.
 
-### 1. **Backend**
-Implemented in Python and includes:
-- `FastAPI` for the API.
-- `MinIO` for image storage.
-- `SQLAlchemy` for database operations.
-- Docker containerization.
+> **Отказ от ответственности:** это исследовательский инструмент, а не медицинское изделие. Результаты классификации носят информационный характер и не заменяют консультацию врача. Подробнее — [docs/DISCLAIMER.md](docs/DISCLAIMER.md).
 
-#### **Database Structure**
+## Архитектура
 
-The system utilizes a relational database with three primary tables:
+```mermaid
+flowchart LR
+    Browser["Браузер"]
+    NGINX["NGINX :90"]
+    Frontend["Frontend\n(React / Vite)"]
+    Backend["Backend\n(FastAPI)"]
+    Celery["Celery Worker"]
+    ML["ML-сервис\n(YOLO + UNet)"]
+    PG["PostgreSQL"]
+    Redis["Redis"]
+    MinIO["MinIO\n(S3)"]
 
-1. **`users`** – Stores registered user information, including login credentials, email, and registration date.
-2. **`files`** – Contains metadata about uploaded images, such as file name, file path, and storage bucket (MinIO).
-3. **`classification_results`** – Stores image classification results, linking them to both the user and the corresponding file. It also tracks processing status and final diagnostic output.
+    Browser -->|":90"| NGINX
+    NGINX -->|"/"| Frontend
+    NGINX -->|"/backend/"| Backend
+    Backend --> PG
+    Backend --> Redis
+    Backend --> MinIO
+    Backend -->|"задача в очередь"| Celery
+    Celery --> Redis
+    Celery --> PG
+    Celery --> MinIO
+    Celery -->|"POST /uploadfile"| ML
+    ML -->|"JSON классификации"| Celery
+```
 
-#### **Automated Processes:**
-- Each uploaded image is assigned a unique identifier, which is used throughout the classification process.
-- After model inference, the classification result is automatically stored in the database.
-- Users have access to the latest three classification results for easy monitoring.
-- Older results can be automatically archived or deleted to optimize storage.
+### Поток классификации
 
-#### **Image Storage with MinIO**
+1. Пользователь загружает изображение через **`POST /uploadfile`**.
+2. Backend сохраняет метаданные в PostgreSQL, файл — в MinIO, создаёт задание со статусом `pending` и ставит задачу в очередь Celery.
+3. Воркер Celery забирает задачу, скачивает изображение из MinIO, отправляет его в ML-сервис и записывает результат в PostgreSQL.
+4. Frontend опрашивает **`GET /classification-jobs/{job_id}`**, пока статус не станет `completed`, затем отображает дерево решений.
 
-The project uses **MinIO**, a high-performance, S3-compatible object storage solution, to store and manage uploaded dermatoscopic images. 
+Одновременно допускается только одно активное задание на пользователя; повторная загрузка до завершения даёт **429**.
 
-- **Reliability** – Ensures data integrity with built-in redundancy and replication features.
-- **Performance** – Optimized for handling large image files with fast access times.
-- **Compatibility** – Works seamlessly with existing cloud and on-premise infrastructure.
+## Запуск в Docker
 
-MinIO allows the system to securely store, retrieve, and manage images while integrating smoothly with the backend for classification and result tracking.
+1. Скопируйте `.env.example` в `.env` и заполните нужные значения:
 
-### 2. **Frontend**
+   ```bash
+   cp .env.example .env
+   ```
 
-The frontend is built using **React** and provides an intuitive interface for interacting with the melanoma classification system. It includes the following key pages:
+   Минимум: `DB_PASS`, `MINIO_USER`, `MINIO_PASSWORD`, `JWT_SECRET`, `IMAGE_ACCESS_SIGNING_SECRET`. Полный перечень переменных — в [docs/DEPLOY.md](docs/DEPLOY.md).
 
-#### **1. Home Page**
-- Displays an overview of the project, explaining its purpose and methodology.
-- After user registration, the interface unlocks the ability to upload dermatoscopic images for analysis.
-- Users can interactively zoom in on specific parts of an image to examine details before submitting it for classification.
+2. Запустите стек:
 
-![Image alt](frontend/public/images/homepage.png)
+   ```bash
+   docker compose up --build -d
+   ```
 
-#### **2. Classification Results & Decision Tree**
-- After image classification, the system generates and displays a **decision tree**.
-- The predicted path is visually highlighted, helping users understand the classification process.
-- Each node in the tree represents a decision point, allowing users to explore possible classification pathways.
+3. Откройте в браузере `http://localhost:90`.
 
-![Image alt](frontend/public/images/result.png)
+4. Проверьте доступность:
 
-#### **3. Registration & Authorization Pages**
-- **Registration**: Users can create an account by providing basic information such as email, username, and password.
-- **Authorization**: Existing users can log in to access their account, ensuring personalized access to their data and uploaded images.
-- Both pages are user-friendly with clear instructions to ensure a smooth sign-up or login experience.
+   ```bash
+   curl http://localhost:90/backend/health
+   # {"status":"ok"}
+   ```
 
-#### **4. User Account**
-- The **personal account** section allows users to view and manage their profile details, including personal information and image uploads.
-- **Classification History**: Users can see the results of their last three image classifications, displayed with timestamps and the corresponding decision tree visualizations.
-- The system provides an option to download or view detailed reports for each image submitted, helping users track their analysis over time.
+Продакшен, секреты, бэкапы и типичные сбои — в [docs/DEPLOY.md](docs/DEPLOY.md).
 
-![Image alt](frontend/public/images/profile.png)
+## Структура проекта
 
-### 3. **ML Model**
+```
+├── backend/           приложение FastAPI, воркер Celery
+│   └── app/
+│       ├── routers/   auth, classification, health, api_v1
+│       ├── auth/      JWT, API-ключ, зависимости
+│       ├── core/      клиенты Redis, MinIO
+│       ├── services/  классификация, почта, доступ к изображениям
+│       ├── src/       конфиг, БД, модели, ORM
+│       └── workers/   задачи Celery
+├── frontend/          React (Vite), Tailwind CSS
+│   └── src/
+│       ├── pages/     Home, Profile, SignIn, SignUp, ApiDocs, ...
+│       ├── components/
+│       └── imports/   эндпоинты, хелперы, дерево решений
+├── ml/                ML-сервис (FastAPI + YOLO/UNet)
+│   ├── main.py
+│   ├── mask_builder.py
+│   └── weight/        веса моделей (не в git)
+├── nginx/             конфиг обратного прокси NGINX
+├── docs/              документация
+└── docker-compose.yml
+```
 
-This system includes a set of models designed for analyzing structural elements of dermatoscopic images. The models work together to accurately identify patterns and classify various features in the images.
+### Backend
 
-- **YOLO & UNET for Segmentation**: 
-  - **UNET** is used for segmenting the dermatoscopic image to identify key areas of interest (such as lesions, borders, and other structures). 
-  - **YOLO** (You Only Look Once) is employed to detect objects in the segmented images, ensuring that various structures like globules, reticular structures, and streaks are correctly recognized.
+- **FastAPI** — HTTP API: маршруты auth, classification, health, API v1.
+- **PostgreSQL** через SQLAlchemy 2.x async и asyncpg.
+- **Redis** — брокер и бэкенд результатов Celery, ограничение частоты запросов.
+- **Celery** — фоновые задачи классификации.
+- **MinIO** — S3-совместимое хранилище (boto3, path-style, SigV4).
 
-- **Classifiers for Pattern Identification**:
-  - After the segmentation, various classifiers are used to identify specific patterns in the dermatoscopic images, such as:
-    - Dots
-    - Globules
-    - Lines
-    - Other dermoscopic features
-  - These classifiers rely on advanced algorithms, such as decision trees and neural networks, to categorize and label the features accurately.
+### Frontend
 
-#### **Key Files in the Machine Learning Block**
+**React** (Vite), **React Router**, **Redux**, **Tailwind CSS**.
 
-- `ml/main.py`: The main script that handles image analysis. This script coordinates the entire pipeline, from image segmentation using UNET+YOLO to classification using various models and generating the final decision tree.
-  
-- `ml/mask_builder.py`: Responsible for processing the masks generated from UNET+YOLO. This file helps in refining the segmented areas, preparing them for further classification.
-  
-- `ml/weight/`: Directory containing the stored model weights for the neural networks and classifiers. These weights have been trained with high precision to ensure accurate results across various dermatoscopic images.
+- **Главная** — загрузка с лупой, опрос задания, дерево решений.
+- **Профиль** — настройки, история классификаций, превью из хранилища, управление API-ключом.
+- **Документация API** — встроенная страница по HTTP API v1.
 
-- `ml/...`: Different classification models.
+### ML-сервис
 
-#### **Process Flow and Decision Tree**
+- Приложение FastAPI: `POST /uploadfile`, `GET /health`.
+- Конвейер сегментации YOLO + UNet, классификаторы паттернов, дерево Киттлера.
+- `ThreadPoolExecutor` для параллельного инференса.
+- Веса монтируются из `ml/weight/`.
 
-- **Mask Generation**: 
-  - The **mask** is generated using a combination of **UNET** and **YOLO** models. The image is first segmented to identify critical areas, followed by detection of objects or structures within these areas.
-  
-- **Classification with Kitler Algorithm**:
-  - Once the mask is built, the **Kitler algorithm** is applied. This algorithm works by passing the segmented and processed image through multiple classifiers. Each classifier identifies specific patterns, and based on the detected features, the image progresses further down the decision tree.
-  
-- **Decision Tree**:
-  - The classifiers transmit the image data to a decision tree, where each node represents a decision point based on detected features.
-  - The process continues through the decision tree until a final classification is reached.
-  - The entire process is visualized in the form of a decision tree, which can be reviewed at any point for a deeper understanding of the classification pathway.
-  - The complete, implemented decision tree can be accessed via the provided [link](https://miro.com/app/board/uXjVMwEeFQ8=/).
+### NGINX
 
-#### **Parallel Processing & Logging**
+Обратный прокси: `/` → frontend, `/backend/` → FastAPI. Для загрузки изображений задано `client_max_body_size 20M`.
 
-- **Parallel Classification**: 
-  - The machine learning module is designed to handle up to **4 parallel classification requests**. This is achieved by dividing the tasks across multiple threads, enabling faster processing and reducing wait times for users.
-  
-- **Logging**: 
-  - The ML block generates **logs** for all module runs, allowing developers and users to track the performance of each module, understand any issues encountered, and gain insights into the classification process.
-  - These logs are helpful for troubleshooting and ensuring the smooth operation of the entire system.
+## Документация
 
-### 3. **NGINX**
-Used as a reverse proxy server to route requests to the backend and frontend.
+| Документ | Для кого | Содержание |
+|----------|-----------|------------|
+| [docs/DEPLOY.md](docs/DEPLOY.md) | Операторы | Переменные окружения, порты, секреты, бэкапы, неполадки |
+| [docs/API.md](docs/API.md) | Разработчики | Справочник HTTP API (все эндпоинты) |
+| [docs/USER_GUIDE.md](docs/USER_GUIDE.md) | Пользователи | Регистрация, классификация, профиль, API-ключ |
+| [docs/DISCLAIMER.md](docs/DISCLAIMER.md) | Все | Медицинский дисклеймер (RU + EN) |
 
-## **Acknowledgements**
+На фронтенде также есть страница документации API: `/api-docs`.
 
-We would like to extend our heartfelt thanks to all the developers who have contributed to this project. Their expertise, creativity, and dedication have been essential in bringing this project to life. We also want to give special recognition to **[Кегелик Николай Александрович](https://github.com/Horokami)**, who played a key role in setting up and refining the frontend, ensuring a smooth and intuitive user experience.
+## Полезные ссылки
 
+- [UNET - Skin Cancer Segmentation](https://www.kaggle.com/code/mihailodin1/skin-cancer-segmentation-unet) — ноутбук по обучению UNet для сегментации.
+- [Color Classification](https://www.kaggle.com/code/mihailodin1/skin-cancer-color) — ноутбук по цветовой классификации в проекте.
+- [One vs Several - Melanoma Classification](https://www.kaggle.com/code/mihailodin1/one-many-mell-cl) — модель «один против нескольких» в составе дерева решений.
+- [Дерево решений на Miro](https://miro.com/app/board/uXjVMwEeFQ8=/) — полная схема дерева классификации.
 
-## **Useful Links**
+## Благодарности
 
-- [UNET - Skin Cancer Segmentation](https://www.kaggle.com/code/mihailodin1/skin-cancer-segmentation-unet) — Notebook for training the UNET model for skin cancer segmentation.
-- [Color Classification](https://www.kaggle.com/code/mihailodin1/skin-cancer-color) — Notebook for training the color classification model used in our project.
-- [One vs Several - Melanoma Classification](https://www.kaggle.com/code/mihailodin1/one-many-mell-cl) — Notebook for the "One vs Several" melanoma classification model, as part of the decision tree.
+Спасибо всем, кто участвовал в проекте. Отдельно — **[Кегелик Николай Александрович](https://github.com/Horokami)** за настройку и доработку фронтенда.
 
+### Стек технологий
 
-## **Acknowledgements to the Tech Stack**
+- **YOLO** и **PyTorch** — сегментация изображений.
+- **Scikit-learn** — алгоритмы классификации.
+- **FastAPI** — HTTP API.
+- **Docker** и **Docker Compose** — контейнерный запуск.
+- **Celery** и **Redis** — асинхронные задачи.
+- **MinIO** — S3-совместимое объектное хранилище.
 
-We would also like to thank the following technologies and frameworks that helped make this project a success:
-- **YOLO** for their powerful image segmentation capabilities.
-- **PyTorch** for providing flexible and efficient machine learning environments.
-- **Scikit-learn** for implementing various classification algorithms.
-- **FastAPI** for enabling smooth deployment and API management.
-- **Docker** for streamlining the development and deployment process.
+## Лицензия
 
-## **License**
-
-This project is licensed under the **MIT License**. You are free to use, modify, and distribute the code, provided you include the original copyright and license notice in any copies of the software. See the [LICENSE](LICENSE.txt) file for more details.
-
-
+Проект распространяется под лицензией **MIT**. Подробности — в [LICENSE.txt](LICENSE.txt).

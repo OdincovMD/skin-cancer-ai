@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text
+from sqlalchemy import Boolean, Column, Integer, String, DateTime, ForeignKey, Text
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from src.database import Base
@@ -14,6 +14,18 @@ class User(Base):
     email = Column(String, unique=True, index=True)
     password = Column(String)
     created_at = Column(DateTime(timezone=True), default=func.now())
+
+    email_verified = Column(Boolean, nullable=False, default=False)
+    # SHA-256 hex (64) от одноразового токена из письма
+    email_verification_token = Column(String(128), nullable=True)
+    email_verification_expires_at = Column(DateTime(timezone=True), nullable=True)
+    verification_email_last_sent_at = Column(DateTime(timezone=True), nullable=True)
+    # Ключ объекта в MinIO (бакет bucket), например avatars/42/abc.jpg
+    profile_avatar_key = Column(String(512), nullable=True)
+
+    # Долгоживущий ключ для /api/v1 (хранится SHA-256 hex от полного токена)
+    api_token_hash = Column(String(64), nullable=True, unique=True, index=True)
+    api_token_created_at = Column(DateTime(timezone=True), nullable=True)
 
     classification_results = relationship("ClassificationResults", back_populates="user")
 

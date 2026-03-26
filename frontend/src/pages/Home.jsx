@@ -1,246 +1,442 @@
-// pages/Home.jsx
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import ReactImageMagnify from "easy-magnify-waft"
-
-import { handleUploadImage } from "../asyncActions/handleUploadImage"
 import { useSelector } from "react-redux"
-import TreeComponent from "../components/Tree"
+import {
+  Upload,
+  Loader2,
+  Trash2,
+  Play,
+  ShieldCheck,
+  Zap,
+  Clock,
+  Activity,
+  AlertTriangle,
+  ImageIcon,
+  CheckCircle2,
+} from "lucide-react"
 
+import { fetchActiveClassificationJob } from "../asyncActions/fetchActiveClassificationJob"
+import { handleUploadImage } from "../asyncActions/handleUploadImage"
+import {
+  clearPendingJob,
+  pollClassificationJob,
+  savePendingJob,
+} from "../asyncActions/pollClassificationJob"
+import TreeComponent from "../components/Tree"
+import Alert from "../components/ui/Alert"
+import Button from "../components/ui/Button"
+import FeatureCard from "../components/ui/FeatureCard"
+import { env } from "../imports/ENV"
+import { HISTORY_IMAGE, PROFILE, SIGN_IN, SIGN_UP } from "../imports/ENDPOINTS"
 import { getValues } from "../imports/HELPERS"
 
-const Home = () => {
+function displayNameFromStoredFileName(storedName) {
+  if (!storedName) return null
+  const m = /^(?:.*?_){3}(?<filename>.*)$/.exec(storedName)
+  return m?.groups?.filename ?? storedName
+}
 
-  const userInfo = useSelector(state => state.user)
-  const defaultResult = {feature_type: null, structure: null, properties: [], final_class: null}
+const Home = () => {
+  const userInfo = useSelector((state) => state.user)
+  const defaultResult = {
+    feature_type: null,
+    structure: null,
+    properties: [],
+    final_class: null,
+  }
+  const resumeEffectGen = useRef(0)
 
   const [isImageLoading, setIsImageLoading] = useState(false)
+  const [activeJobLabel, setActiveJobLabel] = useState(null)
   const [fileName, setFileName] = useState(null)
-  
   const [fileData, setFileData] = useState(null)
   const [imageSrc, setImageSrc] = useState(null)
   const [classificationResult, setClassificationResult] = useState(defaultResult)
+  const [isDragging, setIsDragging] = useState(false)
+  const [uploadError, setUploadError] = useState(null)
 
-  // useEffect(() => {
-  //   console.log(fileData)
-  // }, [fileData])
+  const isAuthed = Boolean(userInfo.userData?.id && userInfo.accessToken)
+  const isVerified = Boolean(userInfo.emailVerified)
 
-  // useEffect(() => {
-  //   console.log(imageSrc)
-  // }, [imageSrc])
+  useEffect(() => {
+    const uid = userInfo?.userData?.id
+    const token = userInfo?.accessToken
+    if (!uid || !token || !userInfo.emailVerified) return
+    resumeEffectGen.current += 1
+    const gen = resumeEffectGen.current
+    let cancelled = false
 
-  // useEffect(() => {
-  //   console.log(classificationResult)
-  // }, [classificationResult])
-
-  // useEffect(() => {
-  //   console.log(isImageLoading)
-  // }, [isImageLoading])
-
-  const handleChange = async (event) => {
-
-    // Это для чтения информации о файле и подготовки файла к отправке на бэк
-    const fileInfo = event.target.files[0]
-    setFileName(fileInfo.name)
-
-    var now = new Date()
-    const day = now.getDate() + "-" + (now.getMonth() + 1) + "-" + now.getFullYear()
-    const time = now.getHours() + "-" + now.getMinutes() + "-" + now.getSeconds()
-    const user = userInfo.userData.id
-    const stamp = `${day}_${time}_${user}_${fileInfo.name}`
-    const fileProcessed = new File([fileInfo], stamp, {type: fileInfo.type});
-    setFileData(fileProcessed)
-    
-    // Это для отображения изображения на сайте
-    if (fileProcessed && fileProcessed.type.startsWith("image/")) {
-      const reader = new FileReader();
-
-      reader.onload = (e) => {
-        setImageSrc(e.target.result)
+    ;(async () => {
+      try {
+        const active = await fetchActiveClassificationJob(token)
+        if (cancelled || resumeEffectGen.current !== gen) return
+        if (!active) {
+          clearPendingJob(uid)
+          return
+        }
+        savePendingJob(uid, active.job_id)
+        setActiveJobLabel(displayNameFromStoredFileName(active.file_name))
+        setIsImageLoading(true)
+        const polled = await pollClassificationJob({
+          jobId: active.job_id,
+          userId: uid,
+          accessToken: token,
+        })
+        if (cancelled || resumeEffectGen.current !== gen) return
+        setClassificationResult(polled.classification)
+        if (polled.imageToken) {
+          const b = env.BACKEND_URL.replace(/\/$/, "")
+          setImageSrc(
+            `${b}${HISTORY_IMAGE}?token=${encodeURIComponent(polled.imageToken)}`
+          )
+        }
+      } catch (e) {
+        if (!cancelled && resumeEffectGen.current === gen) {
+          setClassificationResult(defaultResult)
+        }
+      } finally {
+        if (!cancelled && resumeEffectGen.current === gen) {
+          setIsImageLoading(false)
+          setActiveJobLabel(null)
+        }
       }
+    })()
 
-      reader.readAsDataURL(fileProcessed)
+    return () => {
+      cancelled = true
     }
+  }, [userInfo?.userData?.id, userInfo?.accessToken, userInfo?.emailVerified])
 
+  const processFile = (file) => {
+    if (!file || !file.type.startsWith("image/")) return
+    setUploadError(null)
+    setFileName(file.name)
+
+    const now = new Date()
+    const day = `${now.getDate()}-${now.getMonth() + 1}-${now.getFullYear()}`
+    const time = `${now.getHours()}-${now.getMinutes()}-${now.getSeconds()}`
+    const stamp = `${day}_${time}_${userInfo.userData.id}_${file.name}`
+    const processed = new File([file], stamp, { type: file.type })
+    setFileData(processed)
+
+    const reader = new FileReader()
+    reader.onload = (e) => setImageSrc(e.target.result)
+    reader.readAsDataURL(processed)
     setClassificationResult(defaultResult)
   }
 
-  const info = 
-  <div className="space-y-6">
-    <div className="bg-white rounded-lg shadow-md p-6">
-      <h2 className="text-2xl font-bold text-gray-800 mb-4">
-        Диагностика новообразований кожи
-      </h2>
-      <div className="grid md:grid-cols-2 gap-6">
-        <div className="space-y-4">
-          <p className="text-gray-600">
-            Наш сервис помогает в ранней диагностике новообразований кожи с использованием
-            современных технологий машинного обучения.
-          </p>
-          <div className="space-y-2">
-            <h3 className="font-semibold text-gray-700">Преимущества ранней диагностики:</h3>
-            <ul className="list-disc list-inside text-gray-600 space-y-1">
-              <li>Раннее выявление потенциальных проблем</li>
-              <li>Быстрая предварительная оценка</li>
-              <li>Возможность своевременного обращения к специалисту</li>
-              <li>Регулярный мониторинг изменений</li>
-            </ul>
-          </div>
-          <p className="mb-auto text-gray-600">
-            Наши классификаторы обучались на изображениях размером 2560х1920.
-            Разрешение изображения, отличное от указанного, <span className="italic">может</span> повлиять на результат распознавания.            
-          </p>
-          <p className="mb-auto text-gray-600">
-            Видимое искажение изображения <span className="italic">не влияет</span> на результаты классификации.       
-          </p>
-        </div>
-        <div className="relative h-64 md:h-auto">
-          <img
-            src="/images/example.jpg"
-            alt="Пример новообразования"
-            className="rounded-lg object-cover w-full h-full"
-          />
-          <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white p-2 rounded-b-lg">
-            <p className="text-sm">
-              Пример новообразования
-            </p>
-          </div>
-        </div>
-      </div>
-      <div className="mt-6 p-4 bg-yellow-50 rounded-lg border border-yellow-100">
-        <p className="text-sm text-yellow-800">
-          <strong>Важно:</strong> Данный сервис не является заменой
-          профессиональной медицинской консультации. При наличии любых сомнений
-          обязательно обратитесь к квалифицированному дерматологу.
-        </p>
-      </div>
-    </div>
-  </div>
+  const handleFileChange = (e) => processFile(e.target.files[0])
 
-  const uploadImage = userInfo.userData.id &&
-    <div className="space-y-6 mt-5">
-      <div className="flex flex-col items-center justify-center bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4 text">
-          Загрузите ваше изображение
-        </h2>
-        {!imageSrc &&
-          <div>
-            <form className="mt-2">
-                <label
-                  className="relative inline-block"
-                >
-                  <input
-                  type="file"
-                  className="absolute -z-10 opacity-0 block w-0 h-0"
-                  onChange={(event) => { 
-                    handleChange(event)
-                  }} />
-                  <span className="cursor-pointer rounded-lg px-4 py-3 text-white font-semibold transition bg-blue-500 hover:bg-blue-600">
-                    Выберите файл
-                  </span>
-                </label>
-            </form>
-          </div>
-        }
-        {imageSrc &&
-        <div className="flex flex-col items-center justify-center">
-            <p className="font-semibold text-gray-700">
-              {`Загруженный файл: ${fileName}`}
-            </p>
-            <div className="flex flex-row items-center justify-center mt-5">
-              <div id="small_image" className="w-1/2 h-auto">
-                  <ReactImageMagnify {...{
-                  smallImage: {
-                      alt: "Загруженное изображение",
-                      isFluidWidth: true,
-                      src: imageSrc,
-                  },
-                  largeImage: {
-                      src: imageSrc,
-                      width: 2560,
-                      height: 1920
-                  },
-                  enlargedImagePortalId: "enlargened_image",
-                  isHintEnabled: true,
-                  shouldHideHintAfterFirstActivation: false,
-                  isActivatedOnTouch: true,
-                  }}/>
-              </div>
-              <div 
-                id="enlargened_image"
-              >
-              </div>
-          </div>
-        </div>
-        }
-        {classificationResult.hasOwnProperty("detail") &&
-          <p className="text-red-600">
-            {classificationResult.detail}
-          </p>
-        }
-        {(imageSrc && !isImageLoading && !classificationResult.final_class && !classificationResult.hasOwnProperty("detail")) &&
-          <div>
-            <button 
-              onClick={() => {
-                setIsImageLoading(true)
-                handleUploadImage({id: userInfo.userData.id, fileData: fileData})
-                  .then((response) => {
-                    setClassificationResult(response)
-                    setIsImageLoading(false)
-                  })      
-              }}
-              className="mt-4 px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
-            >
-              Обработать изображение
-            </button>
-          </div>
-        }
-        {imageSrc && !isImageLoading &&
-          <div>
-            <button 
-              onClick={() => {
-                setClassificationResult(defaultResult)
-                setFileName(null)
-                setImageSrc(null)
-                setFileData(null)
-              }} 
-              className="mt-4 px-6 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors">
-              Удалить изображение
-            </button>
-          </div>
-        }
-      </div>
-    </div>
+  const handleDrop = (e) => {
+    e.preventDefault()
+    setIsDragging(false)
+    processFile(e.dataTransfer.files[0])
+  }
 
-  const result = imageSrc && classificationResult.final_class ?
-    <div className="space-y-6 mt-5">
-      <div className="flex flex-col items-center justify-center bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4 text">
-          Результат классификации
-        </h2>
-        <p className="font-semibold text-gray-700">
-          {getValues(classificationResult).reduce((accumulator, currentValue) => (accumulator + " -> " + currentValue))}
-        </p>
-        <TreeComponent classificationResult={classificationResult} displaySize={{width: "100%", height: "500px"}} nodeSize={{x: 300, y: 50}} zoom={0.6} translate={{x: 300, y: 300}}/>
-      </div>
-    </div> : isImageLoading &&
-    <div className="space-y-6 mt-5">
-      <div className="flex flex-кщц items-center justify-center bg-white rounded-lg shadow-md p-6">
-        <img
-          src="/images/loading.gif"
-          alt="Процесс загрузки"
-          className="rounded-lg object-cover w-8 h-8"
-        />
-        <div className="font-semibold text-gray-700">
-          Подождите, ваше изображение обрабатывается...
-        </div>
-      </div>
-    </div>
+  const handleClassify = () => {
+    setUploadError(null)
+    setIsImageLoading(true)
+    handleUploadImage({
+      id: userInfo.userData.id,
+      fileData,
+      accessToken: userInfo.accessToken,
+    }).then((res) => {
+      setUploadError(res.error)
+      setClassificationResult(res.classification)
+      if (!res.error && res.imageToken) {
+        const b = env.BACKEND_URL.replace(/\/$/, "")
+        setImageSrc(
+          `${b}${HISTORY_IMAGE}?token=${encodeURIComponent(res.imageToken)}`
+        )
+      }
+      setIsImageLoading(false)
+    })
+  }
+
+  const resetImage = () => {
+    setUploadError(null)
+    setClassificationResult(defaultResult)
+    setFileName(null)
+    setImageSrc(null)
+    setFileData(null)
+  }
 
   return (
-    <div>
-    {info} 
-    {uploadImage}
-    {result}
+    <div className="space-y-6">
+      <div className="card-elevated">
+        <div className="flex flex-col lg:flex-row gap-8">
+          <div className="flex-1 space-y-5">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
+                Диагностика новообразований кожи
+              </h1>
+              <p className="mt-2 text-gray-600 leading-relaxed">
+                Наш сервис помогает в ранней диагностике новообразований кожи с
+                использованием современных технологий машинного обучения и метода
+                Киттлера.
+              </p>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FeatureCard
+                icon={ShieldCheck}
+                title="Раннее выявление"
+                text="Обнаружение потенциальных проблем на ранней стадии"
+              />
+              <FeatureCard
+                icon={Zap}
+                title="Быстрый анализ"
+                text="Предварительная оценка изображения за минуты"
+              />
+              <FeatureCard
+                icon={Clock}
+                title="Мониторинг"
+                text="Отслеживание изменений с историей запросов"
+              />
+              <FeatureCard
+                icon={Activity}
+                title="Прозрачность"
+                text="Дерево решений объясняет каждый шаг диагностики"
+              />
+            </div>
+
+            <div className="rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 text-xs text-gray-500 leading-relaxed space-y-1">
+              <p>
+                Классификаторы обучены на изображениях 2560&times;1920.
+                Другие разрешения <em>могут</em> повлиять на точность.
+              </p>
+              <p>
+                Видимое искажение на превью <em>не влияет</em> на результат.
+              </p>
+            </div>
+          </div>
+
+          <div className="relative w-full lg:w-80 flex-shrink-0">
+            <img
+              src="/images/example.jpg"
+              alt="Пример дерматоскопического изображения"
+              className="h-64 w-full rounded-xl object-cover lg:h-full"
+            />
+            <div className="absolute inset-x-0 bottom-0 rounded-b-xl bg-gradient-to-t from-black/60 to-transparent px-4 py-3">
+              <p className="text-xs text-white/90">
+                Пример дерматоскопического изображения
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+        <AlertTriangle
+          size={18}
+          className="mt-0.5 flex-shrink-0 text-amber-600"
+        />
+        <p className="text-sm text-amber-800 leading-relaxed">
+          <strong>Важно:</strong> Сервис не заменяет консультацию врача.
+          При любых сомнениях обязательно обратитесь к квалифицированному
+          дерматологу.
+        </p>
+      </div>
+
+      {!isAuthed && (
+        <div className="card text-center py-10">
+          <ImageIcon size={40} className="mx-auto mb-3 text-gray-300" />
+          <h2 className="text-lg font-semibold text-gray-800">
+            Войдите, чтобы загрузить изображение
+          </h2>
+          <p className="mt-1 text-sm text-gray-500 max-w-md mx-auto">
+            Для использования классификатора необходимо зарегистрироваться и
+            подтвердить адрес электронной почты.
+          </p>
+          <div className="mt-5 flex flex-wrap justify-center gap-3">
+            <Button variant="primary" to={SIGN_IN}>
+              Войти
+            </Button>
+            <Button variant="secondary" to={SIGN_UP}>
+              Регистрация
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {isAuthed && !isVerified && (
+        <div className="card border-amber-200 bg-amber-50 text-center py-8">
+          <AlertTriangle size={32} className="mx-auto mb-3 text-amber-500" />
+          <h2 className="text-lg font-semibold text-amber-900">
+            Подтвердите email
+          </h2>
+          <p className="mt-1 text-sm text-amber-800 max-w-lg mx-auto">
+            Загрузка изображений доступна только после подтверждения почты.
+            Проверьте входящие и папку «Спам» или запросите письмо повторно.
+          </p>
+          <Button
+            variant="primary"
+            to={PROFILE}
+            className="mt-4 bg-amber-700 hover:bg-amber-800 focus-visible:ring-amber-500"
+          >
+            Личный кабинет
+          </Button>
+        </div>
+      )}
+
+      {isAuthed && isVerified && (
+        <div className="card-elevated">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            {imageSrc ? "Загруженное изображение" : "Загрузите изображение"}
+          </h2>
+
+          {!imageSrc && (
+            <label
+              onDragOver={(e) => {
+                e.preventDefault()
+                setIsDragging(true)
+              }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={handleDrop}
+              className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-10 transition-colors
+              ${
+                isDragging
+                  ? "border-med-400 bg-med-50"
+                  : "border-gray-300 bg-gray-50 hover:border-med-400 hover:bg-med-50/50"
+              }`}
+            >
+              <Upload
+                size={36}
+                className={`mb-3 ${
+                  isDragging ? "text-med-500" : "text-gray-400"
+                }`}
+              />
+              <span className="text-sm font-medium text-gray-700">
+                Перетащите файл сюда или нажмите для выбора
+              </span>
+              <span className="mt-1 text-xs text-gray-400">
+                JPG, PNG, WEBP
+              </span>
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleFileChange}
+              />
+            </label>
+          )}
+
+          {imageSrc && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <ImageIcon size={16} className="text-gray-400" />
+                <span className="truncate">{fileName}</span>
+              </div>
+
+              <div className="flex flex-col items-center gap-4 lg:flex-row lg:items-start">
+                <div className="w-full max-w-md">
+                  <ReactImageMagnify
+                    {...{
+                      smallImage: {
+                        alt: "Загруженное изображение",
+                        isFluidWidth: true,
+                        src: imageSrc,
+                      },
+                      largeImage: {
+                        src: imageSrc,
+                        width: 2560,
+                        height: 1920,
+                      },
+                      enlargedImagePortalId: "enlargened_image",
+                      isHintEnabled: true,
+                      shouldHideHintAfterFirstActivation: false,
+                      isActivatedOnTouch: true,
+                    }}
+                  />
+                </div>
+                <div id="enlargened_image" />
+              </div>
+
+              {uploadError && (
+                <Alert variant="error" title="Не удалось выполнить загрузку">
+                  {uploadError}
+                </Alert>
+              )}
+
+              {classificationResult.hasOwnProperty("detail") && (
+                <Alert variant="error" title="Ошибка обработки">
+                  {classificationResult.detail}
+                </Alert>
+              )}
+
+              <div className="flex flex-wrap gap-3">
+                {!isImageLoading &&
+                  !classificationResult.final_class &&
+                  !classificationResult.hasOwnProperty("detail") && (
+                    <Button type="button" onClick={handleClassify}>
+                      <Play size={16} />
+                      Классифицировать
+                    </Button>
+                  )}
+                {!isImageLoading && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={resetImage}
+                  >
+                    <Trash2 size={16} />
+                    Удалить
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {isImageLoading && (
+        <div className="card-elevated flex flex-col items-center py-10 text-center">
+          <Loader2 size={32} className="animate-spin text-med-500 mb-3" />
+          <p className="font-medium text-gray-700">
+            Изображение обрабатывается...
+          </p>
+          {activeJobLabel && (
+            <p className="mt-1.5 text-sm text-gray-500 max-w-md break-words">
+              {activeJobLabel}
+            </p>
+          )}
+          <p className="mt-3 text-xs text-gray-400">
+            Обычно это занимает до 2 минут
+          </p>
+        </div>
+      )}
+
+      {classificationResult.final_class && imageSrc && (
+        <div className="card-elevated space-y-4">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 size={20} className="text-green-500" />
+            <h2 className="text-lg font-semibold text-gray-900">
+              Результат классификации
+            </h2>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {getValues(classificationResult).map((val, i) => (
+              <React.Fragment key={i}>
+                {i > 0 && (
+                  <span className="self-center text-gray-300">&rarr;</span>
+                )}
+                <span className="rounded-full bg-med-50 px-3 py-1 text-sm font-medium text-med-800">
+                  {val}
+                </span>
+              </React.Fragment>
+            ))}
+          </div>
+
+          <TreeComponent
+            classificationResult={classificationResult}
+            displaySize={{ width: "100%", height: "500px" }}
+            nodeSize={{ x: 300, y: 50 }}
+            zoom={0.6}
+            translate={{ x: 300, y: 300 }}
+          />
+        </div>
+      )}
     </div>
   )
 }

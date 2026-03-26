@@ -1,49 +1,58 @@
+import React from "react"
+import { GraduationCap, ExternalLink, MessageCircle, GitBranch } from "lucide-react"
 
-import {React} from "react";
-import {useDispatch, useSelector} from "react-redux"
-import { Link } from "react-router-dom"
+import Button from "../components/ui/Button"
 
 const About = () => {
   return (
-    <div className="min-h-[88vh] flex flex-col items-center justify-center bg-gray-100 p-6">
-      <div className="bg-white shadow-lg rounded-2xl p-8 max-w-2xl text-center">
-        <h1 className="text-3xl font-bold text-gray-800 mb-4">О нас</h1>
-        <p className="text-gray-600 text-lg mb-6">
-          Мы — команда разработчиков, сделавшая этот сайт по распознаванию новообразований кожи.
-        </p>
-        {/* <h2 className="text-2xl font-semibold text-gray-700 mb-2">Разработчики</h2>
-        <ul className="text-gray-600 text-lg">
-        <li>Кегелик Николай Александрович</li> подумать что тут написать
-          <li>Бикулич Глеб Игоревич</li>
-          <li>Хасянов Булат Гаярович</li>
-          <li>Чуканов Тимофей Витальевич</li>
-        </ul>  */}
-        <h2 className="text-2xl font-semibold text-gray-700 mt-6 mb-2">Университет</h2>
-        <p className="text-gray-600 text-lg mb-6">НИЯУ МИФИ</p>
+    <div className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center px-4 py-12">
+      <div className="w-full max-w-lg">
+        <div className="card-elevated text-center space-y-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">О проекте</h1>
+            <p className="mt-2 text-gray-600 leading-relaxed">
+              Мы — команда разработчиков, создавшая сервис автоматической
+              диагностики новообразований кожи с использованием метода Киттлера
+              и современных алгоритмов машинного обучения.
+            </p>
+          </div>
 
-        <h3 className="italic text-gray-600 text-lg mb-8">
-          С полным деревом классификации вы можете ознакомиться по
-           <a 
+          <div className="flex items-center justify-center gap-2 text-gray-700">
+            <GraduationCap size={20} className="text-med-600" />
+            <span className="font-semibold">НИЯУ МИФИ</span>
+          </div>
+
+          <div className="space-y-3">
+            <Button
+              variant="secondary"
               href="https://miro.com/app/board/uXjVMwEeFQ8=/"
-              target="_blank"
-              className="text-blue-600 underline ml-1 transition hover:text-blue-900"
+              external
+              className="w-full !justify-between"
             >
-              ссылке
-           </a>.
-        </h3>
+              <span className="flex items-center gap-2">
+                <GitBranch size={16} />
+                Полное дерево классификации
+              </span>
+              <ExternalLink size={14} className="text-gray-400" />
+            </Button>
 
-        <h4 className="italic text-gray-600">
-          <a
-            href="https://t.me/horokami"
-            target="_blank"
-            className="text-blue-600 underline ml-1 transition hover:text-blue-900"
-          >
-            Не работает?
-          </a>
-        </h4>
+            <Button
+              variant="secondary"
+              href="https://t.me/horokami"
+              external
+              className="w-full !justify-between"
+            >
+              <span className="flex items-center gap-2">
+                <MessageCircle size={16} />
+                Сообщить о проблеме
+              </span>
+              <ExternalLink size={14} className="text-gray-400" />
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
-  );
+  )
 }
 
 export default About

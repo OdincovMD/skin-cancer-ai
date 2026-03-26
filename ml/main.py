@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from typing import List
 
 import cv2
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from concurrent.futures import ThreadPoolExecutor
 import asyncio
@@ -271,14 +273,29 @@ class ImageClassifier:
         return self.final_classes.get(pred, "Неизвестный класс")
 
 
-app = FastAPI()
 classifier = ImageClassifier()
 
-
 UPLOAD_DIR = "uploads"
-os.makedirs(UPLOAD_DIR, exist_ok=True)  
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 executor = ThreadPoolExecutor(max_workers=4)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    from model_warmup import warmup_all
+
+    await asyncio.to_thread(warmup_all)
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
+
+
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+
 
 @app.post("/uploadfile")
 async def create_upload_file(file: UploadFile = File(...)):

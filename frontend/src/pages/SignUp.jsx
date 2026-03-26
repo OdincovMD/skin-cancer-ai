@@ -1,186 +1,294 @@
 import React, { useEffect, useState } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { Link, useNavigate } from "react-router-dom"
-import { Eye, EyeOff } from "lucide-react"
+import {
+  Eye,
+  EyeOff,
+  UserPlus,
+  CheckCircle2,
+  XCircle,
+  Scan,
+} from "lucide-react"
 
+import Alert from "../components/ui/Alert"
+import Button from "../components/ui/Button"
 import { onVerify } from "../asyncActions/onVerify"
-import { HOME, SIGN_IN, SIGN_UP } from "../imports/ENDPOINTS"
+import { SIGN_IN, SIGN_UP, PROFILE } from "../imports/ENDPOINTS"
 import { mappingInfo } from "../imports/HELPERS"
 import { noError } from "../store/userReducer"
 
-const SignUp = () => {
+const PasswordHint = ({ ok, text }) => (
+  <li className="flex items-center gap-1.5 text-xs">
+    {ok ? (
+      <CheckCircle2 size={14} className="text-green-500 flex-shrink-0" />
+    ) : (
+      <XCircle size={14} className="text-gray-300 flex-shrink-0" />
+    )}
+    <span className={ok ? "text-green-700" : "text-gray-500"}>{text}</span>
+  </li>
+)
 
+const SignUp = () => {
   const defaultFormState = {
     [mappingInfo.FIRST_NAME]: "",
     [mappingInfo.LAST_NAME]: "",
     [mappingInfo.LOGIN]: "",
     [mappingInfo.EMAIL]: "",
     [mappingInfo.PASSWORD]: "",
-    [mappingInfo.REP_PASSWORD]: ""
+    [mappingInfo.REP_PASSWORD]: "",
   }
 
   const [isRequestPending, setIsRequestPending] = useState(false)
   const [formState, setFormState] = useState(defaultFormState)
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false)
 
   const dispatch = useDispatch()
-  const userInfo = useSelector(state => state.user)
   const navigate = useNavigate()
-
-  const [isPasswordVisible, setIsPasswordVisible] = useState(false)
-  const [isPasswordValid, setIsPasswordValid] = useState(false)
-  const [arePasswordsSame, setArePasswordsSame] = useState(false)
-
-  const togglePasswordVisibility = () => {
-    setIsPasswordVisible((prevState) => !prevState)
-  }
+  const userInfo = useSelector((state) => state.user)
 
   useEffect(() => {
-    if (!isRequestPending && userInfo.error) {
-      dispatch(noError())
-    }
+    if (!isRequestPending && userInfo.error) dispatch(noError())
   }, [formState])
 
-  useEffect(() => {
-    console.log(arePasswordsSame, isPasswordValid)
-    console.log(formState)
-  }, [formState])
-  
-  const handleSubmit = async (event) => {
-    event.preventDefault()
-    
+  const pwdLenOk = formState.password.length >= 8
+  const pwdCharsOk = /^[0-9A-Za-z]+$/.test(formState.password)
+  const isPasswordValid = pwdLenOk && pwdCharsOk
+  const arePasswordsSame =
+    formState.password === formState.repPassword &&
+    formState.repPassword.length > 0
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
     setIsRequestPending(true)
-    dispatch(onVerify({ 
-      data: { 
-        [mappingInfo.FIRST_NAME]: formState.firstName,
-        [mappingInfo.LAST_NAME]: formState.lastName,
-        [mappingInfo.EMAIL]: formState.email,
-        [mappingInfo.LOGIN]: formState.login,
-        [mappingInfo.PASSWORD]: formState.password
-      },
-      endpoint: SIGN_UP 
-    }))
-    setIsRequestPending(false)
+    try {
+      const outcome = await dispatch(
+        onVerify({
+          data: {
+            [mappingInfo.FIRST_NAME]: formState.firstName,
+            [mappingInfo.LAST_NAME]: formState.lastName,
+            [mappingInfo.EMAIL]: formState.email,
+            [mappingInfo.LOGIN]: formState.login,
+            [mappingInfo.PASSWORD]: formState.password,
+          },
+          endpoint: SIGN_UP,
+        })
+      ).unwrap()
 
-    userInfo.userData.id && navigate(HOME)
+      if (!outcome.error && outcome.accessToken) {
+        navigate(PROFILE, { replace: true })
+      }
+    } finally {
+      setIsRequestPending(false)
+    }
   }
 
-  useEffect(() => {
-    setIsPasswordValid(formState.password.match(/[0-9A-z]{8,}/))
-    setArePasswordsSame(formState.password == formState.repPassword)
-  }, [formState])
+  const allFieldsFilled =
+    formState.firstName &&
+    formState.lastName &&
+    formState.login &&
+    formState.email &&
+    formState.password
+
+  const canSubmit =
+    !isRequestPending &&
+    allFieldsFilled &&
+    isPasswordValid &&
+    arePasswordsSame
+
+  const set = (field) => (e) =>
+    setFormState({ ...formState, [field]: e.target.value })
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100 p-6">
-      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg">
-        <h2 className="mb-6 text-center text-2xl font-semibold text-gray-700">Регистрация</h2>
-        <form 
-          className="space-y-4" 
-          onSubmit={handleSubmit}
-        >
-
-          <input 
-            type="text" 
-            placeholder="Имя" 
-            className="w-full rounded-lg border border-gray-300 p-3 outline-blue-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            required
-            onChange={(ans) => { setFormState({...formState, firstName: ans.target.value}) }}
-          />
-
-          <input 
-            type="text" 
-            placeholder="Фамилия" 
-            className="w-full rounded-lg border border-gray-300 p-3 outline-blue-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            required
-            onChange={(ans) => { setFormState({...formState, lastName: ans.target.value}) }}
-          />
-
-          <input 
-            type="text" 
-            placeholder="Логин" 
-            className="w-full rounded-lg border border-gray-300 p-3 outline-blue-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            required
-            onChange={(ans) => { setFormState({...formState, login: ans.target.value}) }}
-          />
-
-          <input 
-            type="email" 
-            placeholder="Электронная почта"
-            className="w-full rounded-lg border border-gray-300 p-3 outline-blue-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            required
-            onChange={(ans) => { setFormState({...formState, email: ans.target.value}) }}
-          />
-          
-          <div
-            className="flex flex-row w-full rounded-lg border border-gray-300 p-3 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500"
-          >
-            <input 
-              type={isPasswordVisible ? "text" : "password"}
-              placeholder="Пароль" 
-              id="password-input"
-              className="w-full border-none focus:outline-none"
-              pattern="[0-9A-z]{8,}"
-              required
-              onChange={(ans) => { setFormState({...formState, password: ans.target.value}) }}
-            />
-            <button 
-              type="button"
-              title={isPasswordVisible ? "Скрыть пароль" : "Показать пароль"}
-              className="cursor-pointer text-gray-400 rounded-e-md focus:outline-none focus-visible:text-blue-500 hover:text-blue-500 transition-colors" onClick={togglePasswordVisibility} aria-label={isPasswordVisible ? "Hide password" : "Show password"} aria-pressed={isPasswordVisible} aria-controls="password" >
-              {isPasswordVisible ? ( <EyeOff size={20} aria-hidden="true" /> ) : ( <Eye size={20} aria-hidden="true" /> )}
-            </button>
+    <div className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center px-4 py-12">
+      <div className="w-full max-w-md">
+        <div className="mb-8 flex flex-col items-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-med-600 text-white mb-4">
+            <Scan size={24} />
           </div>
-          { formState.password && !isPasswordValid &&
-              <p 
-                className="text-gray-400 text-sm animate-slideIn opacity-0"
-                style={{ "--delay": 0 + "s" }}
-              >
-                Пароль должен содержать только цифры и буквы латиницы, минимальная длина - 8 символов.
-              </p>
-          }
+          <h1 className="text-2xl font-bold text-gray-900">
+            Создание аккаунта
+          </h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Заполните данные для регистрации в системе
+          </p>
+        </div>
 
-          <input 
-            type="password" 
-            placeholder="Подтвердите пароль" 
-            className="w-full rounded-lg border border-gray-300 p-3 outline-blue-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            onChange={(ans) => { setFormState({...formState, repPassword: ans.target.value}) }}
-          />
+        <div className="card-elevated space-y-6">
+          <form className="space-y-6" onSubmit={handleSubmit}>
+            <fieldset className="space-y-4">
+              <legend className="text-sm font-semibold text-gray-800 pb-2 border-b border-gray-100 w-full">
+                Личные данные
+              </legend>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="firstName" className="input-label">
+                    Имя
+                  </label>
+                  <input
+                    id="firstName"
+                    type="text"
+                    autoComplete="given-name"
+                    placeholder="Иван"
+                    required
+                    className="input-field"
+                    value={formState.firstName}
+                    onChange={set("firstName")}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="lastName" className="input-label">
+                    Фамилия
+                  </label>
+                  <input
+                    id="lastName"
+                    type="text"
+                    autoComplete="family-name"
+                    placeholder="Иванов"
+                    required
+                    className="input-field"
+                    value={formState.lastName}
+                    onChange={set("lastName")}
+                  />
+                </div>
+              </div>
+              <div>
+                <label htmlFor="email" className="input-label">
+                  Электронная почта
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="ivanov@example.com"
+                  required
+                  className="input-field"
+                  value={formState.email}
+                  onChange={set("email")}
+                />
+              </div>
+            </fieldset>
 
-          {!arePasswordsSame &&
-            <p
-              className="text-gray-400 animate-slideIn opacity-0"
-              style={{ "--delay": 0 + "s" }}
-            >
-              Пароли не совпадают
-            </p>
-          }
+            <fieldset className="space-y-4">
+              <legend className="text-sm font-semibold text-gray-800 pb-2 border-b border-gray-100 w-full">
+                Данные аккаунта
+              </legend>
+              <div>
+                <label htmlFor="login" className="input-label">
+                  Логин
+                </label>
+                <input
+                  id="login"
+                  type="text"
+                  autoComplete="username"
+                  placeholder="ivanov_doctor"
+                  required
+                  className="input-field"
+                  value={formState.login}
+                  onChange={set("login")}
+                />
+              </div>
 
-          {userInfo.error &&
-            <div 
-              className="text-red-500 animate-slideIn opacity-0"
-              style={{ "--delay": 0 + "s" }}
-            >
-              {userInfo.error}
-            </div>
-          }
-          
-          <button 
-            type="submit" 
-            className="w-full rounded-lg px-4 py-3 text-white font-semibold transition bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400"
-            disabled={!(formState.firstName && formState.lastName && formState.login && formState.email && formState.password && isPasswordValid && arePasswordsSame)}
-          >
-            Зарегистрироваться
-          </button>
+              <div>
+                <label htmlFor="reg-password" className="input-label">
+                  Пароль
+                </label>
+                <div className="relative">
+                  <input
+                    id="reg-password"
+                    type={isPasswordVisible ? "text" : "password"}
+                    autoComplete="new-password"
+                    placeholder="Минимум 8 символов"
+                    required
+                    className="input-field pr-10"
+                    value={formState.password}
+                    onChange={set("password")}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setIsPasswordVisible((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    aria-label={
+                      isPasswordVisible ? "Скрыть пароль" : "Показать пароль"
+                    }
+                  >
+                    {isPasswordVisible ? (
+                      <EyeOff size={18} />
+                    ) : (
+                      <Eye size={18} />
+                    )}
+                  </button>
+                </div>
 
-          <div className="flex flex-row items-center justify-center">
-            <span className="block truncate white">Уже зарегистрированы?</span>
-            <Link
-              to={SIGN_IN}
-              className="text-blue-600 cursor-pointer"
-            >
-              <span className="underline ml-1 transition hover:text-blue-700">{`Вход`}</span>
-           </Link>
-          </div>
-        </form>
+                {formState.password && (
+                  <ul className="mt-2 space-y-1">
+                    <PasswordHint
+                      ok={pwdLenOk}
+                      text="Не менее 8 символов"
+                    />
+                    <PasswordHint
+                      ok={pwdCharsOk}
+                      text="Только латинские буквы и цифры"
+                    />
+                  </ul>
+                )}
+              </div>
+
+              <div>
+                <label htmlFor="reg-password-confirm" className="input-label">
+                  Подтверждение пароля
+                </label>
+                <input
+                  id="reg-password-confirm"
+                  type="password"
+                  autoComplete="new-password"
+                  placeholder="Повторите пароль"
+                  className="input-field"
+                  value={formState.repPassword}
+                  onChange={set("repPassword")}
+                />
+                {formState.repPassword && !arePasswordsSame && (
+                  <p className="mt-1.5 flex items-center gap-1.5 text-xs text-red-600">
+                    <XCircle size={14} className="flex-shrink-0" />
+                    Пароли не совпадают
+                  </p>
+                )}
+                {arePasswordsSame && (
+                  <p className="mt-1.5 flex items-center gap-1.5 text-xs text-green-600">
+                    <CheckCircle2 size={14} className="flex-shrink-0" />
+                    Пароли совпадают
+                  </p>
+                )}
+              </div>
+            </fieldset>
+
+            {userInfo.error && (
+              <Alert variant="error" className="animate-slideIn">
+                {userInfo.error}
+              </Alert>
+            )}
+
+            <Button type="submit" disabled={!canSubmit} className="w-full">
+              {isRequestPending ? (
+                <>
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  Регистрация...
+                </>
+              ) : (
+                <>
+                  <UserPlus size={18} />
+                  Зарегистрироваться
+                </>
+              )}
+            </Button>
+          </form>
+        </div>
+
+        <p className="mt-6 text-center text-sm text-gray-500">
+          Уже есть аккаунт?{" "}
+          <Link to={SIGN_IN} className="text-link">
+            Войти
+          </Link>
+        </p>
       </div>
     </div>
   )
