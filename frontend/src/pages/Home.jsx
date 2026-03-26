@@ -1,19 +1,35 @@
 // pages/Home.jsx
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import ReactImageMagnify from "easy-magnify-waft"
 
+import { fetchActiveClassificationJob } from "../asyncActions/fetchActiveClassificationJob"
 import { handleUploadImage } from "../asyncActions/handleUploadImage"
+import {
+  clearPendingJob,
+  pollClassificationJob,
+  savePendingJob,
+} from "../asyncActions/pollClassificationJob"
 import { useSelector } from "react-redux"
 import TreeComponent from "../components/Tree"
 
+import { env } from "../imports/ENV"
+import { HISTORY_IMAGE } from "../imports/ENDPOINTS"
 import { getValues } from "../imports/HELPERS"
+
+function displayNameFromStoredFileName(storedName) {
+  if (!storedName) return null
+  const m = /^(?:.*?_){3}(?<filename>.*)$/.exec(storedName)
+  return m?.groups?.filename ?? storedName
+}
 
 const Home = () => {
 
   const userInfo = useSelector(state => state.user)
   const defaultResult = {feature_type: null, structure: null, properties: [], final_class: null}
+  const resumeEffectGen = useRef(0)
 
   const [isImageLoading, setIsImageLoading] = useState(false)
+  const [activeJobLabel, setActiveJobLabel] = useState(null)
   const [fileName, setFileName] = useState(null)
   
   const [fileData, setFileData] = useState(null)
@@ -35,6 +51,54 @@ const Home = () => {
   // useEffect(() => {
   //   console.log(isImageLoading)
   // }, [isImageLoading])
+
+  useEffect(() => {
+    const uid = userInfo?.userData?.id
+    if (!uid) return
+    resumeEffectGen.current += 1
+    const gen = resumeEffectGen.current
+    let cancelled = false
+
+    ;(async () => {
+      try {
+        const active = await fetchActiveClassificationJob(uid)
+        if (cancelled || resumeEffectGen.current !== gen) return
+        if (!active) {
+          clearPendingJob(uid)
+          return
+        }
+        savePendingJob(uid, active.job_id)
+        setActiveJobLabel(displayNameFromStoredFileName(active.file_name))
+        setIsImageLoading(true)
+        const polled = await pollClassificationJob({
+          jobId: active.job_id,
+          userId: uid,
+        })
+        if (cancelled || resumeEffectGen.current !== gen) return
+        setClassificationResult(polled.classification)
+        if (polled.imageToken) {
+          const b = env.BACKEND_URL.replace(/\/$/, "")
+          setImageSrc(
+            `${b}${HISTORY_IMAGE}?token=${encodeURIComponent(polled.imageToken)}`
+          )
+        }
+      } catch (e) {
+        if (!cancelled && resumeEffectGen.current === gen) {
+          alert(String(e.message || e))
+          setClassificationResult(defaultResult)
+        }
+      } finally {
+        if (!cancelled && resumeEffectGen.current === gen) {
+          setIsImageLoading(false)
+          setActiveJobLabel(null)
+        }
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [userInfo?.userData?.id])
 
   const handleChange = async (event) => {
 
@@ -184,9 +248,28 @@ const Home = () => {
                 setIsImageLoading(true)
                 handleUploadImage({id: userInfo.userData.id, fileData: fileData})
                   .then((response) => {
-                    setClassificationResult(response)
+                    if (
+                      response &&
+                      typeof response === "object" &&
+                      Object.prototype.hasOwnProperty.call(
+                        response,
+                        "classification"
+                      )
+                    ) {
+                      setClassificationResult(response.classification)
+                      if (response.imageToken) {
+                        const b = env.BACKEND_URL.replace(/\/$/, "")
+                        setImageSrc(
+                          `${b}${HISTORY_IMAGE}?token=${encodeURIComponent(
+                            response.imageToken
+                          )}`
+                        )
+                      }
+                    } else {
+                      setClassificationResult(response)
+                    }
                     setIsImageLoading(false)
-                  })      
+                  })
               }}
               className="mt-4 px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
             >
@@ -211,7 +294,7 @@ const Home = () => {
       </div>
     </div>
 
-  const result = imageSrc && classificationResult.final_class ?
+  const result = classificationResult.final_class && imageSrc ?
     <div className="space-y-6 mt-5">
       <div className="flex flex-col items-center justify-center bg-white rounded-lg shadow-md p-6">
         <h2 className="text-2xl font-bold text-gray-800 mb-4 text">
@@ -222,9 +305,9 @@ const Home = () => {
         </p>
         <TreeComponent classificationResult={classificationResult} displaySize={{width: "100%", height: "500px"}} nodeSize={{x: 300, y: 50}} zoom={0.6} translate={{x: 300, y: 300}}/>
       </div>
-    </div> : isImageLoading &&
+    </div> : isImageLoading ?
     <div className="space-y-6 mt-5">
-      <div className="flex flex-кщц items-center justify-center bg-white rounded-lg shadow-md p-6">
+      <div className="flex flex-col items-center justify-center bg-white rounded-lg shadow-md p-6">
         <img
           src="/images/loading.gif"
           alt="Процесс загрузки"
@@ -233,8 +316,13 @@ const Home = () => {
         <div className="font-semibold text-gray-700">
           Подождите, ваше изображение обрабатывается...
         </div>
+        {activeJobLabel &&
+          <p className="mt-2 text-sm text-gray-600 text-center max-w-md break-words">
+            Файл: {activeJobLabel}
+          </p>
+        }
       </div>
-    </div>
+    </div> : null
 
   return (
     <div>

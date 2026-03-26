@@ -724,9 +724,11 @@ def train(root: str, train_csv: pd.DataFrame, test_csv: pd.DataFrame, single_neu
     """
     seed = 42
     torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
     np.random.seed(seed)
-    torch.backends.cudnn.deterministic = True
+    if torch.backends.cudnn.is_available():
+        torch.backends.cudnn.deterministic = True
 
     auto_contrast_p = 0.3
     lr = 5e-5
@@ -807,9 +809,11 @@ def predict_one_stage(img: np.ndarray, preprocess: bool = True, st_dict_path: st
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     seed = 42
     torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
     np.random.seed(seed)
-    torch.backends.cudnn.deterministic = True
+    if torch.backends.cudnn.is_available():
+        torch.backends.cudnn.deterministic = True
 
     model = get_effnet(out=5)
     if os.path.exists(st_dict_path):
@@ -878,9 +882,11 @@ def predict_hierarchical(img: np.ndarray, preprocess: bool = True, st_dict_folde
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     seed = 42
     torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
     np.random.seed(seed)
-    torch.backends.cudnn.deterministic = True
+    if torch.backends.cudnn.is_available():
+        torch.backends.cudnn.deterministic = True
 
     nodes = {
         'final_binary': {

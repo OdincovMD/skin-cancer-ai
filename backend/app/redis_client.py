@@ -1,0 +1,16 @@
+"""Singleton Redis connection for cache, rate limits, queues (see settings)."""
+from functools import lru_cache
+
+import redis
+
+from src.config import settings
+
+
+@lru_cache(maxsize=1)
+def get_redis() -> redis.Redis:
+    return redis.Redis(
+        host=settings.REDIS_HOST,
+        port=settings.REDIS_PORT,
+        db=settings.REDIS_DB,
+        decode_responses=True,
+    )

@@ -4,9 +4,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import transforms
 from PIL import Image
+from typing import Optional
 
 path_to_model = 'weight/several.pt'
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
 class ConvolutionalNetwork(nn.Module):
     def __init__(self):
@@ -29,6 +31,20 @@ class ConvolutionalNetwork(nn.Module):
         return F.log_softmax(X, dim=1)
 
 
+_several_cnn: Optional[ConvolutionalNetwork] = None
+
+
+def _get_several_cnn() -> ConvolutionalNetwork:
+    global _several_cnn
+    if _several_cnn is None:
+        m = ConvolutionalNetwork()
+        m.load_state_dict(torch.load(path_to_model, map_location=device))
+        m.to(device)
+        m.eval()
+        _several_cnn = m
+    return _several_cnn
+
+
 def main(image_np: np.ndarray) -> str:
     """
         Main function to predict dominant pattern in an image.
@@ -44,11 +60,7 @@ def main(image_np: np.ndarray) -> str:
         transforms.ToTensor()
     ])
     input_image = transform(image).unsqueeze(0).to(device)
-    CNNmodel = ConvolutionalNetwork()
-    state = torch.load(path_to_model, map_location=device)
-    CNNmodel.load_state_dict(state)
-    CNNmodel.to(device)
-    CNNmodel.eval()
+    CNNmodel = _get_several_cnn()
     with torch.no_grad():
         y_pred = CNNmodel(input_image)
     predicted_index = torch.argmax(y_pred, dim=1).item()

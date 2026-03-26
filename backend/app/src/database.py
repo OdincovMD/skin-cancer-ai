@@ -1,38 +1,52 @@
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from collections.abc import AsyncGenerator
+
 from pydantic import BaseModel as PBaseModel
+from sqlalchemy import inspect
+from sqlalchemy.ext.asyncio import (
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
+from sqlalchemy.orm import declarative_base
 
 from src.config import settings
 
-# Создание синхронного подключения к базе данных
-sync_engine = create_engine(
-    url=settings.DATABASE_URL_pg,  # URL подключения, задается в конфигурации
-    pool_size=5,                        # Максимум пять одновременных соединений
-    max_overflow=10                     # Дополнительные соединения при превышении лимита
+async_engine = create_async_engine(
+    settings.DATABASE_URL_async,
+    pool_size=5,
+    max_overflow=10,
 )
 
-# Создание фабрики сессий
-session_factory = sessionmaker(sync_engine)
+async_session_maker = async_sessionmaker(
+    async_engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autoflush=False,
+    autocommit=False,
+)
 
-# Используем declarative_base для старых версий SQLAlchemy
 Base = declarative_base()
 
-class BaseModel(Base):
-    """
-    Базовый класс для всех ORM-моделей.
 
-    Методы:
-        __repr__: Представляет объект в читаемом виде, выводя значения всех колонок таблицы.
-    """
-    __abstract__ = True  # Указываем, что это абстрактный класс (не будет создавать таблицу)
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    async with async_session_maker() as session:
+        yield session
 
-    def __repr__(self):
-        cols = [f"{col}={getattr(self, col)}" for col in self.__table__.columns.keys()]
-        return f"<{self.__class__.__name__} {','.join(cols)}>"
-    
+
+async def init_db() -> None:
+    import src.models  # noqa: F401 — регистрация ORM-моделей в Base.metadata
+
+    async with async_engine.connect() as conn:
+        table_names = await conn.run_sync(
+            lambda sync_conn: inspect(sync_conn).get_table_names()
+        )
+    if not table_names:
+        async with async_engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
 
 # Модель Pydantic для входных данных
+
 
 class UserSignUp(PBaseModel):
     lastName: str
@@ -41,9 +55,11 @@ class UserSignUp(PBaseModel):
     email: str
     password: str
 
+
 class Credentials(PBaseModel):
     login: str
     password: str
+
 
 class GetHistoryRequest(PBaseModel):
     user_id: int

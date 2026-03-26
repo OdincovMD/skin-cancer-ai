@@ -4,9 +4,10 @@ import { GET_HISTORY } from "../imports/ENDPOINTS"
 export const handleHistoryRequest = async (user_id) => {
 
   const data = { user_id: user_id }
+  const base = env.BACKEND_URL.replace(/\/$/, "")
 
   try {
-    let response = await fetch(`${env.BACKEND_URL}${GET_HISTORY}`, {
+    const response = await fetch(`${base}${GET_HISTORY}`, {
       method: "POST",
       headers: {
         "Content-type": "application/json",
@@ -16,16 +17,15 @@ export const handleHistoryRequest = async (user_id) => {
     })
 
     if (!response.ok) {
-    alert(`Произошла ошибка: ${response.status}`)
-    return
+      alert(`Произошла ошибка: ${response.status}`)
+      return []
     }
 
-    let responseJSON = await response.json()
-
-    return responseJSON
+    const responseJSON = await response.json()
+    return Array.isArray(responseJSON) ? responseJSON : []
   }
   catch (err) {
     alert(`Ошибка: ${err}`)
-    return {result: null}
+    return []
   }
 }

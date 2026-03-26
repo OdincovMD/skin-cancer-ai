@@ -11,7 +11,7 @@ RUN npm install && \
     npx tailwindcss init -p && \
     npm install easy-magnify-waft && \
     npm install react-d3-tree && \
-    apk update && apk add bash
+    apk update && apk add bash wget
 
 COPY . .
 

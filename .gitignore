@@ -3,7 +3,8 @@ venv/
 .idea/
 .vscode/
 ml/model_weights.pth
-*/__pycache__/*
+**/__pycache__/**
+.cursor/
 ml/runs/
 node_modules
 log

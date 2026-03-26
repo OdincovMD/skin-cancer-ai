@@ -6,3 +6,5 @@ export const PROFILE = "/profile"
 
 export const UPLOAD_FILE = "/uploadfile"
 export const GET_HISTORY = "/gethistory"
+export const HISTORY_IMAGE = "/history/image"
+export const CLASSIFICATION_JOBS_ACTIVE = "/classification-jobs/active"
