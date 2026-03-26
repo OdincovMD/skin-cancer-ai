@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     IMAGE_ACCESS_SIGNING_SECRET: str = Field(default="")
     IMAGE_ACCESS_TOKEN_TTL_SEC: int = Field(default=3600)
 
+    # Лимит запросов к /api/v1 на пользователя (окно 60 с, Redis)
+    API_V1_RATE_LIMIT_PER_MINUTE: int = Field(default=5)
+
     # JWT (Authorization: Bearer) для API классификации и истории
     JWT_SECRET: str = Field(default="")
     JWT_ALGORITHM: str = Field(default="HS256")

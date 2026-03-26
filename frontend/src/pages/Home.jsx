@@ -163,7 +163,6 @@ const Home = () => {
 
   return (
     <div className="space-y-6">
-      {/* ---- Hero / Info ---- */}
       <div className="card-elevated">
         <div className="flex flex-col lg:flex-row gap-8">
           <div className="flex-1 space-y-5">
@@ -227,7 +226,6 @@ const Home = () => {
         </div>
       </div>
 
-      {/* ---- Warning banner ---- */}
       <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
         <AlertTriangle
           size={18}
@@ -240,7 +238,6 @@ const Home = () => {
         </p>
       </div>
 
-      {/* ---- Not authenticated ---- */}
       {!isAuthed && (
         <div className="card text-center py-10">
           <ImageIcon size={40} className="mx-auto mb-3 text-gray-300" />
@@ -262,7 +259,6 @@ const Home = () => {
         </div>
       )}
 
-      {/* ---- Authed but email not verified ---- */}
       {isAuthed && !isVerified && (
         <div className="card border-amber-200 bg-amber-50 text-center py-8">
           <AlertTriangle size={32} className="mx-auto mb-3 text-amber-500" />
@@ -283,7 +279,6 @@ const Home = () => {
         </div>
       )}
 
-      {/* ---- Upload area ---- */}
       {isAuthed && isVerified && (
         <div className="card-elevated">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
@@ -394,7 +389,6 @@ const Home = () => {
         </div>
       )}
 
-      {/* ---- Loading state ---- */}
       {isImageLoading && (
         <div className="card-elevated flex flex-col items-center py-10 text-center">
           <Loader2 size={32} className="animate-spin text-med-500 mb-3" />
@@ -412,7 +406,6 @@ const Home = () => {
         </div>
       )}
 
-      {/* ---- Classification result ---- */}
       {classificationResult.final_class && imageSrc && (
         <div className="card-elevated space-y-4">
           <div className="flex items-center gap-2">

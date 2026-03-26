@@ -3,7 +3,7 @@ import asyncio
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import text
 
-from redis_client import get_redis
+from core.redis_client import get_redis
 from src.database import async_session_maker
 
 router = APIRouter(tags=["health"])

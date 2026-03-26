@@ -33,10 +33,6 @@ async function parseResponseJson(response) {
   }
 }
 
-/**
- * Загрузка файла и (при наличии job_id) опрос до завершения.
- * @returns {Promise<{ error: string|null, classification: object, imageToken: string|null }>}
- */
 export const handleUploadImage = async ({ id, fileData, accessToken }) => {
   const formData = new FormData()
   formData.append("file", fileData)

@@ -1,9 +1,9 @@
 import React from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { Link, useNavigate, useLocation } from "react-router-dom"
-import { Home, LogIn, UserPlus, Info, LogOut, X } from "lucide-react"
+import { BookOpen, Home, LogIn, UserPlus, Info, LogOut, X } from "lucide-react"
 
-import { HOME, SIGN_IN, SIGN_UP, ABOUT } from "../imports/ENDPOINTS"
+import { API_DOCS, HOME, SIGN_IN, SIGN_UP, ABOUT } from "../imports/ENDPOINTS"
 import { defaultState, noError } from "../store/userReducer"
 
 const iconMap = {
@@ -12,6 +12,7 @@ const iconMap = {
   "Регистрация": UserPlus,
   "О проекте":   Info,
   "Выйти":       LogOut,
+  "Документация API": BookOpen,
 }
 
 const Sidebar = ({ isOpen, onClose }) => {
@@ -24,6 +25,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
   const menuItems = [
     { text: "Главная", path: HOME },
+    { text: "Документация API", path: API_DOCS },
     ...(isAuthed
       ? [{ text: "О проекте", path: ABOUT }, { text: "Выйти", path: SIGN_IN }]
       : [

@@ -8,7 +8,10 @@ from email.utils import formataddr
 
 from src.config import settings
 
-_TEMPLATE_FILE = Path(__file__).resolve().parent / "templates" / "verification_email.html"
+# Шаблоны лежат в корне приложения: app/templates/
+_TEMPLATE_FILE = (
+    Path(__file__).resolve().parents[1] / "templates" / "verification_email.html"
+)
 
 
 @lru_cache(maxsize=1)

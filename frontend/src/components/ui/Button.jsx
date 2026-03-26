@@ -7,13 +7,6 @@ const variantClass = {
   danger: "btn-danger",
 }
 
-/**
- * @param {object} props
- * @param {"primary"|"secondary"|"danger"} [props.variant]
- * @param {string} [props.to] — internal route (React Router)
- * @param {string} [props.href] — external URL
- * @param {boolean} [props.external] — open href in new tab
- */
 const Button = ({
   variant = "primary",
   to,

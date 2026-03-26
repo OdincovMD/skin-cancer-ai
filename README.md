@@ -1,113 +1,164 @@
-# Melanoma Detection using Kittler's Method
+# Обнаружение меланомы методом Киттлера
 
-[www.skin-cancer-ai.ru](https://skin-cancer-ai.ru) — Visit the project website for more information and to access the full system.
+[www.skin-cancer-ai.ru](https://skin-cancer-ai.ru) — сайт проекта: описание и доступ к системе.
 
-## Project Description
+## Описание проекта
 
-This project is designed for the automated recognition of melanoma in dermatoscopic images using Kittler's method. [Kittler's method](https://www.researchgate.net/publication/224895107_Dermatoscopy_of_unpigmented_lesions_of_the_skin_A_new_classification_of_vessel_morphology_based_on_pattern_analysis) is based on analyzing the hierarchical structure of image features, allowing for the construction of a detailed decision tree.
+Проект предназначен для автоматического распознавания меланомы на дерматоскопических изображениях с использованием метода Киттлера. [Метод Киттлера](https://www.researchgate.net/publication/224895107_Dermatoscopy_of_unpigmented_lesions_of_the_skin_A_new_classification_of_vessel_morphology_based_on_pattern_analysis) опирается на анализ иерархической структуры признаков изображения и позволяет построить подробное дерево решений.
 
-The analysis process begins with image preprocessing, including normalization, noise removal, and segmentation. The models then analyze key morphological features such as the presence and distribution of globules, dots, lines, reticular structures, and other patterns characteristic of melanoma. Based on the detected characteristics, a sequence of decisions is made, represented in the form of a tree. This tree allows the user not only to see the final classification result but also to understand which features were crucial in the diagnostic process.
+Анализ начинается с предобработки: нормализация, подавление шума, сегментация. Затем модели анализируют ключевые морфологические признаки — глобулы, точки, линии, сетчатые структуры и другие паттерны, характерные для меланомы. По найденным признакам строится цепочка решений в виде дерева. Так пользователь видит не только итоговый класс, но и то, какие признаки повлияли на вывод.
 
-The chosen approach ensures interpretability of the results, which is especially important in medical applications where understanding why a model arrived at a particular conclusion is essential. Thus, this project not only automates the image analysis process but also makes it transparent and explainable for specialists.
+Такой подход повышает интерпретируемость результатов — в медицинских задачах важно понимать, почему модель пришла к конкретному заключению. Проект не только автоматизирует анализ, но и делает его прозрачным для специалистов.
 
-## Running with Docker
+> **Отказ от ответственности:** это исследовательский инструмент, а не медицинское изделие. Результаты классификации носят информационный характер и не заменяют консультацию врача. Подробнее — [docs/DISCLAIMER.md](docs/DISCLAIMER.md).
 
-1. Copy `.env.example` to `.env` and set at least:
-   - **PostgreSQL**: `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_NAME` (inside Docker Compose, `DB_HOST` is the service name `postgres`).
-   - **Redis**: `REDIS_HOST=redis`, `REDIS_PORT`, `REDIS_DB` (used by Celery and health checks).
-   - **MinIO**: `MINIO_USER`, `MINIO_PASSWORD`, `MINIO_URL` (e.g. `http://minio:9000` in Compose).
-   - **App**: `BACKEND_URL` (e.g. `/backend` behind NGINX), `ML_URL` (e.g. `http://ml:8000`), optional `HOST` for NGINX.
+## Архитектура
 
-2. Start the stack:
+```mermaid
+flowchart LR
+    Browser["Браузер"]
+    NGINX["NGINX :90"]
+    Frontend["Frontend\n(React / Vite)"]
+    Backend["Backend\n(FastAPI)"]
+    Celery["Celery Worker"]
+    ML["ML-сервис\n(YOLO + UNet)"]
+    PG["PostgreSQL"]
+    Redis["Redis"]
+    MinIO["MinIO\n(S3)"]
+
+    Browser -->|":90"| NGINX
+    NGINX -->|"/"| Frontend
+    NGINX -->|"/backend/"| Backend
+    Backend --> PG
+    Backend --> Redis
+    Backend --> MinIO
+    Backend -->|"задача в очередь"| Celery
+    Celery --> Redis
+    Celery --> PG
+    Celery --> MinIO
+    Celery -->|"POST /uploadfile"| ML
+    ML -->|"JSON классификации"| Celery
+```
+
+### Поток классификации
+
+1. Пользователь загружает изображение через **`POST /uploadfile`**.
+2. Backend сохраняет метаданные в PostgreSQL, файл — в MinIO, создаёт задание со статусом `pending` и ставит задачу в очередь Celery.
+3. Воркер Celery забирает задачу, скачивает изображение из MinIO, отправляет его в ML-сервис и записывает результат в PostgreSQL.
+4. Frontend опрашивает **`GET /classification-jobs/{job_id}`**, пока статус не станет `completed`, затем отображает дерево решений.
+
+Одновременно допускается только одно активное задание на пользователя; повторная загрузка до завершения даёт **429**.
+
+## Запуск в Docker
+
+1. Скопируйте `.env.example` в `.env` и заполните нужные значения:
 
    ```bash
-   docker compose up --build
+   cp .env.example .env
    ```
 
-   The Compose file sets **`name: skin`**, so containers are prefixed with the project name (e.g. `skin-backend-1`). Service hostnames on the internal network remain short: `postgres`, `redis`, `minio`, `ml`, `backend`, `frontend`, etc.
+   Минимум: `DB_PASS`, `MINIO_USER`, `MINIO_PASSWORD`, `JWT_SECRET`, `IMAGE_ACCESS_SIGNING_SECRET`. Полный перечень переменных — в [docs/DEPLOY.md](docs/DEPLOY.md).
 
-3. **Entry point**: NGINX listens on port **90** (see `docker-compose.yml`). Frontend is proxied at `/`, API at `/backend/`.
+2. Запустите стек:
 
-4. **Health**: Backend exposes **`GET /health`** (Redis + PostgreSQL). ML service exposes **`GET /health`**. Swagger/OpenAPI is disabled on the API in production-oriented setup.
+   ```bash
+   docker compose up --build -d
+   ```
 
-## Project Structure
+3. Откройте в браузере `http://localhost:90`.
 
-### 1. Backend
+4. Проверьте доступность:
 
-Implemented in Python and includes:
+   ```bash
+   curl http://localhost:90/backend/health
+   # {"status":"ok"}
+   ```
 
-- **FastAPI** — HTTP API (routers: `auth`, `classification`, `health` under `backend/app/routers/`).
-- **PostgreSQL** via **SQLAlchemy 2.x async** and **asyncpg** (no synchronous Postgres driver in the app path).
-- **Redis** — Celery broker and result backend; also pinged in `/health`.
-- **Celery** — background worker (`celery_worker` service) runs classification: loads the image from **MinIO**, calls the **ML** service, writes status and JSON result to PostgreSQL.
-- **MinIO** — S3-compatible storage; boto3 is configured with **path-style** addressing and **SigV4** for compatibility.
+Продакшен, секреты, бэкапы и типичные сбои — в [docs/DEPLOY.md](docs/DEPLOY.md).
 
-#### Classification flow (API)
+## Структура проекта
 
-1. **`POST /uploadfile`** — Saves the file locally, records metadata, uploads to MinIO under `uploads/<filename>`, creates a `classification_results` row with status `pending`, enqueues a Celery task. Returns **`job_id`** and **`pending`** (does not block on ML).
-2. **`GET /classification-jobs/active?user_id=`** — Returns the current `pending`/`processing` job for that user (or 204), so the UI can resume after reload.
-3. **`GET /classification-jobs/{job_id}?user_id=`** — Polls job status and parsed `result` JSON.
-4. **`POST /gethistory`** — Last N classification rows for the user (includes **`bucket_name`** for MinIO).
-5. **`GET /history/image?token=`** — Streams the image from MinIO using a short-lived HMAC token (from `image_token` on history rows or job polling). Query params `user_id` / `file_name` are not accepted.
+```
+├── backend/           приложение FastAPI, воркер Celery
+│   └── app/
+│       ├── routers/   auth, classification, health, api_v1
+│       ├── auth/      JWT, API-ключ, зависимости
+│       ├── core/      клиенты Redis, MinIO
+│       ├── services/  классификация, почта, доступ к изображениям
+│       ├── src/       конфиг, БД, модели, ORM
+│       └── workers/   задачи Celery
+├── frontend/          React (Vite), Tailwind CSS
+│   └── src/
+│       ├── pages/     Home, Profile, SignIn, SignUp, ApiDocs, ...
+│       ├── components/
+│       └── imports/   эндпоинты, хелперы, дерево решений
+├── ml/                ML-сервис (FastAPI + YOLO/UNet)
+│   ├── main.py
+│   ├── mask_builder.py
+│   └── weight/        веса моделей (не в git)
+├── nginx/             конфиг обратного прокси NGINX
+├── docs/              документация
+└── docker-compose.yml
+```
 
-Only one active (`pending`/`processing`) classification per user is allowed; additional uploads receive **429**.
+### Backend
 
-#### Database tables
+- **FastAPI** — HTTP API: маршруты auth, classification, health, API v1.
+- **PostgreSQL** через SQLAlchemy 2.x async и asyncpg.
+- **Redis** — брокер и бэкенд результатов Celery, ограничение частоты запросов.
+- **Celery** — фоновые задачи классификации.
+- **MinIO** — S3-совместимое хранилище (boto3, path-style, SigV4).
 
-1. **`users`** — Registration and login.
-2. **`files`** — Uploaded file name, bucket, logical path.
-3. **`classification_results`** — Links user + file, `status`, `result` (JSON text), timestamps.
+### Frontend
 
-Schema is created on first startup when the database is empty (`init_db`).
+**React** (Vite), **React Router**, **Redux**, **Tailwind CSS**.
 
-### 2. Frontend
+- **Главная** — загрузка с лупой, опрос задания, дерево решений.
+- **Профиль** — настройки, история классификаций, превью из хранилища, управление API-ключом.
+- **Документация API** — встроенная страница по HTTP API v1.
 
-**React** (Vite), **React Router**, **Redux** for session.
+### ML-сервис
 
-- **Home** — Upload, optional magnify, async job polling, decision tree when `final_class` is present; can resume an active job after page reload via the active-job API.
-- **Profile** — Last classifications from history; supports **“Show image from storage”** for rows backed by MinIO (`/history/image`).
-- **Sign in / Sign up** — Existing flows.
+- Приложение FastAPI: `POST /uploadfile`, `GET /health`.
+- Конвейер сегментации YOLO + UNet, классификаторы паттернов, дерево Киттлера.
+- `ThreadPoolExecutor` для параллельного инференса.
+- Веса монтируются из `ml/weight/`.
 
-### 3. ML service
+### NGINX
 
-- **`ml/main.py`** — FastAPI app: **`POST /uploadfile`**, **`GET /health`**, `ThreadPoolExecutor` for CPU-bound inference.
-- **`ml/mask_builder.py`** — Segmentation (YOLO + UNet stack as in the project).
-- **`ml/weight/`** — Model weights (mounted into the container).
-- Optional **model warmup** on process start to reduce first-request latency.
+Обратный прокси: `/` → frontend, `/backend/` → FastAPI. Для загрузки изображений задано `client_max_body_size 20M`.
 
-The decision tree on the frontend is aligned with the hierarchical labels in `frontend/src/imports/TREE.js`.
+## Документация
 
-#### Parallel processing and logging
+| Документ | Для кого | Содержание |
+|----------|-----------|------------|
+| [docs/DEPLOY.md](docs/DEPLOY.md) | Операторы | Переменные окружения, порты, секреты, бэкапы, неполадки |
+| [docs/API.md](docs/API.md) | Разработчики | Справочник HTTP API (все эндпоинты) |
+| [docs/USER_GUIDE.md](docs/USER_GUIDE.md) | Пользователи | Регистрация, классификация, профиль, API-ключ |
+| [docs/DISCLAIMER.md](docs/DISCLAIMER.md) | Все | Медицинский дисклеймер (RU + EN) |
 
-- The ML module can run several concurrent in-process workers (see `ThreadPoolExecutor` in `main.py`).
-- Logs may be written under **`log/`** (mounted in Compose where configured).
+На фронтенде также есть страница документации API: `/api-docs`.
 
-### 4. NGINX
+## Полезные ссылки
 
-Reverse proxy: `/` → frontend, `/backend/` → FastAPI. Large uploads: `client_max_body_size` set for image posts.
+- [UNET - Skin Cancer Segmentation](https://www.kaggle.com/code/mihailodin1/skin-cancer-segmentation-unet) — ноутбук по обучению UNet для сегментации.
+- [Color Classification](https://www.kaggle.com/code/mihailodin1/skin-cancer-color) — ноутбук по цветовой классификации в проекте.
+- [One vs Several - Melanoma Classification](https://www.kaggle.com/code/mihailodin1/one-many-mell-cl) — модель «один против нескольких» в составе дерева решений.
+- [Дерево решений на Miro](https://miro.com/app/board/uXjVMwEeFQ8=/) — полная схема дерева классификации.
 
-## Acknowledgements
+## Благодарности
 
-We would like to extend our heartfelt thanks to all the developers who have contributed to this project. Their expertise, creativity, and dedication have been essential in bringing this project to life. We also want to give special recognition to **[Кегелик Николай Александрович](https://github.com/Horokami)**, who played a key role in setting up and refining the frontend, ensuring a smooth and intuitive user experience.
+Спасибо всем, кто участвовал в проекте. Отдельно — **[Кегелик Николай Александрович](https://github.com/Horokami)** за настройку и доработку фронтенда.
 
-## Useful Links
+### Стек технологий
 
-- [UNET - Skin Cancer Segmentation](https://www.kaggle.com/code/mihailodin1/skin-cancer-segmentation-unet) — Notebook for training the UNET model for skin cancer segmentation.
-- [Color Classification](https://www.kaggle.com/code/mihailodin1/skin-cancer-color) — Notebook for training the color classification model used in our project.
-- [One vs Several - Melanoma Classification](https://www.kaggle.com/code/mihailodin1/one-many-mell-cl) — Notebook for the "One vs Several" melanoma classification model, as part of the decision tree.
+- **YOLO** и **PyTorch** — сегментация изображений.
+- **Scikit-learn** — алгоритмы классификации.
+- **FastAPI** — HTTP API.
+- **Docker** и **Docker Compose** — контейнерный запуск.
+- **Celery** и **Redis** — асинхронные задачи.
+- **MinIO** — S3-совместимое объектное хранилище.
 
-## Acknowledgements to the Tech Stack
+## Лицензия
 
-We would also like to thank the following technologies and frameworks that helped make this project a success:
-
-- **YOLO** for their powerful image segmentation capabilities.
-- **PyTorch** for providing flexible and efficient machine learning environments.
-- **Scikit-learn** for implementing various classification algorithms.
-- **FastAPI** for enabling smooth deployment and API management.
-- **Docker** and **Docker Compose** for streamlining development and deployment.
-- **Celery** and **Redis** for asynchronous task processing.
-- **MinIO** for S3-compatible object storage.
-
-## License
-
-This project is licensed under the **MIT License**. You are free to use, modify, and distribute the code, provided you include the original copyright and license notice in any copies of the software. See the [LICENSE](LICENSE.txt) file for more details.
+Проект распространяется под лицензией **MIT**. Подробности — в [LICENSE.txt](LICENSE.txt).

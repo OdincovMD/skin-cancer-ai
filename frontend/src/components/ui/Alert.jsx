@@ -24,12 +24,6 @@ const styles = {
   },
 }
 
-/**
- * @param {object} props
- * @param {"error"|"warning"|"success"|"info"} [props.variant]
- * @param {string} [props.title]
- * @param {boolean} [props.icon] — show icon (default true)
- */
 const Alert = ({ variant = "error", title, children, icon = true, className = "" }) => {
   const cfg = styles[variant] || styles.error
   const Icon = cfg.icon

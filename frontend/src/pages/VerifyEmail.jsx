@@ -8,7 +8,8 @@ import Alert from "../components/ui/Alert"
 import Button from "../components/ui/Button"
 import Spinner from "../components/ui/Spinner"
 import { env } from "../imports/ENV"
-import { PROFILE, SIGN_IN } from "../imports/ENDPOINTS"
+import { PROFILE, SIGN_IN, VERIFY_EMAIL } from "../imports/ENDPOINTS"
+import { notifyOtherTabsSessionMayHaveChanged } from "../imports/sessionSync"
 
 const VerifyEmail = () => {
   const dispatch = useDispatch()
@@ -30,14 +31,15 @@ const VerifyEmail = () => {
     if (sessionStorage.getItem(okKey) === "1") {
       setPhase("ok")
       setDetail(
-        "Адрес подтверждён. Если вы уже вошли в аккаунт в этом браузере, статус обновится автоматически."
+        "Адрес подтверждён. Откройте основную вкладку с сайтом — статус подтверждения обновится сам."
       )
+      notifyOtherTabsSessionMayHaveChanged()
       dispatch(fetchSessionMe())
       return
     }
 
     const base = env.BACKEND_URL.replace(/\/$/, "")
-    const url = `${base}/verify-email?token=${encodeURIComponent(token)}`
+    const url = `${base}${VERIFY_EMAIL}?token=${encodeURIComponent(token)}`
     const ac = new AbortController()
 
     fetch(url, {
@@ -51,8 +53,9 @@ const VerifyEmail = () => {
           sessionStorage.setItem(okKey, "1")
           setPhase("ok")
           setDetail(
-            "Адрес подтверждён. Если вы уже вошли в аккаунт в этом браузере, статус обновится автоматически."
+            "Адрес подтверждён. Откройте основную вкладку с сайтом — статус подтверждения обновится сам."
           )
+          notifyOtherTabsSessionMayHaveChanged()
           dispatch(fetchSessionMe())
           return
         }

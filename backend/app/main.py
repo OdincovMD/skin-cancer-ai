@@ -4,8 +4,8 @@ import asyncio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from redis_client import get_redis
-from routers import auth, classification, health
+from core.redis_client import get_redis
+from routers import api_v1, auth, classification, health
 from src.database import async_engine, init_db
 
 
@@ -34,3 +34,4 @@ app.add_middleware(
 app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(classification.router)
+app.include_router(api_v1.router)

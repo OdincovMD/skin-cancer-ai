@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from "react"
+import React, { useCallback, useEffect, useState } from "react"
 import { useDispatch, useSelector } from "react-redux"
+import { Link } from "react-router-dom"
 import {
   Camera,
   Save,
@@ -15,6 +16,9 @@ import {
   User,
   ImageIcon,
   RefreshCw,
+  Key,
+  Copy,
+  Trash2,
 } from "lucide-react"
 
 import { useAvatarObjectUrl } from "../hooks/useAvatarObjectUrl"
@@ -22,8 +26,11 @@ import { handleHistoryRequest } from "../asyncActions/handleHistoryRequest"
 import { env } from "../imports/ENV"
 import { bearerAuthHeaders } from "../imports/authHeaders"
 import {
+  API_DOCS,
   CHANGE_PASSWORD,
   HISTORY_IMAGE,
+  ME_API_TOKEN,
+  ME_API_TOKEN_ROTATE,
   ME_AVATAR,
   ME_PROFILE,
   RESEND_VERIFICATION_EMAIL,
@@ -87,6 +94,56 @@ const Profile = () => {
   const [profileMessage, setProfileMessage] = useState({ type: "", text: "" })
   const [avatarUploadPending, setAvatarUploadPending] = useState(false)
   const [avatarMessage, setAvatarMessage] = useState({ type: "", text: "" })
+
+  const [apiTokStatus, setApiTokStatus] = useState(null)
+  const [apiTokPlain, setApiTokPlain] = useState(null)
+  const [apiTokLoading, setApiTokLoading] = useState(false)
+  const [apiTokActionPending, setApiTokActionPending] = useState(false)
+  const [apiTokMsg, setApiTokMsg] = useState({ type: "", text: "" })
+
+  const loadApiTokenStatus = useCallback(async () => {
+    if (!userInfo.accessToken || !userInfo.emailVerified) return
+    setApiTokLoading(true)
+    setApiTokMsg({ type: "", text: "" })
+    try {
+      const base = env.BACKEND_URL.replace(/\/$/, "")
+      const res = await fetch(`${base}${ME_API_TOKEN}`, {
+        headers: {
+          accept: "application/json",
+          ...bearerAuthHeaders(userInfo.accessToken),
+        },
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.status === 401) {
+        setApiTokMsg({ type: "err", text: "Сессия истекла." })
+        return
+      }
+      if (!res.ok) {
+        const d = data.detail
+        setApiTokMsg({
+          type: "err",
+          text:
+            typeof d === "string"
+              ? d
+              : "Не удалось загрузить статус API-ключа.",
+        })
+        return
+      }
+      setApiTokStatus({
+        has_token: Boolean(data.has_token),
+        created_at: data.created_at,
+        display_label: data.display_label,
+      })
+    } catch (e) {
+      setApiTokMsg({ type: "err", text: String(e?.message || e) })
+    } finally {
+      setApiTokLoading(false)
+    }
+  }, [userInfo.accessToken, userInfo.emailVerified])
+
+  useEffect(() => {
+    loadApiTokenStatus()
+  }, [loadApiTokenStatus])
 
   useEffect(() => {
     setEditFirstName(userInfo.userData?.firstName ?? "")
@@ -255,6 +312,157 @@ const Profile = () => {
     }
   }
 
+  const detailMessage = (data) => {
+    const d = data?.detail
+    if (typeof d === "string") return d
+    if (Array.isArray(d) && d[0]?.msg != null) return String(d[0].msg)
+    return null
+  }
+
+  const issueApiToken = async () => {
+    setApiTokActionPending(true)
+    setApiTokMsg({ type: "", text: "" })
+    setApiTokPlain(null)
+    try {
+      const base = env.BACKEND_URL.replace(/\/$/, "")
+      const res = await fetch(`${base}${ME_API_TOKEN}`, {
+        method: "POST",
+        headers: {
+          accept: "application/json",
+          ...bearerAuthHeaders(userInfo.accessToken),
+        },
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.status === 401) {
+        setApiTokMsg({ type: "err", text: "Сессия истекла." })
+        return
+      }
+      if (res.status === 409) {
+        setApiTokMsg({
+          type: "err",
+          text: detailMessage(data) || "Ключ уже выпущен. Используйте перевыпуск.",
+        })
+        await loadApiTokenStatus()
+        return
+      }
+      if (!res.ok) {
+        setApiTokMsg({
+          type: "err",
+          text: detailMessage(data) || "Не удалось выпустить ключ.",
+        })
+        return
+      }
+      setApiTokPlain(data.token ?? "")
+      setApiTokStatus({
+        has_token: true,
+        created_at: data.created_at,
+        display_label: data.display_label ?? "scai_••••••••",
+      })
+      setApiTokMsg({
+        type: "ok",
+        text: "Сохраните ключ в надёжном месте — полное значение показывается только сейчас.",
+      })
+    } catch (e) {
+      setApiTokMsg({ type: "err", text: String(e?.message || e) })
+    } finally {
+      setApiTokActionPending(false)
+    }
+  }
+
+  const rotateApiToken = async () => {
+    setApiTokActionPending(true)
+    setApiTokMsg({ type: "", text: "" })
+    setApiTokPlain(null)
+    try {
+      const base = env.BACKEND_URL.replace(/\/$/, "")
+      const res = await fetch(`${base}${ME_API_TOKEN_ROTATE}`, {
+        method: "POST",
+        headers: {
+          accept: "application/json",
+          ...bearerAuthHeaders(userInfo.accessToken),
+        },
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.status === 401) {
+        setApiTokMsg({ type: "err", text: "Сессия истекла." })
+        return
+      }
+      if (res.status === 409) {
+        setApiTokMsg({
+          type: "err",
+          text: detailMessage(data) || "Сначала выпустите ключ.",
+        })
+        return
+      }
+      if (!res.ok) {
+        setApiTokMsg({
+          type: "err",
+          text: detailMessage(data) || "Не удалось перевыпустить ключ.",
+        })
+        return
+      }
+      setApiTokPlain(data.token ?? "")
+      setApiTokStatus({
+        has_token: true,
+        created_at: data.created_at,
+        display_label: data.display_label ?? "scai_••••••••",
+      })
+      setApiTokMsg({
+        type: "ok",
+        text: "Новый ключ показан один раз. Старый перестал действовать.",
+      })
+    } catch (e) {
+      setApiTokMsg({ type: "err", text: String(e?.message || e) })
+    } finally {
+      setApiTokActionPending(false)
+    }
+  }
+
+  const revokeApiToken = async () => {
+    if (!window.confirm("Отозвать API-ключ? Интеграции перестанут работать.")) return
+    setApiTokActionPending(true)
+    setApiTokMsg({ type: "", text: "" })
+    try {
+      const base = env.BACKEND_URL.replace(/\/$/, "")
+      const res = await fetch(`${base}${ME_API_TOKEN}`, {
+        method: "DELETE",
+        headers: {
+          accept: "application/json",
+          ...bearerAuthHeaders(userInfo.accessToken),
+        },
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.status === 401) {
+        setApiTokMsg({ type: "err", text: "Сессия истекла." })
+        return
+      }
+      if (!res.ok) {
+        setApiTokMsg({
+          type: "err",
+          text: detailMessage(data) || "Не удалось отозвать ключ.",
+        })
+        return
+      }
+      setApiTokPlain(null)
+      setApiTokStatus({ has_token: false, created_at: null, display_label: null })
+      setApiTokMsg({ type: "ok", text: "Ключ отозван." })
+    } catch (e) {
+      setApiTokMsg({ type: "err", text: String(e?.message || e) })
+    } finally {
+      setApiTokActionPending(false)
+    }
+  }
+
+  const copyApiToken = async () => {
+    if (!apiTokPlain) return
+    try {
+      await navigator.clipboard.writeText(apiTokPlain)
+      setApiTokMsg({ type: "ok", text: "Скопировано в буфер обмена." })
+    } catch {
+      setApiTokMsg({ type: "err", text: "Не удалось скопировать. Выделите и скопируйте вручную." })
+    }
+  }
+
   const fetchHistory = () => {
     setHistoryLoading(true)
     handleHistoryRequest(userInfo.accessToken).then((response) => {
@@ -293,7 +501,6 @@ const Profile = () => {
 
   return (
     <div className="space-y-6">
-      {/* ---- Email verification banner ---- */}
       {userInfo.accessToken && !userInfo.emailVerified && (
         <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4">
           <Mail size={20} className="mt-0.5 flex-shrink-0 text-amber-600" />
@@ -327,7 +534,6 @@ const Profile = () => {
         </div>
       )}
 
-      {/* ---- Profile header card ---- */}
       <div className="card-elevated">
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
           {/* Avatar */}
@@ -379,7 +585,6 @@ const Profile = () => {
         </div>
       </div>
 
-      {/* ---- Edit profile & password in 2 columns ---- */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Edit name */}
         <div className="card">
@@ -488,7 +693,105 @@ const Profile = () => {
         </div>
       </div>
 
-      {/* ---- History section ---- */}
+      {userInfo.emailVerified && (
+        <div className="card-elevated">
+          <SectionHeader icon={Key} title="Доступ по API" />
+          <p className="text-sm text-gray-600 mb-4">
+            Ключ для запросов к{" "}
+            <Link to={API_DOCS} className="text-link">
+              HTTP API v1
+            </Link>{" "}
+            (заголовок <code className="text-xs bg-gray-100 px-1 rounded">X-API-Key</code>
+            ). Лимит на стороне сервера — 5 запросов в минуту.
+          </p>
+          {apiTokLoading && !apiTokStatus ? (
+            <p className="text-sm text-gray-500 flex items-center gap-2">
+              <Loader2 size={16} className="animate-spin" /> Загрузка…
+            </p>
+          ) : (
+            <>
+              {apiTokStatus?.has_token && (
+                <p className="text-sm text-gray-700 mb-2">
+                  <span className="font-medium">Статус:</span>{" "}
+                  {apiTokStatus.display_label || "scai_••••••••"}
+                  {apiTokStatus.created_at && (
+                    <span className="text-gray-500 ml-2">
+                      (создан {formatDate(apiTokStatus.created_at)})
+                    </span>
+                  )}
+                </p>
+              )}
+              {apiTokPlain && (
+                <div className="space-y-2 mb-4">
+                  <label className="input-label">Ключ (показан один раз)</label>
+                  <textarea
+                    readOnly
+                    className="input-field font-mono text-xs min-h-[4.5rem]"
+                    value={apiTokPlain}
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="text-xs"
+                    onClick={copyApiToken}
+                  >
+                    <Copy size={14} /> Копировать
+                  </Button>
+                </div>
+              )}
+              <div className="flex flex-wrap gap-2">
+                {!apiTokStatus?.has_token ? (
+                  <Button
+                    type="button"
+                    disabled={apiTokActionPending}
+                    onClick={issueApiToken}
+                  >
+                    {apiTokActionPending ? (
+                      <><Loader2 size={16} className="animate-spin" /> Выпуск…</>
+                    ) : (
+                      <><Key size={16} /> Выпустить ключ</>
+                    )}
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={apiTokActionPending}
+                      onClick={rotateApiToken}
+                    >
+                      {apiTokActionPending ? (
+                        <><Loader2 size={16} className="animate-spin" /> …</>
+                      ) : (
+                        <><RefreshCw size={16} /> Перевыпустить</>
+                      )}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="text-red-700 border-red-200 hover:bg-red-50"
+                      disabled={apiTokActionPending}
+                      onClick={revokeApiToken}
+                    >
+                      <Trash2 size={16} /> Отозвать
+                    </Button>
+                  </>
+                )}
+              </div>
+              {apiTokMsg.text && (
+                <p
+                  className={`mt-3 text-sm ${
+                    apiTokMsg.type === "ok" ? "text-green-700" : "text-red-600"
+                  }`}
+                >
+                  {apiTokMsg.text}
+                </p>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
       <div className="card-elevated">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <SectionHeader icon={Clock} title="История классификаций" />

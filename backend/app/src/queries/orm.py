@@ -7,11 +7,11 @@ from typing import Any, Dict, List, Optional, Union
 from datetime import datetime, timedelta, timezone
 
 from passlib.context import CryptContext
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from mail_smtp import send_verification_email
+from services.mail import send_verification_email
 from src.config import settings
 from src.models import ClassificationResults, File, User
 
@@ -40,24 +40,29 @@ class Orm:
     @staticmethod
     async def insert_file_record(
         session: AsyncSession, file_name: str, bucket_name: str
-    ) -> None:
+    ) -> int:
+        """Сохраняет запись о файле (имя = ключ объекта в S3). Возвращает file_id."""
+        row = File(
+            file_name=file_name,
+            bucket_name=bucket_name,
+            file_path=f"s3://{bucket_name}/{file_name}",
+        )
+        session.add(row)
         try:
-            file = File(
-                file_name=file_name,
-                bucket_name=bucket_name,
-                file_path=f"s3://{bucket_name}/{file_name}",
-            )
-            session.add(file)
             await session.commit()
-            print(f"Информация о файле {file_name} успешно добавлена в базу данных.")
+            await session.refresh(row)
+            return row.file_id
         except IntegrityError:
             await session.rollback()
-            print(
-                f"Ошибка при добавлении записи о файле {file_name}: файл уже существует."
-            )
-        except Exception as e:
+            raise
+        except Exception:
             await session.rollback()
-            print(f"Ошибка при добавлении записи о файле {file_name}: {e}")
+            raise
+
+    @staticmethod
+    async def delete_file_record_by_id(session: AsyncSession, file_id: int) -> None:
+        await session.execute(delete(File).where(File.file_id == file_id))
+        await session.commit()
 
     @staticmethod
     async def create_classification_request(
@@ -230,15 +235,6 @@ class Orm:
     async def user_exists(session: AsyncSession, user_id: int) -> bool:
         stmt = select(User.id).where(User.id == user_id).limit(1)
         return (await session.execute(stmt)).first() is not None
-
-    @staticmethod
-    async def get_file_id_by_name(session: AsyncSession, file_name: str) -> int:
-        stmt = select(File.file_id).where(File.file_name == file_name)
-        result = await session.execute(stmt)
-        fid = result.scalar_one_or_none()
-        if not fid:
-            raise ValueError(f"Файл {file_name} не найден в базе данных")
-        return fid
 
     @staticmethod
     async def register_user(
@@ -486,3 +482,87 @@ class Orm:
         user.profile_avatar_key = object_key
         await session.commit()
         return True
+
+    @staticmethod
+    async def get_api_token_status(
+        session: AsyncSession, user_id: int
+    ) -> Optional[Dict[str, Any]]:
+        stmt = select(
+            User.api_token_hash,
+            User.api_token_created_at,
+        ).where(User.id == user_id)
+        row = (await session.execute(stmt)).first()
+        if not row:
+            return None
+        h, created = row[0], row[1]
+        return {
+            "has_token": bool(h),
+            "created_at": created,
+        }
+
+    @staticmethod
+    async def issue_api_token(
+        session: AsyncSession,
+        user_id: int,
+        token_hash: str,
+        created_at: datetime,
+    ) -> str:
+        """Возвращает 'ok' | 'not_found' | 'not_verified' | 'already_exists'."""
+        stmt = select(User).where(User.id == user_id)
+        result = await session.execute(stmt)
+        user = result.scalar_one_or_none()
+        if not user:
+            return "not_found"
+        if not user.email_verified:
+            return "not_verified"
+        if user.api_token_hash:
+            return "already_exists"
+        user.api_token_hash = token_hash
+        user.api_token_created_at = created_at
+        await session.commit()
+        return "ok"
+
+    @staticmethod
+    async def rotate_api_token(
+        session: AsyncSession,
+        user_id: int,
+        token_hash: str,
+        created_at: datetime,
+    ) -> str:
+        """Возвращает 'ok' | 'not_found' | 'not_verified' | 'no_token'."""
+        stmt = select(User).where(User.id == user_id)
+        result = await session.execute(stmt)
+        user = result.scalar_one_or_none()
+        if not user:
+            return "not_found"
+        if not user.email_verified:
+            return "not_verified"
+        if not user.api_token_hash:
+            return "no_token"
+        user.api_token_hash = token_hash
+        user.api_token_created_at = created_at
+        await session.commit()
+        return "ok"
+
+    @staticmethod
+    async def revoke_api_token(session: AsyncSession, user_id: int) -> str:
+        """Возвращает 'ok' | 'not_found'."""
+        stmt = select(User).where(User.id == user_id)
+        result = await session.execute(stmt)
+        user = result.scalar_one_or_none()
+        if not user:
+            return "not_found"
+        user.api_token_hash = None
+        user.api_token_created_at = None
+        await session.commit()
+        return "ok"
+
+    @staticmethod
+    async def get_user_id_by_api_token_hash(
+        session: AsyncSession, token_hash: str
+    ) -> Optional[int]:
+        stmt = select(User.id).where(
+            User.api_token_hash == token_hash,
+            User.email_verified.is_(True),
+        )
+        return (await session.execute(stmt)).scalar_one_or_none()

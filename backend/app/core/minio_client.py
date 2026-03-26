@@ -1,6 +1,9 @@
-# minio_client.py
+import logging
 import os
+import re
+import secrets
 from functools import lru_cache
+from typing import Optional
 
 import boto3
 from botocore.config import Config
@@ -10,9 +13,31 @@ MINIO_URL = (os.getenv("MINIO_URL") or "").rstrip("/")
 MINIO_ACCESS_KEY = os.getenv("MINIO_USER") or ""
 MINIO_SECRET_KEY = os.getenv("MINIO_PASSWORD") or ""
 
+logger = logging.getLogger(__name__)
+
 BUCKET_NAME = "bucket"
-# Ключ в S3 совпадает с относительным путём при загрузке (см. uploadfile): uploads/<имя_файла>
 OBJECT_KEY_PREFIX = "uploads"
+
+
+def safe_upload_basename(original: Optional[str], max_len: int = 80) -> str:
+    """Имя файла без путей; только безопасные символы (без ../)."""
+    base = os.path.basename((original or "").strip())
+    if not base:
+        base = "image"
+    base = re.sub(r"[^\w.\-]+", "_", base, flags=re.UNICODE)
+    base = base.strip("._") or "image"
+    if len(base) > max_len:
+        root, ext = os.path.splitext(base)
+        ext = ext[:20] if ext else ""
+        base = root[: max(1, max_len - len(ext))] + ext
+    return base
+
+
+def unique_object_key_for_user(user_id: int, original_filename: Optional[str]) -> str:
+    """Уникальный ключ объекта в бакете: uploads/<user_id>/<token>_<basename>."""
+    safe = safe_upload_basename(original_filename)
+    token = secrets.token_hex(8)
+    return f"{OBJECT_KEY_PREFIX}/{user_id}/{token}_{safe}"
 
 
 def _minio_client_config() -> Config:
@@ -37,21 +62,12 @@ def get_minio_client():
             config=_minio_client_config(),
         )
         s3_client.list_buckets()
-        print("Соединение с MinIO установлено.")
+        logger.info("Соединение с MinIO установлено.")
         return s3_client
     except ClientError as e:
         raise RuntimeError(f"Ошибка MinIO (S3 API): {e}") from e
     except Exception as e:
         raise RuntimeError(f"Ошибка подключения к MinIO: {e}") from e
-
-
-def is_file_in_minio(s3_client, bucket_name, file_name):
-    """Проверяет наличие файла в MinIO."""
-    try:
-        s3_client.head_object(Bucket=bucket_name, Key=file_name)
-        return True
-    except ClientError:
-        return False
 
 
 def create_bucket_if_not_exists(s3_client, bucket_name) -> None:

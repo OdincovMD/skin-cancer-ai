@@ -22,10 +22,6 @@ const emptyClassification = () => ({
   final_class: null,
 })
 
-/**
- * Опрашивает GET /classification-jobs/{job_id} до completed/error или таймаута.
- * @returns {{ classification: object, imageToken: string|null }}
- */
 export async function pollClassificationJob({
   jobId,
   userId,

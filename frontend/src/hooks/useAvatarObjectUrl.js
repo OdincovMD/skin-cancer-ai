@@ -4,11 +4,6 @@ import { bearerAuthHeaders } from "../imports/authHeaders"
 import { ME_AVATAR } from "../imports/ENDPOINTS"
 import { env } from "../imports/ENV"
 
-/**
- * Загружает GET /me/avatar с Bearer и отдаёт временный object URL (или null).
- * @param {string|null|undefined} accessToken
- * @param {number} [revision] — увеличить после смены аватара (общий счётчик в Redux).
- */
 export function useAvatarObjectUrl(accessToken, revision = 0) {
   const objectUrlRef = useRef(null)
   const [url, setUrl] = useState(null)

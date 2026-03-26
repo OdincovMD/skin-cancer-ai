@@ -1,10 +1,11 @@
 import asyncio
 import json
 import mimetypes
+import os
 
 import httpx
 
-from minio_client import (
+from core.minio_client import (
     download_file_bytes,
     get_minio_client,
     object_key_for_stored_filename,
@@ -21,8 +22,6 @@ def run_classification(classification_id: int) -> None:
 
 
 async def _run_classification_async(classification_id: int) -> None:
-    # Celery вызывает asyncio.run() на каждую задачу — новый event loop. Пул asyncpg
-    # привязан к циклу; без dispose() следующая задача получает «different loop».
     try:
         async with async_session_maker() as session:
             await Orm.update_classification_status(
@@ -64,15 +63,17 @@ async def _run_classification_async(classification_id: int) -> None:
                 return
 
             content_type = (
-                mimetypes.guess_type(file_name)[0] or "application/octet-stream"
+                mimetypes.guess_type(os.path.basename(file_name))[0]
+                or "application/octet-stream"
             )
             ml_url = f"{settings.ML_URL.rstrip('/')}/uploadfile"
+            ml_part_name = os.path.basename(file_name)
 
             try:
                 async with httpx.AsyncClient(timeout=httpx.Timeout(600.0)) as client:
                     response = await client.post(
                         ml_url,
-                        files={"file": (file_name, body, content_type)},
+                        files={"file": (ml_part_name, body, content_type)},
                     )
                     response.raise_for_status()
                     result = response.json()

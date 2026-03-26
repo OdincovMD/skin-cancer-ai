@@ -1,14 +1,17 @@
 import asyncio
 import mimetypes
 import secrets
+from datetime import datetime, timezone
 
 from botocore.exceptions import ClientError
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from jwt_auth import create_access_token, get_current_user_id
-from minio_client import (
+from auth.api_token import generate_api_token, hash_api_token
+from auth.deps import require_verified_email_user_id
+from auth.jwt_auth import create_access_token, get_current_user_id
+from core.minio_client import (
     BUCKET_NAME,
     create_bucket_if_not_exists,
     delete_object,
@@ -112,6 +115,81 @@ async def me(
             "error": "Пользователь не найден.",
         }
     return {"userData": profile, "error": None}
+
+
+@router.get("/me/api-token")
+async def get_my_api_token_status(
+    session: AsyncSession = Depends(get_db),
+    user_id: int = Depends(require_verified_email_user_id),
+):
+    st = await Orm.get_api_token_status(session, user_id)
+    if st is None:
+        raise HTTPException(status_code=404, detail="Пользователь не найден.")
+    created = st.get("created_at")
+    return {
+        "has_token": st["has_token"],
+        "created_at": created.isoformat() if created else None,
+        "display_label": "scai_••••••••" if st["has_token"] else None,
+    }
+
+
+@router.post("/me/api-token")
+async def issue_my_api_token(
+    session: AsyncSession = Depends(get_db),
+    user_id: int = Depends(require_verified_email_user_id),
+):
+    raw = generate_api_token()
+    h = hash_api_token(raw)
+    now = datetime.now(timezone.utc)
+    code = await Orm.issue_api_token(session, user_id, h, now)
+    if code == "not_found":
+        raise HTTPException(status_code=404, detail="Пользователь не найден.")
+    if code == "not_verified":
+        raise HTTPException(
+            status_code=403,
+            detail="Подтвердите email, чтобы выпустить API-ключ.",
+        )
+    if code == "already_exists":
+        raise HTTPException(
+            status_code=409,
+            detail="Ключ уже выпущен. Используйте перевыпуск или отзовите ключ.",
+        )
+    return {"token": raw, "created_at": now.isoformat()}
+
+
+@router.post("/me/api-token/rotate")
+async def rotate_my_api_token(
+    session: AsyncSession = Depends(get_db),
+    user_id: int = Depends(require_verified_email_user_id),
+):
+    raw = generate_api_token()
+    h = hash_api_token(raw)
+    now = datetime.now(timezone.utc)
+    code = await Orm.rotate_api_token(session, user_id, h, now)
+    if code == "not_found":
+        raise HTTPException(status_code=404, detail="Пользователь не найден.")
+    if code == "not_verified":
+        raise HTTPException(
+            status_code=403,
+            detail="Подтвердите email, чтобы управлять API-ключом.",
+        )
+    if code == "no_token":
+        raise HTTPException(
+            status_code=409,
+            detail="Сначала выпустите ключ или он уже отозван.",
+        )
+    return {"token": raw, "created_at": now.isoformat()}
+
+
+@router.delete("/me/api-token")
+async def revoke_my_api_token(
+    session: AsyncSession = Depends(get_db),
+    user_id: int = Depends(require_verified_email_user_id),
+):
+    code = await Orm.revoke_api_token(session, user_id)
+    if code == "not_found":
+        raise HTTPException(status_code=404, detail="Пользователь не найден.")
+    return {"ok": True}
 
 
 _AVATAR_MAX_BYTES = 5 * 1024 * 1024

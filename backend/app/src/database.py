@@ -33,11 +33,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def init_db() -> None:
-    """Создаёт таблицы только если БД пустая (первая установка).
-
-    Для уже существующей БД без новых колонок см. SQL-миграции в backend/migrations/.
-    """
-    import src.models  # noqa: F401 — регистрация ORM-моделей в Base.metadata
+    import src.models  # noqa: F401
 
     async with async_engine.connect() as conn:
         table_names = await conn.run_sync(

@@ -23,6 +23,10 @@ class User(Base):
     # Ключ объекта в MinIO (бакет bucket), например avatars/42/abc.jpg
     profile_avatar_key = Column(String(512), nullable=True)
 
+    # Долгоживущий ключ для /api/v1 (хранится SHA-256 hex от полного токена)
+    api_token_hash = Column(String(64), nullable=True, unique=True, index=True)
+    api_token_created_at = Column(DateTime(timezone=True), nullable=True)
+
     classification_results = relationship("ClassificationResults", back_populates="user")
 
 class File(Base):

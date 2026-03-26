@@ -6,11 +6,11 @@ import { getValues, convertToD3Tree } from "../imports/HELPERS"
 const renderNode = ({ nodeDatum, toggleNode }) => {
 
   const toHighlight = (nodeDatum.children && (nodeDatum.children.length > 0)) || nodeDatum.attributes?.final
-  const nodeColor = toHighlight ? "#ccfbf1" : "#ffffff"
+  const nodeColor = toHighlight ? "#ccfbf1" : "#d1d5db"
   const fontWeight = toHighlight ? 600 : 400
   const color = toHighlight ? "#134e4a" : "#6b7280"
   const strokeWidth = toHighlight ? "2" : "1"
-  const strokeColor = toHighlight ? "#0d9488" : "#e5e7eb"
+  const strokeColor = toHighlight ? "#0d9488" : "#9ca3af"
 
   const textOffsetX = nodeDatum.attributes?.final ? 0 : 0
   const textOffsetY = nodeDatum.attributes?.final ? 60 : 0

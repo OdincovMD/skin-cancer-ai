@@ -115,7 +115,6 @@ const SignUp = () => {
 
         <div className="card-elevated space-y-6">
           <form className="space-y-6" onSubmit={handleSubmit}>
-            {/* ---- Personal info ---- */}
             <fieldset className="space-y-4">
               <legend className="text-sm font-semibold text-gray-800 pb-2 border-b border-gray-100 w-full">
                 Личные данные
@@ -169,7 +168,6 @@ const SignUp = () => {
               </div>
             </fieldset>
 
-            {/* ---- Account info ---- */}
             <fieldset className="space-y-4">
               <legend className="text-sm font-semibold text-gray-800 pb-2 border-b border-gray-100 w-full">
                 Данные аккаунта

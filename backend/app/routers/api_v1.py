@@ -1,7 +1,10 @@
+import logging
+
 from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from auth.deps import require_verified_email_user_id
+from auth.api_key_deps import get_user_id_from_api_key
+from auth.api_rate_limit import enforce_api_v1_rate_limit
 from services.classification import (
     active_job_payload,
     classification_job_payload,
@@ -9,24 +12,34 @@ from services.classification import (
     history_with_image_tokens,
     perform_upload,
 )
+from services.image_access import verify_image_access_token
 from src.database import get_db
 
-router = APIRouter(tags=["classification"])
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/api/v1", tags=["api_v1"])
+
+
+async def api_v1_user_id_rate_limited(
+    user_id: int = Depends(get_user_id_from_api_key),
+) -> int:
+    await enforce_api_v1_rate_limit(user_id)
+    return user_id
 
 
 @router.post("/uploadfile")
-async def handle_upload(
+async def api_upload(
     file: UploadFile = File(),
     session: AsyncSession = Depends(get_db),
-    user_id: int = Depends(require_verified_email_user_id),
+    user_id: int = Depends(api_v1_user_id_rate_limited),
 ):
     return await perform_upload(session, user_id, file)
 
 
 @router.get("/classification-jobs/active")
-async def get_active_classification_job(
+async def api_active_job(
     session: AsyncSession = Depends(get_db),
-    user_id: int = Depends(require_verified_email_user_id),
+    user_id: int = Depends(api_v1_user_id_rate_limited),
 ):
     payload = await active_job_payload(session, user_id)
     if not payload:
@@ -35,10 +48,10 @@ async def get_active_classification_job(
 
 
 @router.get("/classification-jobs/{job_id}")
-async def get_classification_job(
+async def api_job(
     job_id: int,
     session: AsyncSession = Depends(get_db),
-    user_id: int = Depends(require_verified_email_user_id),
+    user_id: int = Depends(api_v1_user_id_rate_limited),
 ):
     payload = await classification_job_payload(session, user_id, job_id)
     if not payload:
@@ -47,21 +60,27 @@ async def get_classification_job(
 
 
 @router.post("/gethistory")
-async def get_history(
+async def api_history(
     session: AsyncSession = Depends(get_db),
-    user_id: int = Depends(require_verified_email_user_id),
+    user_id: int = Depends(api_v1_user_id_rate_limited),
 ):
     try:
         return await history_with_image_tokens(session, user_id)
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.exception("Ошибка при получении истории (API v1)")
         raise HTTPException(
-            status_code=500, detail=f"Ошибка при получении истории: {str(e)}"
+            status_code=500,
+            detail="Не удалось получить историю. Повторите попытку позже.",
         ) from e
 
 
 @router.get("/history/image")
-async def get_history_image(
+async def api_history_image(
     token: str,
     session: AsyncSession = Depends(get_db),
 ):
+    user_id, _ = verify_image_access_token(token)
+    await enforce_api_v1_rate_limit(user_id)
     return await history_image_stream(session, token)

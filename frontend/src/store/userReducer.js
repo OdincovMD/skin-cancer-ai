@@ -15,7 +15,6 @@ const defaultUser = {
     error: null,
     isRememberMeChecked: false,
     verificationResendUntilMs: null,
-    /** Счётчик для повторной загрузки аватара (хедер + профиль); в storage не пишется. */
     avatarRevision: 0,
 }
 

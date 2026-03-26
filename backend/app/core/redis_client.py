@@ -1,4 +1,3 @@
-"""Singleton Redis connection for cache, rate limits, queues (see settings)."""
 from functools import lru_cache
 
 import redis

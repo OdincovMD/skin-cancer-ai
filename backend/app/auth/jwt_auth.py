@@ -19,7 +19,7 @@ def create_access_token(user_id: int) -> str:
     expire = datetime.now(timezone.utc) + timedelta(
         minutes=max(1, int(settings.JWT_EXPIRE_MINUTES))
     )
-    payload = {"sub": str(user_id), "exp": expire}
+    payload = {"sub": str(user_id), "exp": int(expire.timestamp())}
     return jwt.encode(
         payload, secret, algorithm=settings.JWT_ALGORITHM
     )

@@ -1,11 +1,25 @@
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
+import { useDispatch } from "react-redux"
 
+import { fetchSessionMe } from "../asyncActions/fetchSessionMe"
+import { LS_SESSION_REFRESH_KEY } from "../imports/sessionSync"
 import Header from "./Header.jsx"
 import Sidebar from "./Sidebar.jsx"
 import AppRoutes from "./Routes.jsx"
 
 const App = () => {
+  const dispatch = useDispatch()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+
+  useEffect(() => {
+    const onStorage = (e) => {
+      if (e.key === LS_SESSION_REFRESH_KEY && e.newValue != null) {
+        dispatch(fetchSessionMe())
+      }
+    }
+    window.addEventListener("storage", onStorage)
+    return () => window.removeEventListener("storage", onStorage)
+  }, [dispatch])
 
   return (
     <div className="min-h-screen bg-gray-50">

@@ -1,7 +1,6 @@
 import { env } from "../imports/ENV"
 import { createAsyncThunk } from "@reduxjs/toolkit"
 
-/** Текст ошибки для UI (всегда строка). */
 async function messageFromFailedResponse(response) {
   try {
     const body = await response.json()
@@ -15,7 +14,6 @@ async function messageFromFailedResponse(response) {
       return body.error
     }
   } catch {
-    /* тело не JSON */
   }
   const s = response.status
   if (s === 401) return "Неверный логин или пароль."
@@ -63,7 +61,6 @@ export const onVerify = createAsyncThunk("user/onVerify", async ({data, endpoint
         return requestState
       }
 
-      // Всё ок
       const ud = responseJSON.userData || {}
       requestState.userData = {
         id: ud.id ?? null,
