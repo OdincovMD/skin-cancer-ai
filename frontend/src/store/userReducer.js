@@ -15,6 +15,8 @@ const defaultUser = {
     error: null,
     isRememberMeChecked: false,
     verificationResendUntilMs: null,
+    /** Счётчик для повторной загрузки аватара (хедер + профиль); в storage не пишется. */
+    avatarRevision: 0,
 }
 
 const userSlice = createSlice({
@@ -78,6 +80,9 @@ const userSlice = createSlice({
     },
     noError: (state) => {
       return {...state, error: null}
+    },
+    bumpAvatarRevision: (state) => {
+      state.avatarRevision += 1
     },
     mergeUserData: (state, action) => {
       const p = action.payload || {}
@@ -190,6 +195,7 @@ export const {
   onPageReload,
   toggleRememberMe,
   noError,
+  bumpAvatarRevision,
   mergeUserData,
   setVerificationResendCooldownFromSeconds,
 } = userSlice.actions

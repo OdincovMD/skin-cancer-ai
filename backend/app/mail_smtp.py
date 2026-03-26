@@ -1,9 +1,33 @@
 import asyncio
+import html
 import smtplib
+from functools import lru_cache
+from pathlib import Path
 from email.message import EmailMessage
 from email.utils import formataddr
 
 from src.config import settings
+
+_TEMPLATE_FILE = Path(__file__).resolve().parent / "templates" / "verification_email.html"
+
+
+@lru_cache(maxsize=1)
+def _verification_email_template() -> str:
+    return _TEMPLATE_FILE.read_text(encoding="utf-8")
+
+
+def _render_verification_email_html(
+    app_name: str, verification_url: str, ttl_hours: int
+) -> str:
+    safe_name = html.escape(app_name.strip() or "Skin Cancer AI")
+    safe_url = html.escape(verification_url, quote=True)
+    h = str(max(1, int(ttl_hours)))
+    return (
+        _verification_email_template()
+        .replace("__APP_NAME__", safe_name)
+        .replace("__VERIFICATION_URL__", safe_url)
+        .replace("__TTL_HOURS__", html.escape(h))
+    )
 
 
 async def send_verification_email(to_addr: str, verification_token: str) -> None:
@@ -12,16 +36,18 @@ async def send_verification_email(to_addr: str, verification_token: str) -> None
 
     base = settings.FRONTEND_PUBLIC_URL.rstrip("/")
     link = f"{base}/verify-email?token={verification_token}"
+    app_name = (settings.MAIL_FROM_NAME or "").strip() or "Skin Cancer AI"
+    ttl = max(1, int(settings.EMAIL_VERIFICATION_TOKEN_TTL_HOURS))
+
     text_body = (
-        "Подтвердите регистрацию, перейдя по ссылке:\n\n"
+        f"Здравствуйте!\n\n"
+        f"Подтвердите регистрацию в «{app_name}», перейдя по ссылке:\n\n"
         f"{link}\n\n"
-        "Если вы не регистрировались, проигнорируйте это письмо."
+        f"Срок действия ссылки — около {ttl} ч. После истечения можно запросить новое письмо в личном кабинете.\n\n"
+        f"Если вы не регистрировались, проигнорируйте это письмо.\n\n"
+        f"— {app_name}"
     )
-    html_body = (
-        f'<p>Подтвердите регистрацию:</p>'
-        f'<p><a href="{link}">{link}</a></p>'
-        f"<p>Если вы не регистрировались, проигнорируйте это письмо.</p>"
-    )
+    html_body = _render_verification_email_html(app_name, link, ttl)
 
     from_addr = settings.MAIL_FROM or settings.SMTP_USER
     from_header = formataddr((settings.MAIL_FROM_NAME, from_addr))

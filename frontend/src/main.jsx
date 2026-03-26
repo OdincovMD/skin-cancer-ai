@@ -1,31 +1,21 @@
 import React from "react"
 import ReactDOM from "react-dom/client"
 import { Provider } from "react-redux"
-import { BrowserRouter as Router, createBrowserRouter, RouterProvider } from "react-router-dom"
+import { BrowserRouter as Router } from "react-router-dom"
 import App from "./components/App"
 import store from "./store/index"
+import { onPageReload } from "./store/userReducer"
 import "./styles/index.css"
 
-const router = createBrowserRouter(
-  [
-    {
-      path: "/",
-      element: <App />,
-    }
-  ],
-  {
-    future: {
-      v7_startTransition: true,
-      v7_relativeSplatPath: true
-    }
-  }
-);
+// До первого рендера: иначе дочерние useEffect (например аватар в профиле) успевают
+// выполниться с accessToken === null, пока App ещё не вызвал onPageReload в своём effect.
+store.dispatch(onPageReload())
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <Provider store={store}>
       <Router>
-          <App />
+        <App />
       </Router>
     </Provider>
   </React.StrictMode>,

@@ -1,6 +1,31 @@
 import { env } from "../imports/ENV"
 import { createAsyncThunk } from "@reduxjs/toolkit"
 
+/** Текст ошибки для UI (всегда строка). */
+async function messageFromFailedResponse(response) {
+  try {
+    const body = await response.json()
+    const d = body?.detail
+    if (d != null) {
+      if (typeof d === "string") return d
+      if (Array.isArray(d) && d[0]?.msg != null) return String(d[0].msg)
+      return JSON.stringify(d)
+    }
+    if (body?.error != null && typeof body.error === "string") {
+      return body.error
+    }
+  } catch {
+    /* тело не JSON */
+  }
+  const s = response.status
+  if (s === 401) return "Неверный логин или пароль."
+  if (s === 403) return "Доступ запрещён."
+  if (s === 422) return "Проверьте введённые данные."
+  if (s === 503) return "Сервис временно недоступен. Попробуйте позже."
+  if (s >= 500) return "Ошибка сервера. Попробуйте позже."
+  return `Ошибка запроса (${s}). Повторите попытку.`
+}
+
 export const onVerify = createAsyncThunk("user/onVerify", async ({data, endpoint}) => {
 
     let requestState = {
@@ -28,7 +53,7 @@ export const onVerify = createAsyncThunk("user/onVerify", async ({data, endpoint
       })
 
       if (!response.ok) {
-        requestState.error = response.status
+        requestState.error = await messageFromFailedResponse(response)
         return requestState
       }
       

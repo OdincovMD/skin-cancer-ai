@@ -7,11 +7,46 @@ import {
   clearPendingJob,
 } from "./pollClassificationJob"
 
+const emptyClassification = () => ({
+  feature_type: null,
+  structure: null,
+  properties: [],
+  final_class: null,
+})
+
+function detailFromBody(body) {
+  if (body == null || typeof body !== "object") return null
+  const d = body.detail
+  if (d == null) return null
+  if (typeof d === "string") return d
+  if (Array.isArray(d) && d[0]?.msg) return String(d[0].msg)
+  return JSON.stringify(d)
+}
+
+async function parseResponseJson(response) {
+  try {
+    const text = await response.text()
+    if (!text.trim()) return null
+    return JSON.parse(text)
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Загрузка файла и (при наличии job_id) опрос до завершения.
+ * @returns {Promise<{ error: string|null, classification: object, imageToken: string|null }>}
+ */
 export const handleUploadImage = async ({ id, fileData, accessToken }) => {
   const formData = new FormData()
   formData.append("file", fileData)
 
   const base = env.BACKEND_URL.replace(/\/$/, "")
+  const fail = (message) => ({
+    error: message,
+    classification: emptyClassification(),
+    imageToken: null,
+  })
 
   try {
     const response = await fetchWithAuth(accessToken, `${base}${UPLOAD_FILE}`, {
@@ -19,84 +54,53 @@ export const handleUploadImage = async ({ id, fileData, accessToken }) => {
       body: formData,
     })
 
+    const body = await parseResponseJson(response)
+
     if (response.status === 429) {
-      const defaultMsg =
-        "Слишком много запросов. Дождитесь завершения текущей классификации."
-      let errMsg = defaultMsg
-      try {
-        const body = await response.json()
-        if (body?.detail != null) {
-          errMsg =
-            typeof body.detail === "string"
-              ? body.detail
-              : JSON.stringify(body.detail)
-        }
-      } catch {
-        /* тело не JSON — оставляем defaultMsg */
-      }
-      alert(errMsg)
-      return {
-        feature_type: null,
-        structure: null,
-        properties: [],
-        final_class: null,
-      }
+      return fail(
+        detailFromBody(body) ||
+          "Слишком много запросов. Дождитесь завершения текущей классификации."
+      )
     }
 
     if (!response.ok) {
-      let msg = `Произошла ошибка: ${response.status}`
-      if (response.status === 403) {
-        try {
-          const body = await response.json()
-          if (body?.detail) {
-            msg =
-              typeof body.detail === "string"
-                ? body.detail
-                : JSON.stringify(body.detail)
-          }
-        } catch {
-          /* ignore */
-        }
-      }
-      alert(msg)
-      return {
-        feature_type: null,
-        structure: null,
-        properties: [],
-        final_class: null,
-      }
+      return fail(
+        detailFromBody(body) ||
+          `Не удалось загрузить файл (${response.status}). Повторите попытку.`
+      )
     }
 
-    const data = await response.json()
+    if (body == null || typeof body !== "object") {
+      return fail("Некорректный ответ сервера при загрузке.")
+    }
+
+    const data = body
 
     if (data.job_id != null) {
       savePendingJob(id, data.job_id)
       try {
-        return await pollClassificationJob({
+        const polled = await pollClassificationJob({
           jobId: data.job_id,
           userId: id,
           accessToken,
         })
+        return {
+          error: null,
+          classification: polled.classification,
+          imageToken: polled.imageToken,
+        }
       } catch (e) {
         clearPendingJob(id)
-        alert(String(e.message || e))
-        return {
-          feature_type: null,
-          structure: null,
-          properties: [],
-          final_class: null,
-        }
+        return fail(String(e?.message || e))
       }
     }
 
-    return data
-  } catch (err) {
-    alert(`Ошибка: ${err}`)
     return {
-      feature_type: null,
-      structure: null,
-      properties: [],
-      final_class: null,
+      error: null,
+      classification: data?.classification ?? data ?? emptyClassification(),
+      imageToken: data?.image_token ?? null,
     }
+  } catch (err) {
+    return fail(String(err?.message || err))
   }
 }

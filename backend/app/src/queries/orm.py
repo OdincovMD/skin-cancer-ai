@@ -348,6 +348,11 @@ class Orm:
         user = result.scalar_one_or_none()
         if not user:
             return "Ссылка недействительна или уже использована."
+        # Уже подтверждён — идемпотентный успех (второй запрос: React Strict Mode,
+        # предзагрузка, расширения браузера). Иначе после первого commit токен
+        # обнулялся и повторный GET давал ложную ошибку при живом подтверждении.
+        if user.email_verified:
+            return None
         now = datetime.now(timezone.utc)
         exp = user.email_verification_expires_at
         if exp is not None and exp.tzinfo is None:
@@ -355,8 +360,8 @@ class Orm:
         if exp is not None and exp < now:
             return "Срок действия ссылки истёк. Зарегистрируйтесь снова или обратитесь в поддержку."
         user.email_verified = True
-        user.email_verification_token = None
-        user.email_verification_expires_at = None
+        # Не обнуляем токен: тот же URL должен многократно возвращать ok (новый токен
+        # выдаётся только при повторной отправке письма в resend_verification_email).
         await session.commit()
         return None
 

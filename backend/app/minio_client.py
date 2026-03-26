@@ -4,7 +4,7 @@ from functools import lru_cache
 
 import boto3
 from botocore.config import Config
-from botocore.exceptions import ClientError, NoCredentialsError
+from botocore.exceptions import ClientError
 
 MINIO_URL = (os.getenv("MINIO_URL") or "").rstrip("/")
 MINIO_ACCESS_KEY = os.getenv("MINIO_USER") or ""
@@ -54,31 +54,21 @@ def is_file_in_minio(s3_client, bucket_name, file_name):
         return False
 
 
-def create_bucket_if_not_exists(s3_client, bucket_name):
-    try:
-        response = s3_client.list_buckets()
-        existing_buckets = [
-            bucket["Name"] for bucket in response.get("Buckets", [])
-        ]
-
-        if bucket_name in existing_buckets:
-            print(f"Bucket {bucket_name} already exists")
-        else:
-            s3_client.create_bucket(Bucket=bucket_name)
-            print(f"Bucket {bucket_name} created successfully")
-    except NoCredentialsError:
-        print("Credentials not available")
+def create_bucket_if_not_exists(s3_client, bucket_name) -> None:
+    """Создаёт бакет при отсутствии. Ошибки S3/учётных данных пробрасываются наверх."""
+    response = s3_client.list_buckets()
+    existing_buckets = [
+        bucket["Name"] for bucket in response.get("Buckets", [])
+    ]
+    if bucket_name not in existing_buckets:
+        s3_client.create_bucket(Bucket=bucket_name)
 
 
-def upload_file_to_minio(s3_client, bucket_name, file_name):
-    """Загружает файл в MinIO."""
-    try:
-        s3_client.upload_file(
-            Filename=file_name, Bucket=bucket_name, Key=file_name
-        )
-        print(f"Файл {file_name} успешно загружен в MinIO.")
-    except Exception as e:
-        print(f"Ошибка при загрузке файла {file_name} в MinIO: {e}")
+def upload_file_to_minio(s3_client, bucket_name, file_name) -> None:
+    """Загружает локальный файл в MinIO. Ключ объекта = относительный путь (например uploads/...)."""
+    s3_client.upload_file(
+        Filename=file_name, Bucket=bucket_name, Key=file_name
+    )
 
 
 def download_file_bytes(s3_client, bucket_name: str, object_key: str) -> bytes:

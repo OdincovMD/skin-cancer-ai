@@ -1,7 +1,24 @@
-import React, { useEffect, useRef, useState } from "react"
+import React, { useEffect, useState } from "react"
 import { useDispatch, useSelector } from "react-redux"
-import { handleHistoryRequest } from "../asyncActions/handleHistoryRequest"
+import {
+  Camera,
+  Save,
+  Lock,
+  Mail,
+  Clock,
+  FileText,
+  ChevronDown,
+  ChevronUp,
+  AlertTriangle,
+  CheckCircle2,
+  Loader2,
+  User,
+  ImageIcon,
+  RefreshCw,
+} from "lucide-react"
 
+import { useAvatarObjectUrl } from "../hooks/useAvatarObjectUrl"
+import { handleHistoryRequest } from "../asyncActions/handleHistoryRequest"
 import { env } from "../imports/ENV"
 import { bearerAuthHeaders } from "../imports/authHeaders"
 import {
@@ -11,33 +28,38 @@ import {
   ME_PROFILE,
   RESEND_VERIFICATION_EMAIL,
 } from "../imports/ENDPOINTS"
-import { getValues, mappingInfoRU } from "../imports/HELPERS"
-
+import { getValues } from "../imports/HELPERS"
 import TreeComponent from "../components/Tree"
+import Button from "../components/ui/Button"
 import {
+  bumpAvatarRevision,
   mergeUserData,
   setVerificationResendCooldownFromSeconds,
 } from "../store/userReducer"
 
+const SectionHeader = ({ icon: Icon, title }) => (
+  <div className="flex items-center gap-2 mb-4">
+    <Icon size={18} className="text-med-600" />
+    <h2 className="text-base font-semibold text-gray-900">{title}</h2>
+  </div>
+)
+
 const Profile = () => {
   const dispatch = useDispatch()
-  const userInfo = useSelector(state => state.user)
+  const userInfo = useSelector((state) => state.user)
 
-  // request_date, file_name, bucket_name?, status, result
   const [history, setHistory] = useState([])
+  const [historyLoading, setHistoryLoading] = useState(false)
   const [openHistoryImageKey, setOpenHistoryImageKey] = useState(null)
+  const [openTreeKey, setOpenTreeKey] = useState(null)
   const [resendPending, setResendPending] = useState(false)
   const [resendHint, setResendHint] = useState("")
   const [, tickResendCooldown] = useState(0)
   const verificationResendUntilMs = userInfo.verificationResendUntilMs
 
   useEffect(() => {
-    if (!verificationResendUntilMs || Date.now() >= verificationResendUntilMs) {
-      return undefined
-    }
-    const id = window.setInterval(() => {
-      tickResendCooldown((n) => n + 1)
-    }, 1000)
+    if (!verificationResendUntilMs || Date.now() >= verificationResendUntilMs) return
+    const id = window.setInterval(() => tickResendCooldown((n) => n + 1), 1000)
     return () => window.clearInterval(id)
   }, [verificationResendUntilMs])
 
@@ -55,9 +77,10 @@ const Profile = () => {
   const pwdNewValid = Boolean(pwdNew.match(/^[0-9A-Za-z]{8,}$/))
   const pwdMatch = pwdNew === pwdConfirm && pwdConfirm.length > 0
 
-  const avatarObjectUrlRef = useRef(null)
-  const [avatarDisplayUrl, setAvatarDisplayUrl] = useState(null)
-  const [avatarVersion, setAvatarVersion] = useState(0)
+  const avatarDisplayUrl = useAvatarObjectUrl(
+    userInfo.accessToken,
+    userInfo.avatarRevision
+  )
   const [editFirstName, setEditFirstName] = useState("")
   const [editLastName, setEditLastName] = useState("")
   const [profilePending, setProfilePending] = useState(false)
@@ -68,223 +91,7 @@ const Profile = () => {
   useEffect(() => {
     setEditFirstName(userInfo.userData?.firstName ?? "")
     setEditLastName(userInfo.userData?.lastName ?? "")
-  }, [
-    userInfo.userData?.id,
-    userInfo.userData?.firstName,
-    userInfo.userData?.lastName,
-  ])
-
-  useEffect(() => {
-    if (!userInfo.accessToken) {
-      if (avatarObjectUrlRef.current) {
-        URL.revokeObjectURL(avatarObjectUrlRef.current)
-        avatarObjectUrlRef.current = null
-      }
-      setAvatarDisplayUrl(null)
-      return undefined
-    }
-    const ctrl = new AbortController()
-    const base = env.BACKEND_URL.replace(/\/$/, "")
-    ;(async () => {
-      try {
-        const res = await fetch(`${base}${ME_AVATAR}`, {
-          headers: {
-            accept: "image/*",
-            ...bearerAuthHeaders(userInfo.accessToken),
-          },
-          signal: ctrl.signal,
-        })
-        if (ctrl.signal.aborted) return
-        if (res.status === 404) {
-          if (avatarObjectUrlRef.current) {
-            URL.revokeObjectURL(avatarObjectUrlRef.current)
-            avatarObjectUrlRef.current = null
-          }
-          setAvatarDisplayUrl(null)
-          return
-        }
-        if (!res.ok) return
-        const blob = await res.blob()
-        if (ctrl.signal.aborted) return
-        if (avatarObjectUrlRef.current) {
-          URL.revokeObjectURL(avatarObjectUrlRef.current)
-        }
-        const url = URL.createObjectURL(blob)
-        avatarObjectUrlRef.current = url
-        setAvatarDisplayUrl(url)
-      } catch (e) {
-        if (e.name !== "AbortError") {
-          /* сеть / прочее */
-        }
-      }
-    })()
-    return () => {
-      ctrl.abort()
-      if (avatarObjectUrlRef.current) {
-        URL.revokeObjectURL(avatarObjectUrlRef.current)
-        avatarObjectUrlRef.current = null
-      }
-      setAvatarDisplayUrl(null)
-    }
-  }, [userInfo.accessToken, avatarVersion])
-
-  // useEffect(() => {
-  //   console.log(history)
-  // }, [history])
-
-  const showInfo = (field) => {
-    return (
-      mappingInfoRU[field] ?
-        <div className="flex flex-row justify-start items-center gap-[10px]">
-          <div className="rounded-lg border-none w-[170px] p-3">
-            <span className="block truncate font-semibold">{mappingInfoRU[field]}</span>
-          </div>
-          <div className="rounded-lg border flex-grow border-gray-300 p-3">
-            <span className="block truncate">{userInfo.userData[field]}</span>
-          </div>
-        </div> :
-        null
-    )
-  }
-  
-  const showHistory = (historyResponse, userId) => {
-    const isHeaderRow = historyResponse.file_name === mappingInfoRU.file_name
-    const rowKey = `${String(historyResponse.request_date)}_${historyResponse.file_name}`
-    const base = env.BACKEND_URL.replace(/\/$/, "")
-    const imageSrc =
-      userId &&
-      historyResponse.file_name &&
-      !isHeaderRow &&
-      historyResponse.image_token
-        ? `${base}${HISTORY_IMAGE}?token=${encodeURIComponent(
-            historyResponse.image_token
-          )}`
-        : null
-
-    const data_time = new RegExp("^(?<data>.*)T(?<time>.*)\\..*\\+(?<correction>.*)$")
-    const file_name = new RegExp("^(?:.*?_){3}(?<filename>.*)$")
-
-    const requestDate = data_time.exec(historyResponse.request_date)
-    const fileName = file_name.exec(historyResponse.file_name)
-
-    const parseClassificationResult = () => {
-      const raw = historyResponse.result
-      if (raw == null || raw === "") return {}
-      try {
-        const parsed = typeof raw === "string" ? JSON.parse(raw) : raw
-        if (parsed != null && typeof parsed === "object" && !Array.isArray(parsed)) {
-          return parsed
-        }
-        return {}
-      } catch {
-        return {}
-      }
-    }
-
-    const result = parseClassificationResult()
-    const status = historyResponse.status
-    const inProgress =
-      status === "pending" || status === "processing"
-
-    return (
-      <div className="rounded-lg border border-gray-900 p-3 space-y-3">
-      <ul className="flex flex-row justify-between items-center">
-        <li 
-          key={0}
-          className="w-[15%] text-center"
-        >
-          {
-            requestDate ? 
-            `${requestDate.groups.data}, ${requestDate.groups.time}` :
-            mappingInfoRU.request_date
-          }
-        </li>
-        <li 
-          key={1}
-          className="w-[10%] text-center"
-        >
-          {
-            fileName ? 
-            `${fileName.groups.filename}` :
-            mappingInfoRU.file_name
-          }
-        </li>
-        <li 
-          key={3}
-          className="flex flex-col justify-center items-center gap-[10px] w-[55%] text-center"
-        > 
-          {
-          (status === "error") &&
-          <p className="text-red-600">
-            Произошла ошибка со стороны бэкенда. Свяжитесь с администрацией сайта.
-          </p>
-          }
-          {
-          inProgress &&
-          <p className="text-amber-700">
-            Классификация выполняется или ожидает обработки. Обновите историю позже.
-          </p>
-          }
-          {
-          (status !== "error" && !inProgress) && Object.prototype.hasOwnProperty.call(result, "detail") &&
-          <p className="text-red-600">
-            Произошла ошибка обработки фотографии. Свяжитесь с администрацией сайта.
-          </p>
-          }
-          {
-          (status !== "error" && !inProgress) && !Object.prototype.hasOwnProperty.call(result, "detail") && (Object.keys(result).length > 0) &&
-          <div className="w-[100%] font-semibold text-gray-700">
-            {getValues(result).reduce((accumulator, currentValue) => (accumulator + " ->\n" + currentValue))}
-          </div>
-          }
-          {
-          (status !== "error" && !inProgress) &&
-          <div className="flex flex-col justify-center items-center w-[100%]">
-            {
-              !Object.prototype.hasOwnProperty.call(result, "detail") ? (
-                Object.keys(result).length > 0 ? (
-                  <TreeComponent classificationResult={result} displaySize={{width: "100%", height: "300px"}} nodeSize={{x: 300, y: 50}} zoom={0.4} translate={{x: 50, y: 180}}/>
-                ) : (
-                  mappingInfoRU.result
-                )
-              ) : null
-            }
-          </div>
-          }
-        </li>
-      </ul>
-      {!isHeaderRow && imageSrc && (
-        <div className="flex flex-col items-center gap-2 border-t border-gray-200 pt-3">
-          <button
-            type="button"
-            onClick={() =>
-              setOpenHistoryImageKey((k) => (k === rowKey ? null : rowKey))
-            }
-            className="px-4 py-2 text-sm bg-slate-600 text-white rounded-md hover:bg-slate-700"
-          >
-            {openHistoryImageKey === rowKey
-              ? "Скрыть изображение"
-              : "Показать изображение из хранилища"}
-          </button>
-          {openHistoryImageKey === rowKey && (
-            <img
-              src={imageSrc}
-              alt={historyResponse.file_name || "Снимок"}
-              className="max-h-[min(480px,70vh)] w-auto max-w-full rounded border border-gray-300 object-contain"
-              onError={() => {
-                alert("Не удалось загрузить изображение (файл отсутствует в MinIO или ошибка сети).")
-                setOpenHistoryImageKey(null)
-              }}
-            />
-          )}
-        </div>
-      )}
-      </div>
-    )
-  }
-
-  const defaultProfileImg =
-    userInfo.userData?.id == 1 ? "/images/PP.png" : "/images/image.png"
+  }, [userInfo.userData?.id, userInfo.userData?.firstName, userInfo.userData?.lastName])
 
   const handleAvatarFile = async (event) => {
     const file = event.target.files?.[0]
@@ -298,98 +105,26 @@ const Profile = () => {
       fd.append("file", file)
       const res = await fetch(`${base}${ME_AVATAR}`, {
         method: "POST",
-        headers: {
-          ...bearerAuthHeaders(userInfo.accessToken),
-        },
+        headers: { ...bearerAuthHeaders(userInfo.accessToken) },
         body: fd,
       })
       const data = await res.json().catch(() => ({}))
       if (res.status === 401) {
-        setAvatarMessage({
-          type: "err",
-          text: "Сессия истекла. Войдите снова.",
-        })
+        setAvatarMessage({ type: "err", text: "Сессия истекла. Войдите снова." })
         return
       }
       if (data.error) {
         setAvatarMessage({ type: "err", text: data.error })
         return
       }
-      setAvatarMessage({
-        type: "ok",
-        text: "Фото профиля обновлено.",
-      })
-      setAvatarVersion((v) => v + 1)
+      setAvatarMessage({ type: "ok", text: "Фото обновлено" })
+      dispatch(bumpAvatarRevision())
     } catch (err) {
-      setAvatarMessage({
-        type: "err",
-        text: String(err?.message || err),
-      })
+      setAvatarMessage({ type: "err", text: String(err?.message || err) })
     } finally {
       setAvatarUploadPending(false)
     }
   }
-
-  const profilePicture =
-    userInfo.accessToken && userInfo.userData?.id ? (
-      <div className="flex w-[220px] flex-shrink-0 flex-col space-y-3">
-        <div className="h-[220px] rounded-lg bg-white p-4 shadow-md">
-          <img
-            src={avatarDisplayUrl || defaultProfileImg}
-            alt="Фотография профиля"
-            className="h-full w-full rounded-lg border border-gray-700 object-cover"
-          />
-        </div>
-        <label className="block cursor-pointer rounded-lg border border-gray-300 bg-white px-3 py-2 text-center text-sm font-medium text-gray-800 shadow-sm transition hover:bg-gray-50">
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            className="hidden"
-            disabled={avatarUploadPending}
-            onChange={handleAvatarFile}
-          />
-          {avatarUploadPending ? "Загрузка…" : "Загрузить фото"}
-        </label>
-        {avatarMessage.text && (
-          <p
-            className={
-              avatarMessage.type === "ok"
-                ? "text-center text-xs text-green-800"
-                : "text-center text-xs text-red-600"
-            }
-          >
-            {avatarMessage.text}
-          </p>
-        )}
-      </div>
-    ) : (
-      <div className="flex-shrink-0 space-y-6">
-        <div className="h-[220px] rounded-lg bg-white p-6 shadow-md">
-          <img
-            src={defaultProfileImg}
-            alt="Фотография профиля"
-            className="h-full w-full rounded-lg border border-gray-700 object-cover"
-          />
-        </div>
-      </div>
-    )
-
-  const profileFields = Object.keys(userInfo.userData || {}).filter(
-    (field) => mappingInfoRU[field]
-  )
-
-  const profileInfo =
-    <div className="space-y-6">
-      <div className="flex flex-row items-center gap-[10px] bg-white rounded-lg shadow-md p-6">
-        <ul className="space-y-2 flex-grow">
-          {profileFields.map((field, index) => (
-            <li key={index} >
-              {showInfo(field)}
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
 
   const submitProfileNames = async (e) => {
     e.preventDefault()
@@ -400,10 +135,7 @@ const Profile = () => {
     if (fn) body.firstName = fn
     if (ln) body.lastName = ln
     if (Object.keys(body).length === 0) {
-      setProfileMessage({
-        type: "err",
-        text: "Укажите имя или фамилию.",
-      })
+      setProfileMessage({ type: "err", text: "Укажите имя или фамилию." })
       return
     }
     setProfilePending(true)
@@ -420,18 +152,12 @@ const Profile = () => {
       })
       const data = await res.json().catch(() => ({}))
       if (res.status === 401) {
-        setProfileMessage({
-          type: "err",
-          text: "Сессия истекла. Войдите снова.",
-        })
+        setProfileMessage({ type: "err", text: "Сессия истекла." })
         return
       }
       if (res.status === 422) {
         const d = data.detail
-        const msg =
-          Array.isArray(d) && d[0]?.msg != null
-            ? String(d[0].msg)
-            : "Проверьте введённые данные."
+        const msg = Array.isArray(d) && d[0]?.msg != null ? String(d[0].msg) : "Проверьте данные."
         setProfileMessage({ type: "err", text: msg })
         return
       }
@@ -439,82 +165,20 @@ const Profile = () => {
         setProfileMessage({ type: "err", text: data.error })
         return
       }
-      if (data.userData) {
-        dispatch(mergeUserData(data.userData))
-      }
-      setProfileMessage({ type: "ok", text: "Данные сохранены." })
+      if (data.userData) dispatch(mergeUserData(data.userData))
+      setProfileMessage({ type: "ok", text: "Сохранено" })
     } catch (err) {
-      setProfileMessage({
-        type: "err",
-        text: String(err?.message || err),
-      })
+      setProfileMessage({ type: "err", text: String(err?.message || err) })
     } finally {
       setProfilePending(false)
     }
   }
 
-  const profileNamesCard =
-    userInfo.accessToken && userInfo.userData?.id ? (
-      <div className="mt-6 w-full max-w-2xl rounded-lg border border-gray-200 bg-white p-6 shadow-md">
-        <h2 className="mb-4 text-lg font-semibold text-gray-900">
-          Имя и фамилия
-        </h2>
-        <form
-          onSubmit={submitProfileNames}
-          className="flex max-w-md flex-col gap-3"
-        >
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium text-gray-700">Имя</span>
-            <input
-              type="text"
-              autoComplete="given-name"
-              value={editFirstName}
-              onChange={(ev) => setEditFirstName(ev.target.value)}
-              maxLength={100}
-              className="rounded-md border border-gray-300 px-3 py-2"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium text-gray-700">Фамилия</span>
-            <input
-              type="text"
-              autoComplete="family-name"
-              value={editLastName}
-              onChange={(ev) => setEditLastName(ev.target.value)}
-              maxLength={100}
-              className="rounded-md border border-gray-300 px-3 py-2"
-            />
-          </label>
-          {profileMessage.text && (
-            <p
-              className={
-                profileMessage.type === "ok"
-                  ? "text-sm text-green-800"
-                  : "text-sm text-red-600"
-              }
-            >
-              {profileMessage.text}
-            </p>
-          )}
-          <button
-            type="submit"
-            disabled={profilePending}
-            className="mt-1 w-fit rounded-lg bg-slate-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:bg-gray-400"
-          >
-            {profilePending ? "Сохранение…" : "Сохранить"}
-          </button>
-        </form>
-      </div>
-    ) : null
-
   const submitChangePassword = async (e) => {
     e.preventDefault()
     setPwdMessage({ type: "", text: "" })
     if (!pwdNewValid) {
-      setPwdMessage({
-        type: "err",
-        text: "Новый пароль: не менее 8 символов, только латиница и цифры.",
-      })
+      setPwdMessage({ type: "err", text: "Не менее 8 символов, латиница и цифры." })
       return
     }
     if (!pwdMatch) {
@@ -531,25 +195,16 @@ const Profile = () => {
           accept: "application/json",
           ...bearerAuthHeaders(userInfo.accessToken),
         },
-        body: JSON.stringify({
-          current_password: pwdCurrent,
-          new_password: pwdNew,
-        }),
+        body: JSON.stringify({ current_password: pwdCurrent, new_password: pwdNew }),
       })
       const data = await res.json().catch(() => ({}))
       if (res.status === 401) {
-        setPwdMessage({
-          type: "err",
-          text: "Сессия истекла. Войдите снова.",
-        })
+        setPwdMessage({ type: "err", text: "Сессия истекла." })
         return
       }
       if (res.status === 422) {
         const d = data.detail
-        const msg =
-          Array.isArray(d) && d[0]?.msg != null
-            ? String(d[0].msg)
-            : "Проверьте введённые данные."
+        const msg = Array.isArray(d) && d[0]?.msg != null ? String(d[0].msg) : "Проверьте данные."
         setPwdMessage({ type: "err", text: msg })
         return
       }
@@ -560,90 +215,13 @@ const Profile = () => {
       setPwdCurrent("")
       setPwdNew("")
       setPwdConfirm("")
-      setPwdMessage({ type: "ok", text: "Пароль успешно изменён." })
+      setPwdMessage({ type: "ok", text: "Пароль изменён" })
     } catch (err) {
-      setPwdMessage({
-        type: "err",
-        text: String(err?.message || err),
-      })
+      setPwdMessage({ type: "err", text: String(err?.message || err) })
     } finally {
       setPwdPending(false)
     }
   }
-
-  const changePasswordCard =
-    userInfo.accessToken && userInfo.userData?.id ? (
-      <div className="mt-6 w-full max-w-2xl rounded-lg border border-gray-200 bg-white p-6 shadow-md">
-        <h2 className="mb-4 text-lg font-semibold text-gray-900">
-          Смена пароля
-        </h2>
-        <form onSubmit={submitChangePassword} className="flex max-w-md flex-col gap-3">
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium text-gray-700">Текущий пароль</span>
-            <input
-              type="password"
-              autoComplete="current-password"
-              value={pwdCurrent}
-              onChange={(ev) => setPwdCurrent(ev.target.value)}
-              className="rounded-md border border-gray-300 px-3 py-2"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium text-gray-700">Новый пароль</span>
-            <input
-              type="password"
-              autoComplete="new-password"
-              value={pwdNew}
-              onChange={(ev) => setPwdNew(ev.target.value)}
-              className="rounded-md border border-gray-300 px-3 py-2"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium text-gray-700">
-              Повторите новый пароль
-            </span>
-            <input
-              type="password"
-              autoComplete="new-password"
-              value={pwdConfirm}
-              onChange={(ev) => setPwdConfirm(ev.target.value)}
-              className="rounded-md border border-gray-300 px-3 py-2"
-            />
-          </label>
-          {pwdNew && !pwdNewValid && (
-            <p className="text-sm text-amber-800">
-              Не менее 8 символов, только латиница и цифры.
-            </p>
-          )}
-          {pwdConfirm && !pwdMatch && pwdNewValid && (
-            <p className="text-sm text-red-600">Пароли не совпадают.</p>
-          )}
-          {pwdMessage.text && (
-            <p
-              className={
-                pwdMessage.type === "ok"
-                  ? "text-sm text-green-800"
-                  : "text-sm text-red-600"
-              }
-            >
-              {pwdMessage.text}
-            </p>
-          )}
-          <button
-            type="submit"
-            disabled={
-              pwdPending ||
-              !pwdCurrent ||
-              !pwdNewValid ||
-              !pwdMatch
-            }
-            className="mt-1 w-fit rounded-lg bg-slate-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:bg-gray-400"
-          >
-            {pwdPending ? "Сохранение…" : "Сохранить новый пароль"}
-          </button>
-        </form>
-      </div>
-    ) : null
 
   const resendVerification = async () => {
     setResendHint("")
@@ -661,121 +239,416 @@ const Profile = () => {
       })
       const data = await res.json().catch(() => ({}))
       if (data.error) {
-        if (data.retry_after_seconds != null) {
-          dispatch(
-            setVerificationResendCooldownFromSeconds(data.retry_after_seconds)
-          )
-        }
+        if (data.retry_after_seconds != null)
+          dispatch(setVerificationResendCooldownFromSeconds(data.retry_after_seconds))
         setResendHint(data.error)
       } else {
-        setResendHint("Письмо отправлено. Проверьте почту и папку «Спам».")
+        setResendHint("Письмо отправлено. Проверьте почту.")
         dispatch(
-          setVerificationResendCooldownFromSeconds(
-            data.verification_resend_after_seconds ?? 120
-          )
+          setVerificationResendCooldownFromSeconds(data.verification_resend_after_seconds ?? 120)
         )
       }
     } catch (e) {
-      alert(String(e.message || e))
+      setResendHint(String(e.message || e))
     } finally {
       setResendPending(false)
     }
   }
 
-  const emailBanner =
-    userInfo.accessToken && !userInfo.emailVerified ? (
-      <div className="mb-6 w-full max-w-2xl rounded-lg border border-amber-300 bg-amber-50 p-5 text-amber-950 shadow-sm">
-        <p className="mb-3 font-semibold">Адрес email не подтверждён</p>
-        <p className="mb-4 text-sm">
-          Загрузка изображений в классификатор и просмотр истории классификаций будут доступны после
-          перехода по ссылке из письма. Если письма нет, отправьте его повторно.
-        </p>
-        <button
-          type="button"
-          onClick={resendVerification}
-          disabled={resendPending || resendCooldownRemaining > 0}
-          className="rounded-lg bg-amber-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-900 disabled:bg-gray-400"
-        >
-          {resendPending
-            ? "Отправка…"
-            : resendCooldownRemaining > 0
-              ? `Повторная отправка через ${resendCooldownRemaining} с`
-              : "Отправить письмо повторно"}
-        </button>
-        {resendHint && (
-          <p
-            className={`mt-3 text-sm ${
-              resendHint.startsWith("Письмо отправлено")
-                ? "text-green-800"
-                : "text-amber-900"
-            }`}
-          >
-            {resendHint}
-          </p>
-        )}
-      </div>
-    ) : null
+  const fetchHistory = () => {
+    setHistoryLoading(true)
+    handleHistoryRequest(userInfo.accessToken).then((response) => {
+      setOpenHistoryImageKey(null)
+      setOpenTreeKey(null)
+      setHistory(Array.isArray(response) ? response : [])
+      setHistoryLoading(false)
+    })
+  }
 
-  const historyDisplay = history.length > 0 ?
-    <div className="space-y-6 mt-5">
-      <div className="flex flex-column items-center justify-center bg-white rounded-lg shadow-md p-6">
-        <ul className="w-full space-y-2">
-          {history.map((historyResponse, index) => (
-            <li key={`${String(historyResponse.request_date)}_${historyResponse.file_name}_${index}`}>
-              {showHistory(historyResponse, userInfo.userData.id)}
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div> :
-    null
+  const initials =
+    ((userInfo.userData?.firstName || "").charAt(0) +
+      (userInfo.userData?.lastName || "").charAt(0)).toUpperCase()
 
-  const requestButton =
-    userInfo.emailVerified ? (
-    <div className="space-y-6 mt-5 w-full">
-      <div className="flex flex-column items-center justify-center bg-white rounded-lg shadow-md p-6">
-        <div>
-            <button 
-              onClick={() => {
-                handleHistoryRequest(userInfo.accessToken).then((response) => {
-                  const rows = Array.isArray(response) ? response : []
-                  setOpenHistoryImageKey(null)
-                  setHistory([
-                    {
-                      request_date: mappingInfoRU.request_date,
-                      file_name: mappingInfoRU.file_name,
-                      status: mappingInfoRU.status,
-                      result: mappingInfoRU.result,
-                    },
-                    ...rows,
-                  ])
-                })
-              }} 
-              className="px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
-            >
-              Получить историю запросов
-            </button>
-        </div>
-      </div>
-    </div>
-    ) : (
-    <div className="mt-5 w-full max-w-xl rounded-lg border border-gray-200 bg-white p-6 text-center text-gray-600 shadow-md">
-      История классификаций станет доступна после подтверждения email.
-    </div>
-    )
+  const parseResult = (raw) => {
+    if (raw == null || raw === "") return {}
+    try {
+      const parsed = typeof raw === "string" ? JSON.parse(raw) : raw
+      return parsed != null && typeof parsed === "object" && !Array.isArray(parsed)
+        ? parsed
+        : {}
+    } catch {
+      return {}
+    }
+  }
+
+  const formatDate = (raw) => {
+    const m = /^(?<date>.*)T(?<time>.*)\..*\+/.exec(raw)
+    return m ? `${m.groups.date} ${m.groups.time}` : raw
+  }
+
+  const extractFileName = (raw) => {
+    const m = /^(?:.*?_){3}(?<filename>.*)$/.exec(raw)
+    return m?.groups?.filename ?? raw
+  }
 
   return (
-    <div className="flex flex-col justify-center items-center">
-      {emailBanner}
-      <div className="flex flex-row justify-center gap-[20px] w-[60%]">
-          {profilePicture}
-          {profileInfo}
+    <div className="space-y-6">
+      {/* ---- Email verification banner ---- */}
+      {userInfo.accessToken && !userInfo.emailVerified && (
+        <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4">
+          <Mail size={20} className="mt-0.5 flex-shrink-0 text-amber-600" />
+          <div className="flex-1">
+            <p className="font-semibold text-amber-900 text-sm">
+              Адрес email не подтверждён
+            </p>
+            <p className="mt-1 text-sm text-amber-800">
+              Загрузка и история будут доступны после перехода по ссылке из письма.
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <Button
+                type="button"
+                onClick={resendVerification}
+                disabled={resendPending || resendCooldownRemaining > 0}
+                className="text-xs bg-amber-700 hover:bg-amber-800 focus-visible:ring-amber-500"
+              >
+                {resendPending
+                  ? "Отправка..."
+                  : resendCooldownRemaining > 0
+                    ? `Повтор через ${resendCooldownRemaining} с`
+                    : "Отправить письмо"}
+              </Button>
+              {resendHint && (
+                <p className={`text-xs ${resendHint.startsWith("Письмо") ? "text-green-700" : "text-amber-900"}`}>
+                  {resendHint}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---- Profile header card ---- */}
+      <div className="card-elevated">
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
+          {/* Avatar */}
+          <div className="relative group">
+            <div className="h-24 w-24 rounded-full overflow-hidden bg-med-100 flex items-center justify-center ring-4 ring-white shadow">
+              {avatarDisplayUrl ? (
+                <img
+                  src={avatarDisplayUrl}
+                  alt="Аватар"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span className="text-2xl font-bold text-med-600">
+                  {initials || <User size={32} />}
+                </span>
+              )}
+            </div>
+            <label className="absolute inset-0 flex cursor-pointer items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+              <Camera size={20} className="text-white" />
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                disabled={avatarUploadPending}
+                onChange={handleAvatarFile}
+              />
+            </label>
+          </div>
+
+          {/* Info */}
+          <div className="flex-1 text-center sm:text-left">
+            <h1 className="text-xl font-bold text-gray-900">
+              {userInfo.userData?.firstName} {userInfo.userData?.lastName}
+            </h1>
+            <p className="mt-0.5 text-sm text-gray-500">
+              {userInfo.userData?.email}
+            </p>
+            {userInfo.emailVerified && (
+              <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700">
+                <CheckCircle2 size={12} /> Email подтверждён
+              </span>
+            )}
+            {avatarMessage.text && (
+              <p className={`mt-2 text-xs ${avatarMessage.type === "ok" ? "text-green-700" : "text-red-600"}`}>
+                {avatarMessage.text}
+              </p>
+            )}
+          </div>
+        </div>
       </div>
-      <div className="flex flex-col justify-center items-center w-[80%]">
-        {profileNamesCard}
-        {changePasswordCard}
-        {historyDisplay}
-        {requestButton}
+
+      {/* ---- Edit profile & password in 2 columns ---- */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Edit name */}
+        <div className="card">
+          <SectionHeader icon={User} title="Личные данные" />
+          <form onSubmit={submitProfileNames} className="space-y-4">
+            <div>
+              <label htmlFor="prof-fn" className="input-label">Имя</label>
+              <input
+                id="prof-fn"
+                type="text"
+                autoComplete="given-name"
+                value={editFirstName}
+                onChange={(e) => setEditFirstName(e.target.value)}
+                maxLength={100}
+                className="input-field"
+              />
+            </div>
+            <div>
+              <label htmlFor="prof-ln" className="input-label">Фамилия</label>
+              <input
+                id="prof-ln"
+                type="text"
+                autoComplete="family-name"
+                value={editLastName}
+                onChange={(e) => setEditLastName(e.target.value)}
+                maxLength={100}
+                className="input-field"
+              />
+            </div>
+            {profileMessage.text && (
+              <p className={`text-sm ${profileMessage.type === "ok" ? "text-green-700" : "text-red-600"}`}>
+                {profileMessage.text}
+              </p>
+            )}
+            <Button type="submit" disabled={profilePending}>
+              {profilePending ? (
+                <><Loader2 size={16} className="animate-spin" /> Сохранение...</>
+              ) : (
+                <><Save size={16} /> Сохранить</>
+              )}
+            </Button>
+          </form>
+        </div>
+
+        {/* Change password */}
+        <div className="card">
+          <SectionHeader icon={Lock} title="Смена пароля" />
+          <form onSubmit={submitChangePassword} className="space-y-4">
+            <div>
+              <label htmlFor="pwd-cur" className="input-label">Текущий пароль</label>
+              <input
+                id="pwd-cur"
+                type="password"
+                autoComplete="current-password"
+                value={pwdCurrent}
+                onChange={(e) => setPwdCurrent(e.target.value)}
+                className="input-field"
+              />
+            </div>
+            <div>
+              <label htmlFor="pwd-new" className="input-label">Новый пароль</label>
+              <input
+                id="pwd-new"
+                type="password"
+                autoComplete="new-password"
+                value={pwdNew}
+                onChange={(e) => setPwdNew(e.target.value)}
+                className="input-field"
+              />
+              {pwdNew && !pwdNewValid && (
+                <p className="mt-1 text-xs text-amber-700">
+                  Мин. 8 символов, латиница и цифры
+                </p>
+              )}
+            </div>
+            <div>
+              <label htmlFor="pwd-conf" className="input-label">Подтверждение</label>
+              <input
+                id="pwd-conf"
+                type="password"
+                autoComplete="new-password"
+                value={pwdConfirm}
+                onChange={(e) => setPwdConfirm(e.target.value)}
+                className="input-field"
+              />
+              {pwdConfirm && !pwdMatch && pwdNewValid && (
+                <p className="mt-1 text-xs text-red-600">Пароли не совпадают</p>
+              )}
+            </div>
+            {pwdMessage.text && (
+              <p className={`text-sm ${pwdMessage.type === "ok" ? "text-green-700" : "text-red-600"}`}>
+                {pwdMessage.text}
+              </p>
+            )}
+            <Button
+              type="submit"
+              disabled={pwdPending || !pwdCurrent || !pwdNewValid || !pwdMatch}
+            >
+              {pwdPending ? (
+                <><Loader2 size={16} className="animate-spin" /> Сохранение...</>
+              ) : (
+                <><Lock size={16} /> Сменить пароль</>
+              )}
+            </Button>
+          </form>
+        </div>
+      </div>
+
+      {/* ---- History section ---- */}
+      <div className="card-elevated">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+          <SectionHeader icon={Clock} title="История классификаций" />
+          {userInfo.emailVerified ? (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={fetchHistory}
+              disabled={historyLoading}
+              className="text-xs sm:ml-auto"
+            >
+              {historyLoading ? (
+                <><Loader2 size={14} className="animate-spin" /> Загрузка...</>
+              ) : (
+                <><RefreshCw size={14} /> Обновить</>
+              )}
+            </Button>
+          ) : (
+            <p className="text-sm text-gray-400">
+              Доступно после подтверждения email
+            </p>
+          )}
+        </div>
+
+        {history.length === 0 && !historyLoading && (
+          <div className="py-10 text-center">
+            <FileText size={32} className="mx-auto mb-2 text-gray-300" />
+            <p className="text-sm text-gray-400">
+              {userInfo.emailVerified
+                ? "Нажмите «Обновить», чтобы загрузить историю"
+                : "Подтвердите email для доступа к истории"}
+            </p>
+          </div>
+        )}
+
+        {history.length > 0 && (
+          <div className="space-y-3">
+            {history.map((row, idx) => {
+              const result = parseResult(row.result)
+              const hasDetail = Object.prototype.hasOwnProperty.call(result, "detail")
+              const hasResult = !hasDetail && Object.keys(result).length > 0
+              const inProgress = row.status === "pending" || row.status === "processing"
+              const isError = row.status === "error"
+              const rowKey = `${row.request_date}_${row.file_name}_${idx}`
+              const base = env.BACKEND_URL.replace(/\/$/, "")
+              const imgSrc = row.image_token
+                ? `${base}${HISTORY_IMAGE}?token=${encodeURIComponent(row.image_token)}`
+                : null
+
+              return (
+                <div key={rowKey} className="rounded-lg border border-gray-200 bg-gray-50/50 p-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                    <div className="flex items-center gap-2 text-xs text-gray-500 flex-shrink-0">
+                      <Clock size={14} />
+                      <span>{formatDate(row.request_date)}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm font-medium text-gray-800 truncate">
+                      <FileText size={14} className="text-gray-400 flex-shrink-0" />
+                      <span className="truncate">{extractFileName(row.file_name)}</span>
+                    </div>
+                    <div className="sm:ml-auto flex items-center gap-2">
+                      {inProgress && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">
+                          <Loader2 size={12} className="animate-spin" /> В обработке
+                        </span>
+                      )}
+                      {isError && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700">
+                          <AlertTriangle size={12} /> Ошибка
+                        </span>
+                      )}
+                      {!isError && !inProgress && hasResult && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700">
+                          <CheckCircle2 size={12} /> Готово
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {!isError && !inProgress && hasResult && (
+                    <div className="mt-3">
+                      <div className="flex flex-wrap gap-1.5">
+                        {getValues(result).map((val, i) => (
+                          <React.Fragment key={i}>
+                            {i > 0 && <span className="self-center text-xs text-gray-300">&rarr;</span>}
+                            <span className="rounded bg-med-50 px-2 py-0.5 text-xs font-medium text-med-800">
+                              {val}
+                            </span>
+                          </React.Fragment>
+                        ))}
+                      </div>
+
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setOpenTreeKey((k) => (k === rowKey ? null : rowKey))}
+                          className="inline-flex items-center gap-1.5 rounded-md bg-white border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                        >
+                          {openTreeKey === rowKey ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                          Дерево решений
+                        </button>
+                        {imgSrc && (
+                          <button
+                            type="button"
+                            onClick={() => setOpenHistoryImageKey((k) => (k === rowKey ? null : rowKey))}
+                            className="inline-flex items-center gap-1.5 rounded-md bg-white border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                          >
+                            <ImageIcon size={14} />
+                            {openHistoryImageKey === rowKey ? "Скрыть" : "Изображение"}
+                          </button>
+                        )}
+                      </div>
+
+                      {openTreeKey === rowKey && (
+                        <div className="mt-3 animate-fadeIn">
+                          <TreeComponent
+                            classificationResult={result}
+                            displaySize={{ width: "100%", height: "300px" }}
+                            nodeSize={{ x: 300, y: 50 }}
+                            zoom={0.4}
+                            translate={{ x: 50, y: 180 }}
+                          />
+                        </div>
+                      )}
+
+                      {openHistoryImageKey === rowKey && imgSrc && (
+                        <div className="mt-3 animate-fadeIn">
+                          <img
+                            src={imgSrc}
+                            alt={row.file_name || "Снимок"}
+                            className="max-h-80 w-auto max-w-full rounded-lg border border-gray-200 object-contain"
+                            onError={() => setOpenHistoryImageKey(null)}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {!isError && !inProgress && hasDetail && (
+                    <p className="mt-2 text-sm text-red-600">
+                      Ошибка обработки. Обратитесь к администрации.
+                    </p>
+                  )}
+
+                  {isError && (
+                    <p className="mt-2 text-sm text-red-600">
+                      Произошла ошибка. Обратитесь к администрации.
+                    </p>
+                  )}
+
+                  {inProgress && (
+                    <p className="mt-2 text-sm text-amber-700">
+                      Классификация выполняется. Обновите историю позже.
+                    </p>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
     </div>
   )

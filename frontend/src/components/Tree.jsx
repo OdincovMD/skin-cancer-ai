@@ -6,10 +6,11 @@ import { getValues, convertToD3Tree } from "../imports/HELPERS"
 const renderNode = ({ nodeDatum, toggleNode }) => {
 
   const toHighlight = (nodeDatum.children && (nodeDatum.children.length > 0)) || nodeDatum.attributes?.final
-  const nodeColor = toHighlight ? "#99ff99" : "white"
+  const nodeColor = toHighlight ? "#ccfbf1" : "#ffffff"
   const fontWeight = toHighlight ? 600 : 400
-  const color = toHighlight ? "black" : "gray"
+  const color = toHighlight ? "#134e4a" : "#6b7280"
   const strokeWidth = toHighlight ? "2" : "1"
+  const strokeColor = toHighlight ? "#0d9488" : "#e5e7eb"
 
   const textOffsetX = nodeDatum.attributes?.final ? 0 : 0
   const textOffsetY = nodeDatum.attributes?.final ? 60 : 0
@@ -20,7 +21,7 @@ const renderNode = ({ nodeDatum, toggleNode }) => {
     <circle
       r="15"
       fill={nodeColor}
-      stroke="#374151"
+      stroke={strokeColor}
       strokeWidth={strokeWidth}
       onClick={toggleNode}
     />
@@ -29,11 +30,9 @@ const renderNode = ({ nodeDatum, toggleNode }) => {
       x={textOffsetX}
       y={-20 + textOffsetY}
       textAnchor="middle"
-      fill="#374151"
-      fontSize="24"
-      strokeWidth={strokeWidth}
+      fill={color}
+      fontSize="18"
       fontWeight={fontWeight}
-      color={color}
     >
       {nodeDatum.name}
     </text>
@@ -48,8 +47,10 @@ const TreeComponent = ({classificationResult, displaySize, nodeSize, zoom, trans
   const treeData = convertToD3Tree({node: classificationTree, reference: values, index: 0})
 
   return (
-
-    <div style={displaySize}>
+    <div
+      className="rounded-xl border border-gray-200 bg-gradient-to-b from-gray-50/90 to-white overflow-hidden"
+      style={displaySize}
+    >
       <Tree 
         data={treeData} 
         zoom={zoom}

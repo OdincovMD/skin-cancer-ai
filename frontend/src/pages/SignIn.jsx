@@ -1,129 +1,154 @@
 import React, { useEffect, useState } from "react"
 import { useDispatch, useSelector } from "react-redux"
-import { Link } from "react-router-dom"
-import { Eye, EyeOff } from "lucide-react"
+import { Link, useNavigate } from "react-router-dom"
+import { Eye, EyeOff, LogIn, Scan } from "lucide-react"
 
+import Alert from "../components/ui/Alert"
+import Button from "../components/ui/Button"
 import { onVerify } from "../asyncActions/onVerify"
-import { SIGN_IN, SIGN_UP } from "../imports/ENDPOINTS"
+import { HOME, SIGN_IN, SIGN_UP } from "../imports/ENDPOINTS"
 import { mappingInfo } from "../imports/HELPERS"
 import { noError, toggleRememberMe } from "../store/userReducer"
 
 const SignIn = () => {
-
-  const defaultFormState = {
-    login: "",
-    password: "",
-  }
-
+  const [formState, setFormState] = useState({ login: "", password: "" })
   const [isRequestPending, setIsRequestPending] = useState(false)
-  const [formState, setFormState] = useState(defaultFormState)
-
-  const dispatch = useDispatch()
-  const userInfo = useSelector(state => state.user)
-
   const [isPasswordVisible, setIsPasswordVisible] = useState(false)
 
-  const togglePasswordVisibility = () => {
-    setIsPasswordVisible((prevState) => !prevState)
-  }
+  const dispatch = useDispatch()
+  const navigate = useNavigate()
+  const userInfo = useSelector((state) => state.user)
 
   useEffect(() => {
-    if (!isRequestPending && userInfo.error) {
-      dispatch(noError())
-    }
+    if (!isRequestPending && userInfo.error) dispatch(noError())
   }, [formState])
 
-  const handleSubmit = async (event) => {
-    event.preventDefault()
-
+  const handleSubmit = async (e) => {
+    e.preventDefault()
     setIsRequestPending(true)
-    dispatch(onVerify({ 
-      data: {
-        [mappingInfo.LOGIN]: formState.login,
-        [mappingInfo.PASSWORD]: formState.password
-      },
-      endpoint: SIGN_IN
-    }))
-    setIsRequestPending(false)
+    try {
+      const result = await dispatch(
+        onVerify({
+          data: {
+            [mappingInfo.LOGIN]: formState.login,
+            [mappingInfo.PASSWORD]: formState.password,
+          },
+          endpoint: SIGN_IN,
+        })
+      ).unwrap()
+      if (!result.error && result.userData?.id != null) {
+        navigate(HOME, { replace: true })
+      }
+    } finally {
+      setIsRequestPending(false)
+    }
   }
 
+  const canSubmit = formState.login && formState.password && !isRequestPending
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100 p-6">
-      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg">
-        <h2 className="mb-6 text-center text-2xl font-semibold text-gray-700">Вход в систему</h2>
-        <form 
-          className="flex flex-col justify-center items-center space-y-4"
-          onSubmit={handleSubmit}
-        >
-
-          <input
-            type="text"
-            placeholder="Логин"
-            className="w-full rounded-lg border border-gray-300 p-3 outline-blue-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            onChange={(ans) => { setFormState({...formState, login: ans.target.value}) }}
-          />
-
-          <div
-            className="flex flex-row w-full rounded-lg border border-gray-300 p-3 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500"
-          >
-            <input
-              name="password"
-              type={isPasswordVisible ? "text" : "password"}
-              placeholder="Пароль"
-              className="w-full border-none focus:outline-none"
-              onChange={(ans) => { setFormState({...formState, password: ans.target.value}) }}
-            />
-            <button 
-              type="button"
-              title={isPasswordVisible ? "Скрыть пароль" : "Показать пароль"}
-              className="cursor-pointer text-gray-400 rounded-e-md focus:outline-none focus-visible:text-blue-500 hover:text-blue-500 transition-colors" onClick={togglePasswordVisibility} aria-label={isPasswordVisible ? "Hide password" : "Show password"} aria-pressed={isPasswordVisible} aria-controls="password" >
-              {isPasswordVisible ? ( <EyeOff size={20} aria-hidden="true" /> ) : ( <Eye size={20} aria-hidden="true" /> )}
-            </button>
+    <div className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center px-4 py-12">
+      <div className="w-full max-w-sm">
+        <div className="mb-8 flex flex-col items-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-med-600 text-white mb-4">
+            <Scan size={24} />
           </div>
+          <h1 className="text-2xl font-bold text-gray-900">Вход в систему</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Введите данные для доступа к классификатору
+          </p>
+        </div>
 
-          {userInfo.error &&
-            <div 
-              className="text-red-500 animate-slideIn opacity-0"
-              style={{ "--delay": 0 + "s" }}
-            >
-              {userInfo.error}
+        <div className="card-elevated">
+          <form className="space-y-5" onSubmit={handleSubmit}>
+            <div>
+              <label htmlFor="login" className="input-label">
+                Логин
+              </label>
+              <input
+                id="login"
+                type="text"
+                autoComplete="username"
+                placeholder="Ваш логин"
+                className="input-field"
+                value={formState.login}
+                onChange={(e) =>
+                  setFormState({ ...formState, login: e.target.value })
+                }
+              />
             </div>
-          }
 
-          <button
-            type="submit"
-            className="w-full rounded-lg px-4 py-3 text-white font-semibold transition bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400"
-            disabled={!(formState.login && formState.password) || userInfo.error}
-          >
-            Войти
-          </button>
+            <div>
+              <label htmlFor="password" className="input-label">
+                Пароль
+              </label>
+              <div className="relative">
+                <input
+                  id="password"
+                  type={isPasswordVisible ? "text" : "password"}
+                  autoComplete="current-password"
+                  placeholder="Введите пароль"
+                  className="input-field pr-10"
+                  value={formState.password}
+                  onChange={(e) =>
+                    setFormState({ ...formState, password: e.target.value })
+                  }
+                />
+                <button
+                  type="button"
+                  onClick={() => setIsPasswordVisible((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  aria-label={
+                    isPasswordVisible ? "Скрыть пароль" : "Показать пароль"
+                  }
+                >
+                  {isPasswordVisible ? (
+                    <EyeOff size={18} />
+                  ) : (
+                    <Eye size={18} />
+                  )}
+                </button>
+              </div>
+            </div>
 
-          <div>
-            <input
-              type="checkbox"
-              id="rememberMe"
-              className="relative top-[1px]"
-              onClick={() => {
-                dispatch(toggleRememberMe())
-              }}
-            />
-            <label
-              className="ml-[3px]"
-            >
-              Запомнить меня
+            <label className="flex items-center gap-2.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={userInfo.isRememberMeChecked}
+                onChange={() => dispatch(toggleRememberMe())}
+                className="h-4 w-4 rounded border-gray-300 text-med-600 focus:ring-med-500"
+              />
+              <span className="text-sm text-gray-600">Запомнить меня</span>
             </label>
-          </div>
 
-          <div className="flex flex-row items-center justify-center">
-            <span className="block truncate white">Еще не зарегистрированы?</span>
-            <Link
-              to={SIGN_UP}
-              className="text-blue-600 cursor-pointer"
-            >
-              <span className="underline ml-1 transition hover:text-blue-900">{`Регистрация`}</span>
-            </Link>
-          </div>
-        </form>
+            {userInfo.error && (
+              <Alert variant="error" className="animate-slideIn">
+                {userInfo.error}
+              </Alert>
+            )}
+
+            <Button type="submit" disabled={!canSubmit} className="w-full">
+              {isRequestPending ? (
+                <>
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  Вход...
+                </>
+              ) : (
+                <>
+                  <LogIn size={18} />
+                  Войти
+                </>
+              )}
+            </Button>
+          </form>
+        </div>
+
+        <p className="mt-6 text-center text-sm text-gray-500">
+          Ещё нет аккаунта?{" "}
+          <Link to={SIGN_UP} className="text-link">
+            Зарегистрироваться
+          </Link>
+        </p>
       </div>
     </div>
   )

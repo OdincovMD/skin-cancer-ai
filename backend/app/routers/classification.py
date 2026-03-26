@@ -1,3 +1,4 @@
+import asyncio
 import io
 import mimetypes
 import os
@@ -14,7 +15,6 @@ from minio_client import (
     create_bucket_if_not_exists,
     download_file_bytes,
     get_minio_client,
-    is_file_in_minio,
     object_key_for_stored_filename,
     upload_file_to_minio,
 )
@@ -52,11 +52,26 @@ async def handle_upload(
     with open(file_path, "wb") as buffer:
         buffer.write(file_content)
 
-    s3_client = get_minio_client()
-    create_bucket_if_not_exists(s3_client, BUCKET_NAME)
-    await Orm.insert_file_record(session, file_name=file_name, bucket_name=BUCKET_NAME)
-    if not is_file_in_minio(s3_client, BUCKET_NAME, file_path):
+    try:
+        s3_client = get_minio_client()
+        create_bucket_if_not_exists(s3_client, BUCKET_NAME)
+        # Сначала гарантируем объект в MinIO, затем запись в БД — иначе при сбое S3
+        # остаётся «успешный» job_id без файла в хранилище.
         upload_file_to_minio(s3_client, BUCKET_NAME, file_path)
+    except ClientError as e:
+        raise HTTPException(
+            status_code=502,
+            detail="Не удалось сохранить файл в хранилище. Повторите попытку позже.",
+        ) from e
+    except OSError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Ошибка при чтении временного файла: {e}",
+        ) from e
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e)) from e
+
+    await Orm.insert_file_record(session, file_name=file_name, bucket_name=BUCKET_NAME)
 
     try:
         file_id = await Orm.get_file_id_by_name(session, file_name=file_name)
@@ -156,7 +171,9 @@ async def get_history_image(
     key = object_key_for_stored_filename(file_name)
     try:
         s3 = get_minio_client()
-        body = download_file_bytes(s3, bucket, key)
+        body = await asyncio.to_thread(
+            download_file_bytes, s3, bucket, key
+        )
     except ClientError as e:
         err = e.response.get("Error") or {}
         code = err.get("Code") or ""

@@ -1,11 +1,10 @@
 import asyncio
-import io
 import mimetypes
 import secrets
 
 from botocore.exceptions import ClientError
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from jwt_auth import create_access_token, get_current_user_id
@@ -162,7 +161,11 @@ async def get_my_avatar(
     except RuntimeError as e:
         raise HTTPException(status_code=503, detail=str(e)) from e
     media = mimetypes.guess_type(key)[0] or "application/octet-stream"
-    return StreamingResponse(io.BytesIO(data), media_type=media)
+    return Response(
+        content=data,
+        media_type=media,
+        headers={"Cache-Control": "private, no-store"},
+    )
 
 
 @router.post("/me/avatar")

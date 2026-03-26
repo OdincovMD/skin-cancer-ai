@@ -48,7 +48,9 @@ async def _run_classification_async(classification_id: int) -> None:
 
             try:
                 s3 = get_minio_client()
-                body = download_file_bytes(s3, bucket, object_key)
+                body = await asyncio.to_thread(
+                    download_file_bytes, s3, bucket, object_key
+                )
             except Exception as e:
                 await Orm.update_classification_status(
                     session,
