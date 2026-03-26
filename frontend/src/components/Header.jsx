@@ -32,7 +32,7 @@ const Header = ({ toggleSidebar }) => {
             dispatch(noError()) 
           }}
         >
-          { userInfo.userData.id ? (
+          { userInfo.userData.id && userInfo.accessToken ? (
               <Link
                 to={PROFILE}
                 className="text-gray-600"

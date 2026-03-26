@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react"
 import { useDispatch, useSelector } from "react-redux"
-import { Link, useNavigate } from "react-router-dom"
+import { Link } from "react-router-dom"
 import { Eye, EyeOff } from "lucide-react"
 
 import { onVerify } from "../asyncActions/onVerify"
-import { HOME, SIGN_IN, SIGN_UP } from "../imports/ENDPOINTS"
+import { SIGN_IN, SIGN_UP } from "../imports/ENDPOINTS"
 import { mappingInfo } from "../imports/HELPERS"
 import { noError, toggleRememberMe } from "../store/userReducer"
 
@@ -20,7 +20,6 @@ const SignIn = () => {
 
   const dispatch = useDispatch()
   const userInfo = useSelector(state => state.user)
-  const navigate = useNavigate()
 
   const [isPasswordVisible, setIsPasswordVisible] = useState(false)
 
@@ -46,8 +45,6 @@ const SignIn = () => {
       endpoint: SIGN_IN
     }))
     setIsRequestPending(false)
-
-    userInfo.userData.id && navigate(HOME)
   }
 
   return (

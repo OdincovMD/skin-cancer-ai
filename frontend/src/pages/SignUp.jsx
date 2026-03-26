@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router-dom"
 import { Eye, EyeOff } from "lucide-react"
 
 import { onVerify } from "../asyncActions/onVerify"
-import { HOME, SIGN_IN, SIGN_UP } from "../imports/ENDPOINTS"
+import { SIGN_IN, SIGN_UP, PROFILE } from "../imports/ENDPOINTS"
 import { mappingInfo } from "../imports/HELPERS"
 import { noError } from "../store/userReducer"
 
@@ -23,8 +23,8 @@ const SignUp = () => {
   const [formState, setFormState] = useState(defaultFormState)
 
   const dispatch = useDispatch()
-  const userInfo = useSelector(state => state.user)
   const navigate = useNavigate()
+  const userInfo = useSelector(state => state.user)
 
   const [isPasswordVisible, setIsPasswordVisible] = useState(false)
   const [isPasswordValid, setIsPasswordValid] = useState(false)
@@ -47,21 +47,26 @@ const SignUp = () => {
   
   const handleSubmit = async (event) => {
     event.preventDefault()
-    
-    setIsRequestPending(true)
-    dispatch(onVerify({ 
-      data: { 
-        [mappingInfo.FIRST_NAME]: formState.firstName,
-        [mappingInfo.LAST_NAME]: formState.lastName,
-        [mappingInfo.EMAIL]: formState.email,
-        [mappingInfo.LOGIN]: formState.login,
-        [mappingInfo.PASSWORD]: formState.password
-      },
-      endpoint: SIGN_UP 
-    }))
-    setIsRequestPending(false)
 
-    userInfo.userData.id && navigate(HOME)
+    setIsRequestPending(true)
+    try {
+      const outcome = await dispatch(onVerify({
+        data: {
+          [mappingInfo.FIRST_NAME]: formState.firstName,
+          [mappingInfo.LAST_NAME]: formState.lastName,
+          [mappingInfo.EMAIL]: formState.email,
+          [mappingInfo.LOGIN]: formState.login,
+          [mappingInfo.PASSWORD]: formState.password
+        },
+        endpoint: SIGN_UP
+      })).unwrap()
+
+      if (!outcome.error && outcome.accessToken) {
+        navigate(PROFILE, { replace: true })
+      }
+    } finally {
+      setIsRequestPending(false)
+    }
   }
 
   useEffect(() => {
@@ -166,7 +171,10 @@ const SignUp = () => {
           <button 
             type="submit" 
             className="w-full rounded-lg px-4 py-3 text-white font-semibold transition bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400"
-            disabled={!(formState.firstName && formState.lastName && formState.login && formState.email && formState.password && isPasswordValid && arePasswordsSame)}
+            disabled={
+              isRequestPending
+              || !(formState.firstName && formState.lastName && formState.login && formState.email && formState.password && isPasswordValid && arePasswordsSame)
+            }
           >
             Зарегистрироваться
           </button>

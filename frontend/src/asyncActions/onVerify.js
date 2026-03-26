@@ -9,9 +9,12 @@ export const onVerify = createAsyncThunk("user/onVerify", async ({data, endpoint
         firstName: null,
         lastName: null,
         email: null,
-        // avatar: null,
       },
-      error: null
+      accessToken: null,
+      error: null,
+      requires_email_verification: false,
+      emailVerified: true,
+      verificationResendAfterSeconds: 0,
     }
 
     try {
@@ -36,7 +39,21 @@ export const onVerify = createAsyncThunk("user/onVerify", async ({data, endpoint
       }
 
       // Всё ок
-      requestState.userData = responseJSON.userData
+      const ud = responseJSON.userData || {}
+      requestState.userData = {
+        id: ud.id ?? null,
+        firstName: ud.firstName ?? null,
+        lastName: ud.lastName ?? null,
+        email: ud.email ?? null,
+      }
+      requestState.accessToken = responseJSON.access_token ?? null
+      requestState.requires_email_verification =
+        Boolean(responseJSON.requires_email_verification)
+      requestState.emailVerified = ud.email_verified === true
+      requestState.verificationResendAfterSeconds = Math.max(
+        0,
+        Number(responseJSON.verification_resend_after_seconds) || 0
+      )
       return requestState
     }
 

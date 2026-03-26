@@ -9,11 +9,12 @@ import {
   pollClassificationJob,
   savePendingJob,
 } from "../asyncActions/pollClassificationJob"
+import { Link } from "react-router-dom"
 import { useSelector } from "react-redux"
 import TreeComponent from "../components/Tree"
 
 import { env } from "../imports/ENV"
-import { HISTORY_IMAGE } from "../imports/ENDPOINTS"
+import { HISTORY_IMAGE, PROFILE } from "../imports/ENDPOINTS"
 import { getValues } from "../imports/HELPERS"
 
 function displayNameFromStoredFileName(storedName) {
@@ -54,14 +55,15 @@ const Home = () => {
 
   useEffect(() => {
     const uid = userInfo?.userData?.id
-    if (!uid) return
+    const token = userInfo?.accessToken
+    if (!uid || !token || !userInfo.emailVerified) return
     resumeEffectGen.current += 1
     const gen = resumeEffectGen.current
     let cancelled = false
 
     ;(async () => {
       try {
-        const active = await fetchActiveClassificationJob(uid)
+        const active = await fetchActiveClassificationJob(token)
         if (cancelled || resumeEffectGen.current !== gen) return
         if (!active) {
           clearPendingJob(uid)
@@ -73,6 +75,7 @@ const Home = () => {
         const polled = await pollClassificationJob({
           jobId: active.job_id,
           userId: uid,
+          accessToken: token,
         })
         if (cancelled || resumeEffectGen.current !== gen) return
         setClassificationResult(polled.classification)
@@ -98,7 +101,7 @@ const Home = () => {
     return () => {
       cancelled = true
     }
-  }, [userInfo?.userData?.id])
+  }, [userInfo?.userData?.id, userInfo?.accessToken, userInfo?.emailVerified])
 
   const handleChange = async (event) => {
 
@@ -180,7 +183,34 @@ const Home = () => {
     </div>
   </div>
 
-  const uploadImage = userInfo.userData.id &&
+  const uploadBlocked =
+    userInfo.userData.id &&
+    userInfo.accessToken &&
+    !userInfo.emailVerified && (
+      <div className="space-y-6 mt-5">
+        <div className="flex flex-col items-center justify-center rounded-lg border border-amber-200 bg-amber-50 p-6 shadow-md">
+          <h2 className="mb-2 text-xl font-bold text-amber-900">
+            Подтвердите email
+          </h2>
+          <p className="mb-4 max-w-lg text-center text-amber-800">
+            Загрузка изображений в классификатор доступна только после подтверждения адреса
+            электронной почты. Проверьте входящие и папку «Спам» или запросите письмо повторно в
+            личном кабинете.
+          </p>
+          <Link
+            to={PROFILE}
+            className="rounded-lg bg-amber-700 px-5 py-2 font-semibold text-white transition hover:bg-amber-800"
+          >
+            Перейти в личный кабинет
+          </Link>
+        </div>
+      </div>
+    )
+
+  const uploadImage =
+    userInfo.userData.id &&
+    userInfo.accessToken &&
+    userInfo.emailVerified && (
     <div className="space-y-6 mt-5">
       <div className="flex flex-col items-center justify-center bg-white rounded-lg shadow-md p-6">
         <h2 className="text-2xl font-bold text-gray-800 mb-4 text">
@@ -246,7 +276,11 @@ const Home = () => {
             <button 
               onClick={() => {
                 setIsImageLoading(true)
-                handleUploadImage({id: userInfo.userData.id, fileData: fileData})
+                handleUploadImage({
+                  id: userInfo.userData.id,
+                  fileData: fileData,
+                  accessToken: userInfo.accessToken,
+                })
                   .then((response) => {
                     if (
                       response &&
@@ -291,8 +325,9 @@ const Home = () => {
             </button>
           </div>
         }
-      </div>
+        </div>
     </div>
+    )
 
   const result = classificationResult.final_class && imageSrc ?
     <div className="space-y-6 mt-5">
@@ -326,7 +361,8 @@ const Home = () => {
 
   return (
     <div>
-    {info} 
+    {info}
+    {uploadBlocked}
     {uploadImage}
     {result}
     </div>

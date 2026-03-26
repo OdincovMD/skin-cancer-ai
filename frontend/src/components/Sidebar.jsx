@@ -25,7 +25,7 @@ const Sidebar = ({ isOpen }) => {
     { text: "О нас", path: ABOUT },
   ]
 
-  const menuItemsShow = userInfo.userData.id ?
+  const menuItemsShow = userInfo.userData.id && userInfo.accessToken ?
     menuItemsLogged :
     menuItemsNotLogged
 

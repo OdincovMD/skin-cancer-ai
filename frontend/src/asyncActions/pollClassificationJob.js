@@ -1,3 +1,4 @@
+import { fetchWithAuth } from "./fetchWithAuth"
 import { env } from "../imports/ENV"
 
 const jobStorageKey = (userId) => `classification_job_${userId}`
@@ -28,12 +29,16 @@ const emptyClassification = () => ({
 export async function pollClassificationJob({
   jobId,
   userId,
+  accessToken,
   intervalMs = 2000,
   maxAttempts = 600,
 }) {
   const base = env.BACKEND_URL.replace(/\/$/, "")
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const r = await fetch(`${base}/classification-jobs/${jobId}?user_id=${userId}`)
+    const r = await fetchWithAuth(
+      accessToken,
+      `${base}/classification-jobs/${jobId}`
+    )
     if (r.status === 404) {
       clearPendingJob(userId)
       throw new Error("Задание не найдено")

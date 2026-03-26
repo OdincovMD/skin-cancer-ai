@@ -21,6 +21,26 @@ class Settings(BaseSettings):
     IMAGE_ACCESS_SIGNING_SECRET: str = Field(default="")
     IMAGE_ACCESS_TOKEN_TTL_SEC: int = Field(default=3600)
 
+    # JWT (Authorization: Bearer) для API классификации и истории
+    JWT_SECRET: str = Field(default="")
+    JWT_ALGORITHM: str = Field(default="HS256")
+    JWT_EXPIRE_MINUTES: int = Field(default=1440)
+
+    # SMTP (верификация email); пустой SMTP_HOST — отправка отключена
+    SMTP_HOST: str = Field(default="")
+    SMTP_PORT: int = Field(default=587)
+    SMTP_USE_TLS: bool = Field(default=True)
+    SMTP_USE_SSL: bool = Field(default=False)
+    SMTP_USER: str = Field(default="")
+    SMTP_PASSWORD: str = Field(default="")
+    MAIL_FROM: str = Field(default="")
+    MAIL_FROM_NAME: str = Field(default="Skin Cancer AI")
+    EMAIL_VERIFICATION_TOKEN_TTL_HOURS: int = Field(default=24)
+    # Минимальный интервал между письмами верификации (повторная отправка)
+    VERIFICATION_EMAIL_RESEND_COOLDOWN_SEC: int = Field(default=120)
+    # Публичный URL фронта (как в браузере). В Docker через NGINX обычно :90, не :3000.
+    FRONTEND_PUBLIC_URL: str = Field(default="http://localhost:90")
+
     @property
     def DATABASE_URL_async(self) -> str:
         user = quote_plus(self.DB_USER)

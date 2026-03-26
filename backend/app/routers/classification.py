@@ -3,10 +3,11 @@ import mimetypes
 import os
 
 from botocore.exceptions import ClientError
-from fastapi import APIRouter, Depends, Form, HTTPException, Response, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from auth_deps import require_verified_email_user_id
 from image_access_token import create_image_access_token, verify_image_access_token
 from minio_client import (
     BUCKET_NAME,
@@ -17,7 +18,7 @@ from minio_client import (
     object_key_for_stored_filename,
     upload_file_to_minio,
 )
-from src.database import GetHistoryRequest, get_db
+from src.database import get_db
 from src.queries.orm import Orm
 from workers.tasks import run_classification
 
@@ -26,9 +27,9 @@ router = APIRouter(tags=["classification"])
 
 @router.post("/uploadfile")
 async def handle_upload(
-    user_id: int = Form(),
-    file: UploadFile = Form(),
+    file: UploadFile = File(),
     session: AsyncSession = Depends(get_db),
+    user_id: int = Depends(require_verified_email_user_id),
 ):
     if not await Orm.user_exists(session, user_id):
         raise HTTPException(
@@ -75,7 +76,8 @@ async def handle_upload(
 
 @router.get("/classification-jobs/active")
 async def get_active_classification_job(
-    user_id: int, session: AsyncSession = Depends(get_db)
+    session: AsyncSession = Depends(get_db),
+    user_id: int = Depends(require_verified_email_user_id),
 ):
     payload = await Orm.get_user_active_classification_job(session, user_id)
     if not payload:
@@ -94,7 +96,9 @@ async def get_active_classification_job(
 
 @router.get("/classification-jobs/{job_id}")
 async def get_classification_job(
-    job_id: int, user_id: int, session: AsyncSession = Depends(get_db)
+    job_id: int,
+    session: AsyncSession = Depends(get_db),
+    user_id: int = Depends(require_verified_email_user_id),
 ):
     payload = await Orm.get_classification_job(session, job_id, user_id)
     if not payload:
@@ -113,10 +117,11 @@ async def get_classification_job(
 
 @router.post("/gethistory")
 async def get_history(
-    request: GetHistoryRequest, session: AsyncSession = Depends(get_db)
+    session: AsyncSession = Depends(get_db),
+    user_id: int = Depends(require_verified_email_user_id),
 ):
     try:
-        history = await Orm.get_classification_requests(session, request.user_id)
+        history = await Orm.get_classification_requests(session, user_id)
         out = []
         for row in history:
             item = dict(row)
@@ -124,7 +129,7 @@ async def get_history(
             if fn:
                 try:
                     item["image_token"] = create_image_access_token(
-                        request.user_id, fn
+                        user_id, fn
                     )
                 except RuntimeError:
                     item["image_token"] = None

@@ -1,6 +1,5 @@
 from collections.abc import AsyncGenerator
 
-from pydantic import BaseModel as PBaseModel
 from sqlalchemy import inspect
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
@@ -34,6 +33,10 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def init_db() -> None:
+    """Создаёт таблицы только если БД пустая (первая установка).
+
+    Для уже существующей БД без новых колонок см. SQL-миграции в backend/migrations/.
+    """
     import src.models  # noqa: F401 — регистрация ORM-моделей в Base.metadata
 
     async with async_engine.connect() as conn:
@@ -43,23 +46,3 @@ async def init_db() -> None:
     if not table_names:
         async with async_engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
-
-
-# Модель Pydantic для входных данных
-
-
-class UserSignUp(PBaseModel):
-    lastName: str
-    firstName: str
-    login: str
-    email: str
-    password: str
-
-
-class Credentials(PBaseModel):
-    login: str
-    password: str
-
-
-class GetHistoryRequest(PBaseModel):
-    user_id: int

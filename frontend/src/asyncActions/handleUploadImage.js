@@ -1,3 +1,4 @@
+import { fetchWithAuth } from "./fetchWithAuth"
 import { env } from "../imports/ENV"
 import { UPLOAD_FILE } from "../imports/ENDPOINTS"
 import {
@@ -6,15 +7,14 @@ import {
   clearPendingJob,
 } from "./pollClassificationJob"
 
-export const handleUploadImage = async ({ id, fileData }) => {
+export const handleUploadImage = async ({ id, fileData, accessToken }) => {
   const formData = new FormData()
-  formData.append("user_id", id)
   formData.append("file", fileData)
 
   const base = env.BACKEND_URL.replace(/\/$/, "")
 
   try {
-    const response = await fetch(`${base}${UPLOAD_FILE}`, {
+    const response = await fetchWithAuth(accessToken, `${base}${UPLOAD_FILE}`, {
       method: "POST",
       body: formData,
     })
@@ -44,7 +44,21 @@ export const handleUploadImage = async ({ id, fileData }) => {
     }
 
     if (!response.ok) {
-      alert(`Произошла ошибка: ${response.status}`)
+      let msg = `Произошла ошибка: ${response.status}`
+      if (response.status === 403) {
+        try {
+          const body = await response.json()
+          if (body?.detail) {
+            msg =
+              typeof body.detail === "string"
+                ? body.detail
+                : JSON.stringify(body.detail)
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+      alert(msg)
       return {
         feature_type: null,
         structure: null,
@@ -61,6 +75,7 @@ export const handleUploadImage = async ({ id, fileData }) => {
         return await pollClassificationJob({
           jobId: data.job_id,
           userId: id,
+          accessToken,
         })
       } catch (e) {
         clearPendingJob(id)

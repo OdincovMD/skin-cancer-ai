@@ -87,6 +87,28 @@ def download_file_bytes(s3_client, bucket_name: str, object_key: str) -> bytes:
     return obj["Body"].read()
 
 
+def upload_bytes_to_minio(
+    s3_client,
+    bucket_name: str,
+    object_key: str,
+    data: bytes,
+    content_type: str,
+) -> None:
+    s3_client.put_object(
+        Bucket=bucket_name,
+        Key=object_key,
+        Body=data,
+        ContentType=content_type,
+    )
+
+
+def delete_object(s3_client, bucket_name: str, object_key: str) -> None:
+    try:
+        s3_client.delete_object(Bucket=bucket_name, Key=object_key)
+    except ClientError:
+        pass
+
+
 def object_key_for_stored_filename(stored_file_name: str) -> str:
     """Ключ объекта в бакете для имени файла из БД (без ведущего uploads/ в имени)."""
     name = (stored_file_name or "").lstrip("/")
