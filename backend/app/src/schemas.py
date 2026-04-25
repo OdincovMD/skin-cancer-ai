@@ -50,3 +50,10 @@ class UpdateProfileBody(BaseModel):
         if self.firstName is None and self.lastName is None:
             raise ValueError("Укажите имя и/или фамилию.")
         return self
+
+
+class DescriptionCallbackBody(BaseModel):
+    status: str = Field(min_length=1)
+    description: Optional[str] = None
+    important_labels: list[str] = Field(default_factory=list)
+    error: Optional[str] = None

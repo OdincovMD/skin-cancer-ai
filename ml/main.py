@@ -6,9 +6,11 @@ from dataclasses import dataclass
 from typing import List
 
 import cv2
+import numpy as np
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi.responses import Response
 from concurrent.futures import ThreadPoolExecutor
 import asyncio
 
@@ -127,9 +129,13 @@ class ImageClassifier:
         'SebK': 'Себорейный кератоз (доброкачественное образование)'
     }
 
-    def classify(self, image_path: str) -> ClassificationResult:
+    def build_mask(self, image_path: str):
+        return log.log_function_entry_exit(mask_builder.main)(image_path)
+
+    def classify(self, image_path: str, mask=None) -> ClassificationResult:
         image = cv2.imread(image_path)
-        mask = log.log_function_entry_exit(mask_builder.main)(image_path)
+        if mask is None:
+            mask = self.build_mask(image_path)
 
         feature_type = self._determine_feature_type(image, mask)
 
@@ -297,16 +303,46 @@ async def health():
     return {"status": "ok"}
 
 
-@app.post("/uploadfile")
-async def create_upload_file(file: UploadFile = File(...)):
+async def _persist_upload(file: UploadFile) -> str:
     file_path = os.path.join(UPLOAD_DIR, file.filename)
+    content = await file.read()
+    with open(file_path, "wb") as buffer:
+        buffer.write(content)
+    return file_path
+
+
+def _normalize_mask(mask_array):
+    mask_array = np.asarray(mask_array, dtype=np.uint8)
+    return np.where(mask_array > 0, 255, 0).astype(np.uint8)
+
+
+def _decode_uploaded_mask(mask_bytes: bytes):
+    mask_array = cv2.imdecode(
+        np.frombuffer(mask_bytes, dtype=np.uint8),
+        cv2.IMREAD_GRAYSCALE,
+    )
+    if mask_array is None:
+        raise ValueError("Не удалось декодировать маску")
+    return _normalize_mask(mask_array)
+
+
+async def _classify_upload(
+    file: UploadFile,
+    mask: UploadFile | None = None,
+):
+    file_path = await _persist_upload(file)
 
     try:
-        with open(file_path, "wb") as buffer:
-            content = await file.read()
-            buffer.write(content)
+        provided_mask = None
+        if mask is not None:
+            provided_mask = _decode_uploaded_mask(await mask.read())
 
-        result = await asyncio.get_event_loop().run_in_executor(executor, classifier.classify, file_path)
+        result = await asyncio.get_event_loop().run_in_executor(
+            executor,
+            classifier.classify,
+            file_path,
+            provided_mask,
+        )
         logger.info(f"Файл {file.filename} успешно обработан: {result}")
         return result.__dict__
 
@@ -314,10 +350,37 @@ async def create_upload_file(file: UploadFile = File(...)):
         logger.error(f"Ошибка при обработке файла {file.filename}: {e}")
         raise HTTPException(status_code=500, detail="Ошибка при обработке файла")
 
-    # finally:
-        # if os.path.exists(file_path):
-        #     os.remove(file_path)
-        #     logger.info(f"Файл {file_path} удален")
+
+@app.post("/mask")
+async def create_mask(file: UploadFile = File(...)):
+    file_path = await _persist_upload(file)
+
+    try:
+        mask = await asyncio.get_event_loop().run_in_executor(
+            executor,
+            classifier.build_mask,
+            file_path,
+        )
+        ok, encoded = cv2.imencode(".png", _normalize_mask(mask))
+        if not ok:
+            raise ValueError("Не удалось закодировать маску")
+        return Response(content=encoded.tobytes(), media_type="image/png")
+    except Exception as e:
+        logger.error(f"Ошибка при создании маски для {file.filename}: {e}")
+        raise HTTPException(status_code=500, detail="Ошибка при создании маски")
+
+
+@app.post("/classify")
+async def classify_file(
+    file: UploadFile = File(...),
+    mask: UploadFile | None = File(default=None),
+):
+    return await _classify_upload(file, mask)
+
+
+@app.post("/uploadfile")
+async def create_upload_file(file: UploadFile = File(...)):
+    return await _classify_upload(file)
 
 # if __name__ == '__main__':
 #     import uvicorn

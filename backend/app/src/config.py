@@ -17,6 +17,11 @@ class Settings(BaseSettings):
 
     ML_URL: str = Field(default="http://ml:8000")
 
+    DESCRIPTION_ENABLED: bool = Field(default=False)
+    DESCRIPTION_SERVICE_URL: str = Field(default="http://description_service:8000")
+    DESCRIPTION_SERVICE_API_TOKEN: str = Field(default="")
+    DESCRIPTION_CALLBACK_API_TOKEN: str = Field(default="")
+
     # Подпись ссылок GET /history/image?token=... (защита от перебора user_id/file_name)
     IMAGE_ACCESS_SIGNING_SECRET: str = Field(default="")
     IMAGE_ACCESS_TOKEN_TTL_SEC: int = Field(default=3600)

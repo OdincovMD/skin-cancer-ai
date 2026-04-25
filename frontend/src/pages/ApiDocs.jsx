@@ -196,7 +196,11 @@ const ApiDocs = () => {
                 {`{
   "status": "completed",
   "result": { "final_class": "Melanocytic nevus", "..." : "..." },
-  "image_token": "eyJ..."
+  "image_token": "eyJ...",
+  "description_status": "generating",
+  "description": null,
+  "description_error": null,
+  "important_labels": []
 }`}
               </CodeBlock>
             </div>
@@ -297,7 +301,11 @@ const ApiDocs = () => {
     "structure": "...",
     "final_class": "Melanocytic nevus"
   },
-  "image_token": "eyJ..."
+  "image_token": "eyJ...",
+  "description_status": "completed",
+  "description": "Клиническое описание...",
+  "description_error": null,
+  "important_labels": ["shape:неправильная"]
 }`}
             </CodeBlock>
             <CodeBlock label="ответ — ошибка модели">
@@ -317,7 +325,8 @@ const ApiDocs = () => {
             <P>
               Если есть незавершённое задание — вернёт его объект. Если нет —{" "}
               <InlineCode>204</InlineCode> с пустым телом. Удобно для
-              восстановления контекста после перезапуска скрипта.
+              восстановления контекста после перезапуска скрипта. Задание
+              остаётся активным, пока не завершится и описание.
             </P>
           </Endpoint>
 
@@ -330,7 +339,11 @@ const ApiDocs = () => {
             <P>
               Тело запроса: <InlineCode>{"{}"}</InlineCode> (пустой JSON).
               Возвращает массив прошлых классификаций. У каждой записи будет{" "}
-              <InlineCode>image_token</InlineCode> для загрузки превью.
+              <InlineCode>image_token</InlineCode> для загрузки превью, а также
+              поля <InlineCode>description</InlineCode>,{" "}
+              <InlineCode>description_status</InlineCode>,{" "}
+              <InlineCode>description_error</InlineCode> и{" "}
+              <InlineCode>important_labels</InlineCode>.
             </P>
             <CodeBlock label="bash">
               {`curl -X POST "${v1}/gethistory" \\\n  -H "X-API-Key: scai_ваш_ключ" \\\n  -H "Content-Type: application/json" \\\n  -d '{}'`}
@@ -411,7 +424,8 @@ const ApiDocs = () => {
           </li>
           <li>
             <strong className="font-medium text-gray-800">completed</strong> —
-            результат готов в поле <InlineCode>result</InlineCode>.
+            классификация готова в поле <InlineCode>result</InlineCode>; описание
+            может ещё догружаться через <InlineCode>description_status</InlineCode>.
           </li>
           <li>
             <strong className="font-medium text-gray-800">error</strong> —
@@ -484,7 +498,9 @@ while true; do
   STATUS=$(curl -sS "$BASE/api/v1/classification-jobs/$JOB_ID" \\
     -H "X-API-Key: $KEY")
   echo "$STATUS"
-  echo "$STATUS" | grep -q '"completed"\\|"error"' && break
+  echo "$STATUS" | grep -q '"status":"error"' && break
+  echo "$STATUS" | grep -q '"status":"completed"' && \\
+    echo "$STATUS" | grep -q '"description_status":"completed"\\|"description_status":"error"\\|"description_status":null' && break
   sleep 2
 done
 

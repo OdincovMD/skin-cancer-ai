@@ -12,3 +12,5 @@ uploads
 Full_tree.png
 .env
 start.sh
+.gitnexus
+frontend/dist/assets/
