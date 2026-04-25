@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth.api_key_deps import get_user_id_from_api_key
@@ -30,10 +30,11 @@ async def api_v1_user_id_rate_limited(
 @router.post("/uploadfile")
 async def api_upload(
     file: UploadFile = File(),
+    features_only: bool = Form(False),
     session: AsyncSession = Depends(get_db),
     user_id: int = Depends(api_v1_user_id_rate_limited),
 ):
-    return await perform_upload(session, user_id, file)
+    return await perform_upload(session, user_id, file, features_only=features_only)
 
 
 @router.get("/classification-jobs/active")

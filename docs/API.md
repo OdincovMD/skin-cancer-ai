@@ -184,17 +184,37 @@ Query: **`token`** — одноразовый токен из письма.
 | 204 | Нет активного задания |
 | 200 | JSON: `job_id`, `status`, `file_name`, при необходимости `image_token` и др. |
 
+Задание считается активным, пока:
+
+- классификация находится в `pending` / `processing`
+- или описание ещё не перешло в terminal state (`completed` / `error`)
+
 ### `GET /classification-jobs/{job_id}`
 
 Статус и результат по `job_id`. **404**, если задание не найдено или не принадлежит пользователю.
 
-В ответе при успехе: `status`, `result` (JSON классификации после завершения), `image_token` (если настроен секрет подписи изображений).
+В ответе при успехе:
+
+- `status` — статус классификации
+- `result` — JSON классификации после завершения
+- `image_token` — токен изображения (если настроен секрет подписи)
+- `description_status` — статус генерации описания
+- `description` — готовое клиническое описание или `null`
+- `description_error` — ошибка description pipeline или `null`
+- `important_labels` — массив значимых признаков
 
 ### `POST /gethistory`
 
 Тело: пустой объект **`{}`** (JSON).
 
 Массив последних записей истории; у строк с файлами в MinIO может быть поле **`image_token`** для превью.
+
+Каждая запись истории дополнительно может содержать:
+
+- `description_status`
+- `description`
+- `description_error`
+- `important_labels`
 
 ### `GET /history/image`
 

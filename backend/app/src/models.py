@@ -52,4 +52,41 @@ class ClassificationResults(Base):
 
     user = relationship("User", back_populates="classification_results")
     file = relationship("File", back_populates="classification_results")
+    description_job = relationship(
+        "DescriptionJob",
+        back_populates="classification_result",
+        uselist=False,
+    )
 
+
+class DescriptionJob(Base):
+    __tablename__ = "description_jobs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    classification_result_id = Column(
+        Integer,
+        ForeignKey("classification_results.id"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+    service_job_id = Column(String(255), nullable=False, unique=True, index=True)
+    status = Column(String(64), nullable=False, default="pending")
+    description = Column(Text, nullable=True)
+    important_labels = Column(Text, nullable=True)
+    bucketed_labels = Column(Text, nullable=True)
+    description_result = Column(Text, nullable=True)
+    features_only = Column(Boolean, nullable=False, default=False)
+    error = Column(Text, nullable=True)
+    callback_sent = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime(timezone=True), default=func.now())
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=func.now(),
+        onupdate=func.now(),
+    )
+
+    classification_result = relationship(
+        "ClassificationResults",
+        back_populates="description_job",
+    )

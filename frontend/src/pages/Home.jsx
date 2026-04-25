@@ -13,6 +13,7 @@ import {
   AlertTriangle,
   ImageIcon,
   CheckCircle2,
+  FileText,
 } from "lucide-react"
 
 import { fetchActiveClassificationJob } from "../asyncActions/fetchActiveClassificationJob"
@@ -24,8 +25,12 @@ import {
 } from "../asyncActions/pollClassificationJob"
 import TreeComponent from "../components/Tree"
 import Alert from "../components/ui/Alert"
+import BucketLabelsDisclosure, {
+  formatFeatureLabelText,
+} from "../components/ui/BucketLabelsDisclosure"
 import Button from "../components/ui/Button"
 import FeatureCard from "../components/ui/FeatureCard"
+import TypewriterText from "../components/ui/TypewriterText"
 import { env } from "../imports/ENV"
 import { HISTORY_IMAGE, PROFILE, SIGN_IN, SIGN_UP } from "../imports/ENDPOINTS"
 import { getValues } from "../imports/HELPERS"
@@ -36,14 +41,23 @@ function displayNameFromStoredFileName(storedName) {
   return m?.groups?.filename ?? storedName
 }
 
+const defaultClassificationResult = () => ({
+  feature_type: null,
+  structure: null,
+  properties: [],
+  final_class: null,
+})
+
+const defaultDescriptionState = () => ({
+  status: null,
+  text: null,
+  error: null,
+  importantLabels: [],
+  bucketedLabels: [],
+})
+
 const Home = () => {
   const userInfo = useSelector((state) => state.user)
-  const defaultResult = {
-    feature_type: null,
-    structure: null,
-    properties: [],
-    final_class: null,
-  }
   const resumeEffectGen = useRef(0)
 
   const [isImageLoading, setIsImageLoading] = useState(false)
@@ -51,12 +65,46 @@ const Home = () => {
   const [fileName, setFileName] = useState(null)
   const [fileData, setFileData] = useState(null)
   const [imageSrc, setImageSrc] = useState(null)
-  const [classificationResult, setClassificationResult] = useState(defaultResult)
+  const [classificationResult, setClassificationResult] = useState(
+    defaultClassificationResult
+  )
+  const [descriptionState, setDescriptionState] = useState(defaultDescriptionState)
   const [isDragging, setIsDragging] = useState(false)
   const [uploadError, setUploadError] = useState(null)
 
   const isAuthed = Boolean(userInfo.userData?.id && userInfo.accessToken)
   const isVerified = Boolean(userInfo.emailVerified)
+
+  const applyPollingSnapshot = (payload) => {
+    if (!payload) return
+    setClassificationResult(
+      payload.classification ?? defaultClassificationResult()
+    )
+    setDescriptionState({
+      status: payload.descriptionStatus ?? null,
+      text: payload.description ?? null,
+      error: payload.descriptionError ?? null,
+      importantLabels: Array.isArray(payload.importantLabels)
+        ? payload.importantLabels
+        : [],
+      bucketedLabels: Array.isArray(payload.bucketedLabels)
+        ? payload.bucketedLabels
+        : [],
+    })
+    if (payload.imageToken) {
+      const base = env.BACKEND_URL.replace(/\/$/, "")
+      setImageSrc(
+        `${base}${HISTORY_IMAGE}?token=${encodeURIComponent(payload.imageToken)}`
+      )
+    }
+    if (
+      payload.classification?.final_class ||
+      Object.prototype.hasOwnProperty.call(payload.classification ?? {}, "detail")
+    ) {
+      setIsImageLoading(false)
+      setActiveJobLabel(null)
+    }
+  }
 
   useEffect(() => {
     const uid = userInfo?.userData?.id
@@ -65,6 +113,7 @@ const Home = () => {
     resumeEffectGen.current += 1
     const gen = resumeEffectGen.current
     let cancelled = false
+    let sawProgress = false
 
     ;(async () => {
       try {
@@ -72,6 +121,7 @@ const Home = () => {
         if (cancelled || resumeEffectGen.current !== gen) return
         if (!active) {
           clearPendingJob(uid)
+          setDescriptionState(defaultDescriptionState())
           return
         }
         savePendingJob(uid, active.job_id)
@@ -81,18 +131,19 @@ const Home = () => {
           jobId: active.job_id,
           userId: uid,
           accessToken: token,
+          onUpdate: (payload) => {
+            if (!cancelled && resumeEffectGen.current === gen) {
+              sawProgress = true
+              applyPollingSnapshot(payload)
+            }
+          },
         })
         if (cancelled || resumeEffectGen.current !== gen) return
-        setClassificationResult(polled.classification)
-        if (polled.imageToken) {
-          const b = env.BACKEND_URL.replace(/\/$/, "")
-          setImageSrc(
-            `${b}${HISTORY_IMAGE}?token=${encodeURIComponent(polled.imageToken)}`
-          )
-        }
+        applyPollingSnapshot(polled)
       } catch (e) {
-        if (!cancelled && resumeEffectGen.current === gen) {
-          setClassificationResult(defaultResult)
+        if (!cancelled && resumeEffectGen.current === gen && !sawProgress) {
+          setClassificationResult(defaultClassificationResult())
+          setDescriptionState(defaultDescriptionState())
         }
       } finally {
         if (!cancelled && resumeEffectGen.current === gen) {
@@ -122,7 +173,8 @@ const Home = () => {
     const reader = new FileReader()
     reader.onload = (e) => setImageSrc(e.target.result)
     reader.readAsDataURL(processed)
-    setClassificationResult(defaultResult)
+    setClassificationResult(defaultClassificationResult())
+    setDescriptionState(defaultDescriptionState())
   }
 
   const handleFileChange = (e) => processFile(e.target.files[0])
@@ -136,26 +188,24 @@ const Home = () => {
   const handleClassify = () => {
     setUploadError(null)
     setIsImageLoading(true)
+    setDescriptionState(defaultDescriptionState())
     handleUploadImage({
       id: userInfo.userData.id,
       fileData,
       accessToken: userInfo.accessToken,
+      onProgress: applyPollingSnapshot,
     }).then((res) => {
       setUploadError(res.error)
-      setClassificationResult(res.classification)
-      if (!res.error && res.imageToken) {
-        const b = env.BACKEND_URL.replace(/\/$/, "")
-        setImageSrc(
-          `${b}${HISTORY_IMAGE}?token=${encodeURIComponent(res.imageToken)}`
-        )
-      }
+      applyPollingSnapshot(res)
       setIsImageLoading(false)
+      setActiveJobLabel(null)
     })
   }
 
   const resetImage = () => {
     setUploadError(null)
-    setClassificationResult(defaultResult)
+    setClassificationResult(defaultClassificationResult())
+    setDescriptionState(defaultDescriptionState())
     setFileName(null)
     setImageSrc(null)
     setFileData(null)
@@ -435,6 +485,57 @@ const Home = () => {
             zoom={0.6}
             translate={{ x: 300, y: 300 }}
           />
+
+          {(descriptionState.status ||
+            descriptionState.text ||
+            descriptionState.error ||
+            descriptionState.bucketedLabels.length > 0) && (
+            <div className="rounded-xl border border-gray-200 bg-gray-50/70 p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <FileText size={18} className="text-med-600" />
+                <h3 className="text-base font-semibold text-gray-900">
+                  Клиническое описание
+                </h3>
+              </div>
+
+              {descriptionState.status &&
+                descriptionState.status !== "completed" &&
+                descriptionState.status !== "error" && (
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Loader2 size={16} className="animate-spin text-med-500" />
+                    <span>Описание формируется и появится автоматически.</span>
+                  </div>
+              )}
+
+              {descriptionState.text && (
+                <TypewriterText
+                  text={descriptionState.text}
+                  className="text-sm leading-relaxed text-gray-700 whitespace-pre-line"
+                />
+              )}
+
+              {descriptionState.importantLabels.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {descriptionState.importantLabels.map((label) => (
+                    <span
+                      key={label}
+                      className="rounded-full bg-white px-3 py-1 text-xs font-medium text-gray-600 border border-gray-200"
+                    >
+                      {formatFeatureLabelText(label)}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <BucketLabelsDisclosure labels={descriptionState.bucketedLabels} />
+
+              {descriptionState.error && (
+                <Alert variant="error" title="Описание недоступно">
+                  {descriptionState.error}
+                </Alert>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

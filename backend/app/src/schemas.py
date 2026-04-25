@@ -1,7 +1,7 @@
 import re
 from typing import Optional
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class UserSignUp(BaseModel):
@@ -50,3 +50,15 @@ class UpdateProfileBody(BaseModel):
         if self.firstName is None and self.lastName is None:
             raise ValueError("Укажите имя и/или фамилию.")
         return self
+
+
+class DescriptionCallbackBody(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    status: str = Field(min_length=1)
+    description: Optional[str] = None
+    important_labels: list[str] = Field(default_factory=list)
+    all_labels: list[str] = Field(default_factory=list)
+    bucketed_labels: list[str] = Field(default_factory=list)
+    features_only: bool = False
+    error: Optional[str] = None

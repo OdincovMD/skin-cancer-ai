@@ -172,6 +172,11 @@ const ApiDocs = () => {
               <CodeBlock label="bash">
                 {`curl -X POST "${v1}/uploadfile" \\\n  -H "X-API-Key: scai_ваш_ключ" \\\n  -F "file=@photo.jpg"`}
               </CodeBlock>
+              <P>
+                Если нужна только разметка признаков без классификации и
+                генерации текста, добавьте{" "}
+                <InlineCode>features_only=true</InlineCode>.
+              </P>
               <CodeBlock label="ответ">{`{ "job_id": 42, "status": "pending" }`}</CodeBlock>
             </div>
           </div>
@@ -196,7 +201,14 @@ const ApiDocs = () => {
                 {`{
   "status": "completed",
   "result": { "final_class": "Melanocytic nevus", "..." : "..." },
-  "image_token": "eyJ..."
+  "image_token": "eyJ...",
+  "description_status": "generating",
+  "description": null,
+  "description_error": null,
+  "important_labels": [],
+  "bucketed_labels": [],
+  "description_result": null,
+  "features_only": false
 }`}
               </CodeBlock>
             </div>
@@ -267,10 +279,15 @@ const ApiDocs = () => {
           >
             <P>
               Отправьте файл как <InlineCode>multipart/form-data</InlineCode> с
-              полем <InlineCode>file</InlineCode>.
+              полем <InlineCode>file</InlineCode>. Опционально передайте{" "}
+              <InlineCode>features_only=true</InlineCode>, чтобы получить только
+              признаки от сервиса описания без основной классификации.
             </P>
             <CodeBlock label="bash">
               {`curl -X POST "${v1}/uploadfile" \\\n  -H "X-API-Key: scai_ваш_ключ" \\\n  -F "file=@image.jpg"`}
+            </CodeBlock>
+            <CodeBlock label="bash — только признаки">
+              {`curl -X POST "${v1}/uploadfile" \\\n  -H "X-API-Key: scai_ваш_ключ" \\\n  -F "file=@image.jpg" \\\n  -F "features_only=true"`}
             </CodeBlock>
             <CodeBlock label="ответ">{`{ "job_id": 42, "status": "pending" }`}</CodeBlock>
             <Callout>
@@ -297,7 +314,50 @@ const ApiDocs = () => {
     "structure": "...",
     "final_class": "Melanocytic nevus"
   },
-  "image_token": "eyJ..."
+  "image_token": "eyJ...",
+  "description_status": "completed",
+  "description": "Клиническое описание...",
+  "description_error": null,
+  "important_labels": ["shape:неправильная"],
+  "bucketed_labels": ["bucket_shape:неправильная"],
+  "description_result": {
+    "status": "completed",
+    "description": "Клиническое описание...",
+    "important_labels": ["shape:неправильная"],
+    "all_labels": ["shape:неправильная"],
+    "bucketed_labels": ["bucket_shape:неправильная"],
+    "features_only": false,
+    "error": null
+  },
+  "features_only": false
+}`}
+            </CodeBlock>
+            <CodeBlock label="ответ — только признаки">
+              {`{
+  "status": "completed",
+  "result": null,
+  "image_token": "eyJ...",
+  "description_status": "completed",
+  "description": null,
+  "description_error": null,
+  "important_labels": ["shape:неправильная"],
+  "bucketed_labels": ["bucket_shape:неправильная"],
+  "description_result": {
+    "status": "features_ready",
+    "description": null,
+    "important_labels": ["shape:неправильная"],
+    "all_labels": [
+      "shape:неправильная",
+      "dominant_hue:оттенок:красновато-коричневый"
+    ],
+    "bucketed_labels": [
+      "bucket_shape:неправильная",
+      "bucket_dominant_hue:оттенок:красновато-коричневый"
+    ],
+    "features_only": true,
+    "error": null
+  },
+  "features_only": true
 }`}
             </CodeBlock>
             <CodeBlock label="ответ — ошибка модели">
@@ -317,7 +377,8 @@ const ApiDocs = () => {
             <P>
               Если есть незавершённое задание — вернёт его объект. Если нет —{" "}
               <InlineCode>204</InlineCode> с пустым телом. Удобно для
-              восстановления контекста после перезапуска скрипта.
+              восстановления контекста после перезапуска скрипта. Задание
+              остаётся активным, пока не завершится и описание.
             </P>
           </Endpoint>
 
@@ -330,7 +391,13 @@ const ApiDocs = () => {
             <P>
               Тело запроса: <InlineCode>{"{}"}</InlineCode> (пустой JSON).
               Возвращает массив прошлых классификаций. У каждой записи будет{" "}
-              <InlineCode>image_token</InlineCode> для загрузки превью.
+              <InlineCode>image_token</InlineCode> для загрузки превью, а также
+              поля <InlineCode>description</InlineCode>,{" "}
+              <InlineCode>description_status</InlineCode>,{" "}
+              <InlineCode>description_error</InlineCode> и{" "}
+              <InlineCode>important_labels</InlineCode>,{" "}
+              <InlineCode>bucketed_labels</InlineCode>,{" "}
+              <InlineCode>description_result</InlineCode>.
             </P>
             <CodeBlock label="bash">
               {`curl -X POST "${v1}/gethistory" \\\n  -H "X-API-Key: scai_ваш_ключ" \\\n  -H "Content-Type: application/json" \\\n  -d '{}'`}
@@ -411,7 +478,8 @@ const ApiDocs = () => {
           </li>
           <li>
             <strong className="font-medium text-gray-800">completed</strong> —
-            результат готов в поле <InlineCode>result</InlineCode>.
+            классификация готова в поле <InlineCode>result</InlineCode>; описание
+            может ещё догружаться через <InlineCode>description_status</InlineCode>.
           </li>
           <li>
             <strong className="font-medium text-gray-800">error</strong> —
@@ -484,7 +552,9 @@ while true; do
   STATUS=$(curl -sS "$BASE/api/v1/classification-jobs/$JOB_ID" \\
     -H "X-API-Key: $KEY")
   echo "$STATUS"
-  echo "$STATUS" | grep -q '"completed"\\|"error"' && break
+  echo "$STATUS" | grep -q '"status":"error"' && break
+  echo "$STATUS" | grep -q '"status":"completed"' && \\
+    echo "$STATUS" | grep -q '"description_status":"completed"\\|"description_status":"error"\\|"description_status":null' && break
   sleep 2
 done
 

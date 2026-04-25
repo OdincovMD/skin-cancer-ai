@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from core.redis_client import get_redis
-from routers import api_v1, auth, classification, health
+from routers import api_v1, auth, classification, health, internal
 from src.database import async_engine, init_db
 
 
@@ -35,3 +35,4 @@ app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(classification.router)
 app.include_router(api_v1.router)
+app.include_router(internal.router)

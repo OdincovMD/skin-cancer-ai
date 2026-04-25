@@ -7,13 +7,13 @@ from typing import Any, Dict, List, Optional, Union
 from datetime import datetime, timedelta, timezone
 
 from passlib.context import CryptContext
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from services.mail import send_verification_email
 from src.config import settings
-from src.models import ClassificationResults, File, User
+from src.models import ClassificationResults, DescriptionJob, File, User
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -34,6 +34,65 @@ def _verification_resend_remaining_seconds(user: User) -> int:
     if remaining <= 0:
         return 0
     return int(math.ceil(remaining))
+
+
+def _parse_json_value(raw: Any) -> Any:
+    if raw in (None, ""):
+        return None
+    if isinstance(raw, (dict, list)):
+        return raw
+    try:
+        return json.loads(raw)
+    except (TypeError, json.JSONDecodeError):
+        return raw
+
+
+def _parse_result_payload(raw: Any) -> Any:
+    if raw in (None, ""):
+        return None
+    if isinstance(raw, (dict, list)):
+        return raw
+    try:
+        return json.loads(raw)
+    except (TypeError, json.JSONDecodeError):
+        return {"raw": raw}
+
+
+def _serialize_json_value(raw: Any) -> Optional[str]:
+    if raw is None:
+        return None
+    if isinstance(raw, str):
+        return raw
+    return json.dumps(raw, ensure_ascii=True)
+
+
+def _description_fields(row: Optional[DescriptionJob]) -> Dict[str, Any]:
+    labels = _parse_json_value(row.important_labels) if row else None
+    bucketed_labels = _parse_json_value(row.bucketed_labels) if row else None
+    description_result = _parse_json_value(row.description_result) if row else None
+    return {
+        "description_status": row.status if row else None,
+        "description": row.description if row else None,
+        "description_error": row.error if row else None,
+        "important_labels": labels if isinstance(labels, list) else [],
+        "bucketed_labels": (
+            bucketed_labels if isinstance(bucketed_labels, list) else []
+        ),
+        "description_result": (
+            description_result if isinstance(description_result, dict) else None
+        ),
+        "features_only": bool(row.features_only) if row else False,
+    }
+
+
+def _parsed_labels(raw: Any) -> List[str]:
+    parsed = _parse_json_value(raw)
+    return parsed if isinstance(parsed, list) else []
+
+
+def _parsed_description_result(raw: Any) -> Optional[Dict[str, Any]]:
+    parsed = _parse_json_value(raw)
+    return parsed if isinstance(parsed, dict) else None
 
 
 class Orm:
@@ -141,11 +200,26 @@ class Orm:
         session: AsyncSession, user_id: int
     ) -> Optional[Dict[str, Any]]:
         stmt = (
-            select(ClassificationResults, File)
+            select(ClassificationResults, File, DescriptionJob)
             .join(File, ClassificationResults.file_id == File.file_id)
+            .outerjoin(
+                DescriptionJob,
+                DescriptionJob.classification_result_id == ClassificationResults.id,
+            )
             .where(
                 ClassificationResults.user_id == user_id,
-                ClassificationResults.status.in_(["pending", "processing"]),
+                or_(
+                    ClassificationResults.status.in_(["pending", "processing"]),
+                    DescriptionJob.status.in_(
+                        [
+                            "received",
+                            "features_ready",
+                            "classification_ready",
+                            "generating",
+                            "pending",
+                        ]
+                    ),
+                ),
             )
             .order_by(ClassificationResults.request_date.desc())
             .limit(1)
@@ -154,36 +228,43 @@ class Orm:
         row = result.first()
         if not row:
             return None
-        cr, f = row
-        return {
+        cr, f, dj = row
+        payload = {
             "job_id": cr.id,
             "status": cr.status,
             "file_name": f.file_name,
+            "result": _parse_result_payload(cr.result),
         }
+        payload.update(_description_fields(dj))
+        return payload
 
     @staticmethod
     async def get_classification_job(
         session: AsyncSession, job_id: int, user_id: int
     ) -> Optional[Dict[str, Any]]:
-        stmt = select(ClassificationResults).where(
-            ClassificationResults.id == job_id,
-            ClassificationResults.user_id == user_id,
+        stmt = (
+            select(ClassificationResults, DescriptionJob)
+            .outerjoin(
+                DescriptionJob,
+                DescriptionJob.classification_result_id == ClassificationResults.id,
+            )
+            .where(
+                ClassificationResults.id == job_id,
+                ClassificationResults.user_id == user_id,
+            )
         )
         result = await session.execute(stmt)
-        row = result.scalar_one_or_none()
+        row = result.first()
         if not row:
             return None
-        parsed: Any = None
-        if row.result:
-            try:
-                parsed = json.loads(row.result)
-            except json.JSONDecodeError:
-                parsed = {"raw": row.result}
-        return {
-            "job_id": row.id,
-            "status": row.status,
-            "result": parsed,
+        classification_row, description_row = row
+        payload = {
+            "job_id": classification_row.id,
+            "status": classification_row.status,
+            "result": _parse_result_payload(classification_row.result),
         }
+        payload.update(_description_fields(description_row))
+        return payload
 
     @staticmethod
     async def get_classification_requests(
@@ -196,8 +277,19 @@ class Orm:
                 File.bucket_name,
                 ClassificationResults.status,
                 ClassificationResults.result,
+                DescriptionJob.status.label("description_status"),
+                DescriptionJob.description,
+                DescriptionJob.important_labels,
+                DescriptionJob.bucketed_labels,
+                DescriptionJob.description_result,
+                DescriptionJob.features_only,
+                DescriptionJob.error.label("description_error"),
             )
             .join(File, ClassificationResults.file_id == File.file_id)
+            .outerjoin(
+                DescriptionJob,
+                DescriptionJob.classification_result_id == ClassificationResults.id,
+            )
             .where(ClassificationResults.user_id == user_id)
             .order_by(ClassificationResults.request_date.desc())
             .limit(limit)
@@ -210,9 +302,132 @@ class Orm:
                 "bucket_name": row.bucket_name,
                 "status": row.status,
                 "result": row.result,
+                "description_status": row.description_status,
+                "description": row.description,
+                "important_labels": _parsed_labels(row.important_labels),
+                "bucketed_labels": _parsed_labels(row.bucketed_labels),
+                "description_result": _parsed_description_result(
+                    row.description_result
+                ),
+                "features_only": bool(row.features_only),
+                "description_error": row.description_error,
             }
             for row in result.all()
         ]
+
+    @staticmethod
+    async def upsert_description_job(
+        session: AsyncSession,
+        classification_result_id: int,
+        service_job_id: str,
+        status: str,
+        description: Optional[str] = None,
+        important_labels: Optional[List[str]] = None,
+        bucketed_labels: Optional[List[str]] = None,
+        description_result: Optional[Dict[str, Any]] = None,
+        features_only: Optional[bool] = None,
+        error: Optional[str] = None,
+        callback_sent: Optional[bool] = None,
+    ) -> Dict[str, Any]:
+        stmt = select(DescriptionJob).where(
+            DescriptionJob.classification_result_id == classification_result_id
+        )
+        row = (await session.execute(stmt)).scalar_one_or_none()
+        if row is None:
+            row = DescriptionJob(
+                classification_result_id=classification_result_id,
+                service_job_id=service_job_id,
+                status=status,
+            )
+            session.add(row)
+        else:
+            row.service_job_id = service_job_id
+            row.status = status
+
+        if description is not None:
+            row.description = description
+        if important_labels is not None:
+            row.important_labels = _serialize_json_value(important_labels)
+        if bucketed_labels is not None:
+            row.bucketed_labels = _serialize_json_value(bucketed_labels)
+        if description_result is not None:
+            row.description_result = _serialize_json_value(description_result)
+        if features_only is not None:
+            row.features_only = features_only
+        if error is not None:
+            row.error = error
+        elif status != "error":
+            row.error = None
+        if callback_sent is not None:
+            row.callback_sent = callback_sent
+
+        await session.commit()
+        await session.refresh(row)
+        payload = {
+            "classification_result_id": row.classification_result_id,
+            "service_job_id": row.service_job_id,
+        }
+        payload.update(_description_fields(row))
+        return payload
+
+    @staticmethod
+    async def upsert_description_callback(
+        session: AsyncSession,
+        service_job_id: str,
+        status: str,
+        description: Optional[str],
+        important_labels: Optional[List[str]],
+        bucketed_labels: Optional[List[str]],
+        features_only: bool,
+        description_result: Dict[str, Any],
+        error: Optional[str],
+    ) -> bool:
+        stmt = select(DescriptionJob).where(DescriptionJob.service_job_id == service_job_id)
+        row = (await session.execute(stmt)).scalar_one_or_none()
+        if row is None:
+            try:
+                classification_result_id = int(service_job_id)
+            except (TypeError, ValueError):
+                return False
+
+            classification_row = await session.get(
+                ClassificationResults, classification_result_id
+            )
+            if classification_row is None:
+                return False
+
+            row = DescriptionJob(
+                classification_result_id=classification_result_id,
+                service_job_id=service_job_id,
+                status=status,
+            )
+            session.add(row)
+
+        normalized_status = (
+            "completed" if features_only and status == "features_ready" else status
+        )
+        row.status = normalized_status
+        row.description = description
+        row.important_labels = _serialize_json_value(important_labels or [])
+        row.bucketed_labels = _serialize_json_value(bucketed_labels or [])
+        row.description_result = _serialize_json_value(description_result)
+        row.features_only = features_only
+        row.error = error
+        row.callback_sent = True
+        if features_only:
+            classification_row = await session.get(
+                ClassificationResults, row.classification_result_id
+            )
+            if classification_row is not None:
+                if status == "error":
+                    classification_row.status = "error"
+                    classification_row.result = _serialize_json_value(
+                        {"detail": error or "Description service error"}
+                    )
+                else:
+                    classification_row.status = "completed"
+        await session.commit()
+        return True
 
     @staticmethod
     async def get_bucket_for_user_file(

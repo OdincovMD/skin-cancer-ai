@@ -33,15 +33,26 @@ async function parseResponseJson(response) {
   }
 }
 
-export const handleUploadImage = async ({ id, fileData, accessToken }) => {
+export const handleUploadImage = async ({
+  id,
+  fileData,
+  accessToken,
+  onProgress,
+}) => {
   const formData = new FormData()
   formData.append("file", fileData)
 
   const base = env.BACKEND_URL.replace(/\/$/, "")
+  let lastProgress = null
   const fail = (message) => ({
     error: message,
     classification: emptyClassification(),
     imageToken: null,
+    descriptionStatus: null,
+    description: null,
+    descriptionError: null,
+    importantLabels: [],
+    bucketedLabels: [],
   })
 
   try {
@@ -79,14 +90,35 @@ export const handleUploadImage = async ({ id, fileData, accessToken }) => {
           jobId: data.job_id,
           userId: id,
           accessToken,
+          onUpdate: (payload) => {
+            lastProgress = payload
+            onProgress?.(payload)
+          },
         })
         return {
           error: null,
           classification: polled.classification,
           imageToken: polled.imageToken,
+          descriptionStatus: polled.descriptionStatus,
+          description: polled.description,
+          descriptionError: polled.descriptionError,
+          importantLabels: polled.importantLabels,
+          bucketedLabels: polled.bucketedLabels,
         }
       } catch (e) {
         clearPendingJob(id)
+        if (lastProgress) {
+          return {
+            error: String(e?.message || e),
+            classification: lastProgress.classification,
+            imageToken: lastProgress.imageToken,
+            descriptionStatus: lastProgress.descriptionStatus,
+            description: lastProgress.description,
+            descriptionError: lastProgress.descriptionError,
+            importantLabels: lastProgress.importantLabels,
+            bucketedLabels: lastProgress.bucketedLabels,
+          }
+        }
         return fail(String(e?.message || e))
       }
     }
@@ -95,6 +127,15 @@ export const handleUploadImage = async ({ id, fileData, accessToken }) => {
       error: null,
       classification: data?.classification ?? data ?? emptyClassification(),
       imageToken: data?.image_token ?? null,
+      descriptionStatus: data?.description_status ?? null,
+      description: data?.description ?? null,
+      descriptionError: data?.description_error ?? null,
+      importantLabels: Array.isArray(data?.important_labels)
+        ? data.important_labels
+        : [],
+      bucketedLabels: Array.isArray(data?.bucketed_labels)
+        ? data.bucketed_labels
+        : [],
     }
   } catch (err) {
     return fail(String(err?.message || err))

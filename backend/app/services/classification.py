@@ -25,7 +25,9 @@ from src.queries.orm import Orm
 from workers.tasks import run_classification
 
 
-async def perform_upload(session, user_id: int, file: UploadFile) -> Dict[str, Any]:
+async def perform_upload(
+    session, user_id: int, file: UploadFile, features_only: bool = False
+) -> Dict[str, Any]:
     if not await Orm.user_exists(session, user_id):
         raise HTTPException(
             status_code=404,
@@ -98,7 +100,7 @@ async def perform_upload(session, user_id: int, file: UploadFile) -> Dict[str, A
             detail="Не удалось создать задание классификации. Повторите попытку.",
         )
 
-    run_classification.delay(db_request.id)
+    run_classification.delay(db_request.id, features_only)
     return {"job_id": db_request.id, "status": "pending"}
 
 
