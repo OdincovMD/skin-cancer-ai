@@ -52,6 +52,7 @@ export const handleUploadImage = async ({
     description: null,
     descriptionError: null,
     importantLabels: [],
+    bucketedLabels: [],
   })
 
   try {
@@ -102,6 +103,7 @@ export const handleUploadImage = async ({
           description: polled.description,
           descriptionError: polled.descriptionError,
           importantLabels: polled.importantLabels,
+          bucketedLabels: polled.bucketedLabels,
         }
       } catch (e) {
         clearPendingJob(id)
@@ -114,6 +116,7 @@ export const handleUploadImage = async ({
             description: lastProgress.description,
             descriptionError: lastProgress.descriptionError,
             importantLabels: lastProgress.importantLabels,
+            bucketedLabels: lastProgress.bucketedLabels,
           }
         }
         return fail(String(e?.message || e))
@@ -129,6 +132,9 @@ export const handleUploadImage = async ({
       descriptionError: data?.description_error ?? null,
       importantLabels: Array.isArray(data?.important_labels)
         ? data.important_labels
+        : [],
+      bucketedLabels: Array.isArray(data?.bucketed_labels)
+        ? data.bucketed_labels
         : [],
     }
   } catch (err) {

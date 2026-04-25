@@ -22,8 +22,8 @@ from workers.app import celery_app
 
 
 @celery_app.task(name="workers.tasks.run_classification")
-def run_classification(classification_id: int) -> None:
-    asyncio.run(_run_classification_async(classification_id))
+def run_classification(classification_id: int, features_only: bool = False) -> None:
+    asyncio.run(_run_classification_async(classification_id, features_only))
 
 
 def _error_payload(detail: object) -> str:
@@ -69,7 +69,9 @@ def _http_error_detail(exc: httpx.HTTPStatusError) -> object:
         return f"HTTP {exc.response.status_code}"
 
 
-async def _run_classification_async(classification_id: int) -> None:
+async def _run_classification_async(
+    classification_id: int, features_only: bool = False
+) -> None:
     try:
         async with async_session_maker() as session:
             await Orm.update_classification_status(
@@ -121,12 +123,24 @@ async def _run_classification_async(classification_id: int) -> None:
                         content_type,
                     )
 
+                    if features_only and not description_enabled():
+                        await Orm.update_classification_status(
+                            session,
+                            classification_id,
+                            "error",
+                            result=_error_payload(
+                                "Description service is not configured."
+                            ),
+                        )
+                        return
+
                     if description_enabled():
                         await Orm.upsert_description_job(
                             session,
                             classification_result_id=classification_id,
                             service_job_id=description_job_id,
                             status="pending",
+                            features_only=features_only,
                             callback_sent=False,
                         )
                         try:
@@ -138,15 +152,20 @@ async def _run_classification_async(classification_id: int) -> None:
                                 image_content_type=content_type,
                                 mask_name=f"{os.path.splitext(image_part_name)[0]}_mask.png",
                                 mask_bytes=mask_bytes,
+                                features_only=features_only,
                             )
                             await Orm.upsert_description_job(
                                 session,
                                 classification_result_id=classification_id,
                                 service_job_id=description_job_id,
                                 status=str(description_response.get("status") or "received"),
+                                description_result=description_response,
+                                features_only=features_only,
                                 callback_sent=False,
                             )
                             description_registered = True
+                            if features_only:
+                                return
                         except httpx.HTTPStatusError as exc:
                             await Orm.upsert_description_job(
                                 session,
@@ -154,8 +173,17 @@ async def _run_classification_async(classification_id: int) -> None:
                                 service_job_id=description_job_id,
                                 status="error",
                                 error=f"Description service register failed: {_http_error_detail(exc)}",
+                                features_only=features_only,
                                 callback_sent=False,
                             )
+                            if features_only:
+                                await Orm.update_classification_status(
+                                    session,
+                                    classification_id,
+                                    "error",
+                                    result=_error_payload(_http_error_detail(exc)),
+                                )
+                                return
                         except Exception as exc:
                             await Orm.upsert_description_job(
                                 session,
@@ -163,8 +191,17 @@ async def _run_classification_async(classification_id: int) -> None:
                                 service_job_id=description_job_id,
                                 status="error",
                                 error=f"Description service register failed: {exc}",
+                                features_only=features_only,
                                 callback_sent=False,
                             )
+                            if features_only:
+                                await Orm.update_classification_status(
+                                    session,
+                                    classification_id,
+                                    "error",
+                                    result=_error_payload(str(exc)),
+                                )
+                                return
 
                     try:
                         result = await _request_classification(

@@ -68,17 +68,31 @@ def _serialize_json_value(raw: Any) -> Optional[str]:
 
 def _description_fields(row: Optional[DescriptionJob]) -> Dict[str, Any]:
     labels = _parse_json_value(row.important_labels) if row else None
+    bucketed_labels = _parse_json_value(row.bucketed_labels) if row else None
+    description_result = _parse_json_value(row.description_result) if row else None
     return {
         "description_status": row.status if row else None,
         "description": row.description if row else None,
         "description_error": row.error if row else None,
         "important_labels": labels if isinstance(labels, list) else [],
+        "bucketed_labels": (
+            bucketed_labels if isinstance(bucketed_labels, list) else []
+        ),
+        "description_result": (
+            description_result if isinstance(description_result, dict) else None
+        ),
+        "features_only": bool(row.features_only) if row else False,
     }
 
 
 def _parsed_labels(raw: Any) -> List[str]:
     parsed = _parse_json_value(raw)
     return parsed if isinstance(parsed, list) else []
+
+
+def _parsed_description_result(raw: Any) -> Optional[Dict[str, Any]]:
+    parsed = _parse_json_value(raw)
+    return parsed if isinstance(parsed, dict) else None
 
 
 class Orm:
@@ -266,6 +280,9 @@ class Orm:
                 DescriptionJob.status.label("description_status"),
                 DescriptionJob.description,
                 DescriptionJob.important_labels,
+                DescriptionJob.bucketed_labels,
+                DescriptionJob.description_result,
+                DescriptionJob.features_only,
                 DescriptionJob.error.label("description_error"),
             )
             .join(File, ClassificationResults.file_id == File.file_id)
@@ -288,6 +305,11 @@ class Orm:
                 "description_status": row.description_status,
                 "description": row.description,
                 "important_labels": _parsed_labels(row.important_labels),
+                "bucketed_labels": _parsed_labels(row.bucketed_labels),
+                "description_result": _parsed_description_result(
+                    row.description_result
+                ),
+                "features_only": bool(row.features_only),
                 "description_error": row.description_error,
             }
             for row in result.all()
@@ -301,6 +323,9 @@ class Orm:
         status: str,
         description: Optional[str] = None,
         important_labels: Optional[List[str]] = None,
+        bucketed_labels: Optional[List[str]] = None,
+        description_result: Optional[Dict[str, Any]] = None,
+        features_only: Optional[bool] = None,
         error: Optional[str] = None,
         callback_sent: Optional[bool] = None,
     ) -> Dict[str, Any]:
@@ -323,6 +348,12 @@ class Orm:
             row.description = description
         if important_labels is not None:
             row.important_labels = _serialize_json_value(important_labels)
+        if bucketed_labels is not None:
+            row.bucketed_labels = _serialize_json_value(bucketed_labels)
+        if description_result is not None:
+            row.description_result = _serialize_json_value(description_result)
+        if features_only is not None:
+            row.features_only = features_only
         if error is not None:
             row.error = error
         elif status != "error":
@@ -346,6 +377,9 @@ class Orm:
         status: str,
         description: Optional[str],
         important_labels: Optional[List[str]],
+        bucketed_labels: Optional[List[str]],
+        features_only: bool,
+        description_result: Dict[str, Any],
         error: Optional[str],
     ) -> bool:
         stmt = select(DescriptionJob).where(DescriptionJob.service_job_id == service_job_id)
@@ -369,11 +403,29 @@ class Orm:
             )
             session.add(row)
 
-        row.status = status
+        normalized_status = (
+            "completed" if features_only and status == "features_ready" else status
+        )
+        row.status = normalized_status
         row.description = description
         row.important_labels = _serialize_json_value(important_labels or [])
+        row.bucketed_labels = _serialize_json_value(bucketed_labels or [])
+        row.description_result = _serialize_json_value(description_result)
+        row.features_only = features_only
         row.error = error
         row.callback_sent = True
+        if features_only:
+            classification_row = await session.get(
+                ClassificationResults, row.classification_result_id
+            )
+            if classification_row is not None:
+                if status == "error":
+                    classification_row.status = "error"
+                    classification_row.result = _serialize_json_value(
+                        {"detail": error or "Description service error"}
+                    )
+                else:
+                    classification_row.status = "completed"
         await session.commit()
         return True
 

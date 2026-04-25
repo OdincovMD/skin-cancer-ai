@@ -38,6 +38,9 @@ async def receive_description_result(
         status=payload.status,
         description=payload.description,
         important_labels=payload.important_labels,
+        bucketed_labels=payload.bucketed_labels,
+        features_only=payload.features_only,
+        description_result=payload.model_dump(mode="json"),
         error=payload.error,
     )
     if not updated:

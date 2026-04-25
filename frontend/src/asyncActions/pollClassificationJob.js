@@ -33,6 +33,9 @@ function descriptionPayload(data) {
     importantLabels: Array.isArray(data?.important_labels)
       ? data.important_labels
       : [],
+    bucketedLabels: Array.isArray(data?.bucketed_labels)
+      ? data.bucketed_labels
+      : [],
   }
 }
 

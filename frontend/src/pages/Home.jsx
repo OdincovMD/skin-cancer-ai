@@ -25,8 +25,12 @@ import {
 } from "../asyncActions/pollClassificationJob"
 import TreeComponent from "../components/Tree"
 import Alert from "../components/ui/Alert"
+import BucketLabelsDisclosure, {
+  formatFeatureLabelText,
+} from "../components/ui/BucketLabelsDisclosure"
 import Button from "../components/ui/Button"
 import FeatureCard from "../components/ui/FeatureCard"
+import TypewriterText from "../components/ui/TypewriterText"
 import { env } from "../imports/ENV"
 import { HISTORY_IMAGE, PROFILE, SIGN_IN, SIGN_UP } from "../imports/ENDPOINTS"
 import { getValues } from "../imports/HELPERS"
@@ -49,6 +53,7 @@ const defaultDescriptionState = () => ({
   text: null,
   error: null,
   importantLabels: [],
+  bucketedLabels: [],
 })
 
 const Home = () => {
@@ -81,6 +86,9 @@ const Home = () => {
       error: payload.descriptionError ?? null,
       importantLabels: Array.isArray(payload.importantLabels)
         ? payload.importantLabels
+        : [],
+      bucketedLabels: Array.isArray(payload.bucketedLabels)
+        ? payload.bucketedLabels
         : [],
     })
     if (payload.imageToken) {
@@ -480,7 +488,8 @@ const Home = () => {
 
           {(descriptionState.status ||
             descriptionState.text ||
-            descriptionState.error) && (
+            descriptionState.error ||
+            descriptionState.bucketedLabels.length > 0) && (
             <div className="rounded-xl border border-gray-200 bg-gray-50/70 p-4 space-y-3">
               <div className="flex items-center gap-2">
                 <FileText size={18} className="text-med-600" />
@@ -496,12 +505,13 @@ const Home = () => {
                     <Loader2 size={16} className="animate-spin text-med-500" />
                     <span>Описание формируется и появится автоматически.</span>
                   </div>
-                )}
+              )}
 
               {descriptionState.text && (
-                <p className="text-sm leading-relaxed text-gray-700 whitespace-pre-line">
-                  {descriptionState.text}
-                </p>
+                <TypewriterText
+                  text={descriptionState.text}
+                  className="text-sm leading-relaxed text-gray-700 whitespace-pre-line"
+                />
               )}
 
               {descriptionState.importantLabels.length > 0 && (
@@ -511,11 +521,13 @@ const Home = () => {
                       key={label}
                       className="rounded-full bg-white px-3 py-1 text-xs font-medium text-gray-600 border border-gray-200"
                     >
-                      {label}
+                      {formatFeatureLabelText(label)}
                     </span>
                   ))}
                 </div>
               )}
+
+              <BucketLabelsDisclosure labels={descriptionState.bucketedLabels} />
 
               {descriptionState.error && (
                 <Alert variant="error" title="Описание недоступно">

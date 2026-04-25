@@ -37,6 +37,9 @@ import {
 } from "../imports/ENDPOINTS"
 import { getValues } from "../imports/HELPERS"
 import TreeComponent from "../components/Tree"
+import BucketLabelsDisclosure, {
+  formatFeatureLabelText,
+} from "../components/ui/BucketLabelsDisclosure"
 import Button from "../components/ui/Button"
 import {
   bumpAvatarRevision,
@@ -59,6 +62,7 @@ const Profile = () => {
   const [historyLoading, setHistoryLoading] = useState(false)
   const [openHistoryImageKey, setOpenHistoryImageKey] = useState(null)
   const [openTreeKey, setOpenTreeKey] = useState(null)
+  const [openDescriptionKey, setOpenDescriptionKey] = useState(null)
   const [resendPending, setResendPending] = useState(false)
   const [resendHint, setResendHint] = useState("")
   const [, tickResendCooldown] = useState(0)
@@ -843,6 +847,13 @@ const Profile = () => {
                 row.description_status === "completed" && Boolean(row.description)
               const descriptionFailed =
                 row.description_status === "error" || Boolean(row.description_error)
+              const hasDescriptionInfo =
+                row.description ||
+                row.description_error ||
+                (Array.isArray(row.important_labels) &&
+                  row.important_labels.length > 0) ||
+                (Array.isArray(row.bucketed_labels) &&
+                  row.bucketed_labels.length > 0)
               const rowKey = `${row.request_date}_${row.file_name}_${idx}`
               const base = env.BACKEND_URL.replace(/\/$/, "")
               const imgSrc = row.image_token
@@ -926,6 +937,20 @@ const Profile = () => {
                             {openHistoryImageKey === rowKey ? "Скрыть" : "Изображение"}
                           </button>
                         )}
+                        {hasDescriptionInfo && (
+                          <button
+                            type="button"
+                            onClick={() => setOpenDescriptionKey((k) => (k === rowKey ? null : rowKey))}
+                            className="inline-flex items-center gap-1.5 rounded-md bg-white border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                          >
+                            {openDescriptionKey === rowKey ? (
+                              <ChevronUp size={14} />
+                            ) : (
+                              <ChevronDown size={14} />
+                            )}
+                            Описание
+                          </button>
+                        )}
                       </div>
 
                       {openTreeKey === rowKey && (
@@ -951,11 +976,8 @@ const Profile = () => {
                         </div>
                       )}
 
-                      {(row.description ||
-                        row.description_error ||
-                        (Array.isArray(row.important_labels) &&
-                          row.important_labels.length > 0)) && (
-                        <div className="mt-4 rounded-lg border border-gray-200 bg-white p-4">
+                      {hasDescriptionInfo && openDescriptionKey === rowKey && (
+                        <div className="mt-4 animate-fadeIn rounded-lg border border-gray-200 bg-white p-4">
                           <div className="flex items-center gap-2">
                             <FileText size={14} className="text-med-600" />
                             <p className="text-sm font-medium text-gray-800">
@@ -977,11 +999,16 @@ const Profile = () => {
                                     key={label}
                                     className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600"
                                   >
-                                    {label}
+                                    {formatFeatureLabelText(label)}
                                   </span>
                                 ))}
                               </div>
                             )}
+
+                          <BucketLabelsDisclosure
+                            labels={row.bucketed_labels}
+                            className="mt-3"
+                          />
 
                           {row.description_error && (
                             <p className="mt-2 text-sm text-red-600">

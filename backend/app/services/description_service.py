@@ -26,11 +26,15 @@ async def create_description_job(
     image_content_type: str,
     mask_name: str,
     mask_bytes: bytes,
+    features_only: bool = False,
 ) -> Dict[str, Any]:
     response = await client.post(
         f"{settings.DESCRIPTION_SERVICE_URL.rstrip('/')}/v1/description-jobs",
         headers=_service_headers(),
-        data={"job_id": job_id},
+        data={
+            "job_id": job_id,
+            "features_only": "true" if features_only else "false",
+        },
         files={
             "image": (image_name, image_bytes, image_content_type),
             "mask": (mask_name, mask_bytes, "image/png"),
