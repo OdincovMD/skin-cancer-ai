@@ -2,6 +2,9 @@ import React, { useCallback, useEffect, useState } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { Link } from "react-router-dom"
 import {
+  Activity,
+  BadgeCheck,
+  Braces,
   Camera,
   Save,
   Lock,
@@ -12,13 +15,23 @@ import {
   ChevronUp,
   AlertTriangle,
   CheckCircle2,
+  ClipboardCheck,
+  Database,
+  Fingerprint,
+  Globe2,
   Loader2,
   User,
+  UserRoundCog,
   ImageIcon,
   RefreshCw,
   Key,
+  KeyRound,
   Copy,
   Trash2,
+  Server,
+  ShieldCheck,
+  SquareTerminal,
+  Workflow,
 } from "lucide-react"
 
 import { useAvatarObjectUrl } from "../hooks/useAvatarObjectUrl"
@@ -47,12 +60,42 @@ import {
   setVerificationResendCooldownFromSeconds,
 } from "../store/userReducer"
 
-const SectionHeader = ({ icon: Icon, title }) => (
-  <div className="flex items-center gap-2 mb-4">
-    <Icon size={18} className="text-med-600" />
-    <h2 className="text-base font-semibold text-gray-900">{title}</h2>
+const SectionHeader = ({ icon: Icon, title, eyebrow, className = "" }) => (
+  <div className={`mb-5 flex items-start gap-3 ${className}`.trim()}>
+    <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-teal-100 bg-teal-50 text-med-700">
+      <Icon size={18} aria-hidden />
+    </div>
+    <div>
+      {eyebrow && (
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+          {eyebrow}
+        </p>
+      )}
+      <h2 className="text-base font-semibold text-slate-950">{title}</h2>
+    </div>
   </div>
 )
+
+const StatusBadge = ({ tone = "slate", icon: Icon, children }) => {
+  const tones = {
+    green: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    amber: "border-amber-200 bg-amber-50 text-amber-700",
+    red: "border-red-200 bg-red-50 text-red-700",
+    teal: "border-teal-200 bg-teal-50 text-teal-700",
+    slate: "border-slate-200 bg-slate-50 text-slate-600",
+  }
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${
+        tones[tone] || tones.slate
+      }`}
+    >
+      {Icon && <Icon size={13} aria-hidden />}
+      {children}
+    </span>
+  )
+}
 
 const Profile = () => {
   const dispatch = useDispatch()
@@ -480,6 +523,11 @@ const Profile = () => {
   const initials =
     ((userInfo.userData?.firstName || "").charAt(0) +
       (userInfo.userData?.lastName || "").charAt(0)).toUpperCase()
+  const displayName =
+    `${userInfo.userData?.firstName ?? ""} ${
+      userInfo.userData?.lastName ?? ""
+    }`.trim() || "Пользователь"
+  const apiTokenLabel = apiTokStatus?.display_label || "scai_••••••••"
 
   const parseResult = (raw) => {
     if (raw == null || raw === "") return {}
@@ -498,6 +546,10 @@ const Profile = () => {
     return m ? `${m.groups.date} ${m.groups.time}` : raw
   }
 
+  const apiCreatedAt = apiTokStatus?.created_at
+    ? formatDate(apiTokStatus.created_at)
+    : null
+
   const extractFileName = (raw) => {
     const m = /^(?:.*?_){3}(?<filename>.*)$/.exec(raw)
     return m?.groups?.filename ?? raw
@@ -506,43 +558,51 @@ const Profile = () => {
   return (
     <div className="space-y-6">
       {userInfo.accessToken && !userInfo.emailVerified && (
-        <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4">
-          <Mail size={20} className="mt-0.5 flex-shrink-0 text-amber-600" />
-          <div className="flex-1">
-            <p className="font-semibold text-amber-900 text-sm">
-              Адрес email не подтверждён
-            </p>
-            <p className="mt-1 text-sm text-amber-800">
-              Загрузка и история будут доступны после перехода по ссылке из письма.
-            </p>
-            <div className="mt-3 flex flex-wrap items-center gap-3">
-              <Button
-                type="button"
-                onClick={resendVerification}
-                disabled={resendPending || resendCooldownRemaining > 0}
-                className="text-xs bg-amber-700 hover:bg-amber-800 focus-visible:ring-amber-500"
-              >
-                {resendPending
-                  ? "Отправка..."
-                  : resendCooldownRemaining > 0
-                    ? `Повтор через ${resendCooldownRemaining} с`
-                    : "Отправить письмо"}
-              </Button>
-              {resendHint && (
-                <p className={`text-xs ${resendHint.startsWith("Письмо") ? "text-green-700" : "text-amber-900"}`}>
-                  {resendHint}
-                </p>
-              )}
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4">
+          <div className="flex items-start gap-3">
+            <Mail size={20} className="mt-0.5 flex-shrink-0 text-amber-600" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-amber-900">
+                Адрес email не подтверждён
+              </p>
+              <p className="mt-1 text-sm leading-relaxed text-amber-800">
+                Загрузка изображений, история и API-ключ станут доступны после
+                подтверждения почты.
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <Button
+                  type="button"
+                  onClick={resendVerification}
+                  disabled={resendPending || resendCooldownRemaining > 0}
+                  className="bg-amber-700 text-xs hover:bg-amber-800 focus-visible:ring-amber-500"
+                >
+                  {resendPending
+                    ? "Отправка..."
+                    : resendCooldownRemaining > 0
+                      ? `Повтор через ${resendCooldownRemaining} с`
+                      : "Отправить письмо"}
+                </Button>
+                {resendHint && (
+                  <p
+                    className={`text-xs ${
+                      resendHint.startsWith("Письмо")
+                        ? "text-emerald-700"
+                        : "text-amber-900"
+                    }`}
+                  >
+                    {resendHint}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      <div className="card-elevated">
-        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
-          {/* Avatar */}
-          <div className="relative group">
-            <div className="h-24 w-24 rounded-full overflow-hidden bg-med-100 flex items-center justify-center ring-4 ring-white shadow">
+      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex flex-col gap-5 p-6 sm:flex-row sm:items-center">
+          <div className="relative group h-24 w-24 flex-shrink-0">
+            <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-teal-100 via-cyan-50 to-white ring-1 ring-teal-200">
               {avatarDisplayUrl ? (
                 <img
                   src={avatarDisplayUrl}
@@ -550,12 +610,12 @@ const Profile = () => {
                   className="h-full w-full object-cover"
                 />
               ) : (
-                <span className="text-2xl font-bold text-med-600">
+                <span className="text-2xl font-bold text-med-700">
                   {initials || <User size={32} />}
                 </span>
               )}
             </div>
-            <label className="absolute inset-0 flex cursor-pointer items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+            <label className="absolute inset-0 flex cursor-pointer items-center justify-center rounded-xl bg-slate-950/45 opacity-0 transition-opacity group-hover:opacity-100">
               <Camera size={20} className="text-white" />
               <input
                 type="file"
@@ -567,32 +627,251 @@ const Profile = () => {
             </label>
           </div>
 
-          {/* Info */}
-          <div className="flex-1 text-center sm:text-left">
-            <h1 className="text-xl font-bold text-gray-900">
-              {userInfo.userData?.firstName} {userInfo.userData?.lastName}
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+              Профиль пользователя
+            </p>
+            <h1 className="mt-1 truncate text-2xl font-bold text-slate-950">
+              {displayName}
             </h1>
-            <p className="mt-0.5 text-sm text-gray-500">
+            <p className="mt-1 truncate text-sm text-slate-500">
               {userInfo.userData?.email}
             </p>
-            {userInfo.emailVerified && (
-              <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700">
-                <CheckCircle2 size={12} /> Email подтверждён
-              </span>
-            )}
+            <div className="mt-4 flex flex-wrap gap-2">
+              {userInfo.emailVerified ? (
+                <StatusBadge tone="green" icon={BadgeCheck}>
+                  Email подтверждён
+                </StatusBadge>
+              ) : (
+                <StatusBadge tone="amber" icon={AlertTriangle}>
+                  Требуется подтверждение
+                </StatusBadge>
+              )}
+              <StatusBadge
+                tone={apiTokStatus?.has_token ? "teal" : "slate"}
+                icon={KeyRound}
+              >
+                {apiTokStatus?.has_token ? "API включён" : "API не выпущен"}
+              </StatusBadge>
+            </div>
             {avatarMessage.text && (
-              <p className={`mt-2 text-xs ${avatarMessage.type === "ok" ? "text-green-700" : "text-red-600"}`}>
+              <p
+                className={`mt-3 text-xs ${
+                  avatarMessage.type === "ok"
+                    ? "text-emerald-700"
+                    : "text-red-600"
+                }`}
+              >
                 {avatarMessage.text}
               </p>
             )}
           </div>
         </div>
-      </div>
+      </section>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Edit name */}
-        <div className="card">
-          <SectionHeader icon={User} title="Личные данные" />
+      {userInfo.emailVerified && (
+        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="p-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <SectionHeader
+                  icon={SquareTerminal}
+                  title="Доступ по API"
+                  eyebrow="Developer access"
+                />
+                <StatusBadge
+                  tone={apiTokStatus?.has_token ? "green" : "slate"}
+                  icon={apiTokStatus?.has_token ? ShieldCheck : Fingerprint}
+                >
+                  {apiTokStatus?.has_token ? "Ключ активен" : "Ключ не выпущен"}
+                </StatusBadge>
+              </div>
+
+              <p className="max-w-2xl text-sm leading-7 text-slate-600">
+                API-ключ открывает доступ к классификации снимков через{" "}
+                <Link to={API_DOCS} className="text-link">
+                  HTTP API v1
+                </Link>
+                . Передавайте его в заголовке{" "}
+                <code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-700">
+                  X-API-Key
+                </code>
+                , а лимит сервера уже защищает интеграции от перегрузки.
+              </p>
+
+              <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                  <Server size={18} className="text-med-700" />
+                  <p className="mt-3 text-sm font-semibold text-slate-950">
+                    Endpoint
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">/api/v1/uploadfile</p>
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                  <Fingerprint size={18} className="text-med-700" />
+                  <p className="mt-3 text-sm font-semibold text-slate-950">
+                    Авторизация
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">X-API-Key</p>
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                  <Activity size={18} className="text-med-700" />
+                  <p className="mt-3 text-sm font-semibold text-slate-950">
+                    Ограничение
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">5 запросов/мин</p>
+                </div>
+              </div>
+
+              <div className="mt-5 rounded-lg border border-med-200 bg-med-50 p-4 text-med-950">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-med-700">
+                      Token
+                    </p>
+                    <p className="mt-1 truncate font-mono text-sm">
+                      {apiTokStatus?.has_token ? apiTokenLabel : "scai_••••••••"}
+                    </p>
+                  </div>
+                  {apiCreatedAt && (
+                    <span className="rounded-full border border-med-200 bg-white px-3 py-1 text-xs text-med-700">
+                      {apiCreatedAt}
+                    </span>
+                  )}
+                </div>
+
+                {apiTokPlain && (
+                  <div className="mt-4">
+                    <label className="text-xs font-semibold uppercase tracking-wide text-med-700">
+                      Полный ключ показывается один раз
+                    </label>
+                    <textarea
+                      readOnly
+                      className="mt-2 min-h-[5rem] w-full rounded-lg border border-med-200 bg-white px-3 py-3 font-mono text-xs text-med-950 outline-none"
+                      value={apiTokPlain}
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="mt-3 border-med-200 bg-white text-xs text-med-700 hover:bg-med-100"
+                      onClick={copyApiToken}
+                    >
+                      <Copy size={14} /> Копировать ключ
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {apiTokLoading && !apiTokStatus ? (
+                <p className="mt-4 flex items-center gap-2 text-sm text-slate-500">
+                  <Loader2 size={16} className="animate-spin" /> Загрузка статуса...
+                </p>
+              ) : (
+                <div className="mt-5 flex flex-wrap gap-2">
+                  {!apiTokStatus?.has_token ? (
+                    <Button
+                      type="button"
+                      disabled={apiTokActionPending}
+                      onClick={issueApiToken}
+                    >
+                      {apiTokActionPending ? (
+                        <>
+                          <Loader2 size={16} className="animate-spin" /> Выпуск...
+                        </>
+                      ) : (
+                        <>
+                          <Key size={16} /> Выпустить ключ
+                        </>
+                      )}
+                    </Button>
+                  ) : (
+                    <>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        disabled={apiTokActionPending}
+                        onClick={rotateApiToken}
+                      >
+                        {apiTokActionPending ? (
+                          <>
+                            <Loader2 size={16} className="animate-spin" /> Обновление...
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw size={16} /> Перевыпустить
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="border-red-200 text-red-700 hover:bg-red-50"
+                        disabled={apiTokActionPending}
+                        onClick={revokeApiToken}
+                      >
+                        <Trash2 size={16} /> Отозвать
+                      </Button>
+                    </>
+                  )}
+                  <Button type="button" variant="secondary" to={API_DOCS}>
+                    <Braces size={16} /> Документация
+                  </Button>
+                </div>
+              )}
+
+              {apiTokMsg.text && (
+                <p
+                  className={`mt-4 rounded-lg border px-4 py-3 text-sm ${
+                    apiTokMsg.type === "ok"
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                      : "border-red-200 bg-red-50 text-red-700"
+                  }`}
+                >
+                  {apiTokMsg.text}
+                </p>
+              )}
+            </div>
+
+            <div className="border-t border-slate-200 bg-slate-50 p-6 lg:border-l lg:border-t-0">
+              <img
+                src="/images/api-console.svg"
+                alt="Схема API-интеграции"
+                className="h-auto w-full rounded-lg border border-slate-200 bg-white"
+              />
+              <div className="mt-4 space-y-3">
+                <div className="flex items-start gap-3">
+                  <Workflow size={18} className="mt-0.5 text-med-700" />
+                  <p className="text-sm leading-relaxed text-slate-600">
+                    Загрузка снимка, постановка задачи и получение результата
+                    остаются в одном API-потоке.
+                  </p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Database size={18} className="mt-0.5 text-med-700" />
+                  <p className="text-sm leading-relaxed text-slate-600">
+                    История и изображения доступны только владельцу ключа.
+                  </p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Globe2 size={18} className="mt-0.5 text-med-700" />
+                  <p className="text-sm leading-relaxed text-slate-600">
+                    Подходит для личных кабинетов, внутренних панелей и
+                    исследовательских инструментов.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+        <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <SectionHeader
+            icon={UserRoundCog}
+            title="Личные данные"
+            eyebrow="Account"
+          />
           <form onSubmit={submitProfileNames} className="space-y-4">
             <div>
               <label htmlFor="prof-fn" className="input-label">Имя</label>
@@ -619,24 +898,37 @@ const Profile = () => {
               />
             </div>
             {profileMessage.text && (
-              <p className={`text-sm ${profileMessage.type === "ok" ? "text-green-700" : "text-red-600"}`}>
+              <p
+                className={`text-sm ${
+                  profileMessage.type === "ok"
+                    ? "text-emerald-700"
+                    : "text-red-600"
+                }`}
+              >
                 {profileMessage.text}
               </p>
             )}
             <Button type="submit" disabled={profilePending}>
               {profilePending ? (
-                <><Loader2 size={16} className="animate-spin" /> Сохранение...</>
+                <>
+                  <Loader2 size={16} className="animate-spin" /> Сохранение...
+                </>
               ) : (
-                <><Save size={16} /> Сохранить</>
+                <>
+                  <Save size={16} /> Сохранить изменения
+                </>
               )}
             </Button>
           </form>
-        </div>
+        </section>
 
-        {/* Change password */}
-        <div className="card">
-          <SectionHeader icon={Lock} title="Смена пароля" />
-          <form onSubmit={submitChangePassword} className="space-y-4">
+        <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <SectionHeader
+            icon={Lock}
+            title="Безопасность"
+            eyebrow="Password"
+          />
+          <form onSubmit={submitChangePassword} className="grid gap-4 sm:grid-cols-3">
             <div>
               <label htmlFor="pwd-cur" className="input-label">Текущий пароль</label>
               <input
@@ -679,126 +971,42 @@ const Profile = () => {
               )}
             </div>
             {pwdMessage.text && (
-              <p className={`text-sm ${pwdMessage.type === "ok" ? "text-green-700" : "text-red-600"}`}>
+              <p
+                className={`sm:col-span-3 text-sm ${
+                  pwdMessage.type === "ok" ? "text-emerald-700" : "text-red-600"
+                }`}
+              >
                 {pwdMessage.text}
               </p>
             )}
-            <Button
-              type="submit"
-              disabled={pwdPending || !pwdCurrent || !pwdNewValid || !pwdMatch}
-            >
-              {pwdPending ? (
-                <><Loader2 size={16} className="animate-spin" /> Сохранение...</>
-              ) : (
-                <><Lock size={16} /> Сменить пароль</>
-              )}
-            </Button>
-          </form>
-        </div>
-      </div>
-
-      {userInfo.emailVerified && (
-        <div className="card-elevated">
-          <SectionHeader icon={Key} title="Доступ по API" />
-          <p className="text-sm text-gray-600 mb-4">
-            Ключ для запросов к{" "}
-            <Link to={API_DOCS} className="text-link">
-              HTTP API v1
-            </Link>{" "}
-            (заголовок <code className="text-xs bg-gray-100 px-1 rounded">X-API-Key</code>
-            ). Лимит на стороне сервера — 5 запросов в минуту.
-          </p>
-          {apiTokLoading && !apiTokStatus ? (
-            <p className="text-sm text-gray-500 flex items-center gap-2">
-              <Loader2 size={16} className="animate-spin" /> Загрузка…
-            </p>
-          ) : (
-            <>
-              {apiTokStatus?.has_token && (
-                <p className="text-sm text-gray-700 mb-2">
-                  <span className="font-medium">Статус:</span>{" "}
-                  {apiTokStatus.display_label || "scai_••••••••"}
-                  {apiTokStatus.created_at && (
-                    <span className="text-gray-500 ml-2">
-                      (создан {formatDate(apiTokStatus.created_at)})
-                    </span>
-                  )}
-                </p>
-              )}
-              {apiTokPlain && (
-                <div className="space-y-2 mb-4">
-                  <label className="input-label">Ключ (показан один раз)</label>
-                  <textarea
-                    readOnly
-                    className="input-field font-mono text-xs min-h-[4.5rem]"
-                    value={apiTokPlain}
-                  />
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="text-xs"
-                    onClick={copyApiToken}
-                  >
-                    <Copy size={14} /> Копировать
-                  </Button>
-                </div>
-              )}
-              <div className="flex flex-wrap gap-2">
-                {!apiTokStatus?.has_token ? (
-                  <Button
-                    type="button"
-                    disabled={apiTokActionPending}
-                    onClick={issueApiToken}
-                  >
-                    {apiTokActionPending ? (
-                      <><Loader2 size={16} className="animate-spin" /> Выпуск…</>
-                    ) : (
-                      <><Key size={16} /> Выпустить ключ</>
-                    )}
-                  </Button>
+            <div className="sm:col-span-3">
+              <Button
+                type="submit"
+                disabled={pwdPending || !pwdCurrent || !pwdNewValid || !pwdMatch}
+              >
+                {pwdPending ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" /> Сохранение...
+                  </>
                 ) : (
                   <>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      disabled={apiTokActionPending}
-                      onClick={rotateApiToken}
-                    >
-                      {apiTokActionPending ? (
-                        <><Loader2 size={16} className="animate-spin" /> …</>
-                      ) : (
-                        <><RefreshCw size={16} /> Перевыпустить</>
-                      )}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="text-red-700 border-red-200 hover:bg-red-50"
-                      disabled={apiTokActionPending}
-                      onClick={revokeApiToken}
-                    >
-                      <Trash2 size={16} /> Отозвать
-                    </Button>
+                    <ClipboardCheck size={16} /> Обновить пароль
                   </>
                 )}
-              </div>
-              {apiTokMsg.text && (
-                <p
-                  className={`mt-3 text-sm ${
-                    apiTokMsg.type === "ok" ? "text-green-700" : "text-red-600"
-                  }`}
-                >
-                  {apiTokMsg.text}
-                </p>
-              )}
-            </>
-          )}
-        </div>
-      )}
+              </Button>
+            </div>
+          </form>
+        </section>
+      </div>
 
-      <div className="card-elevated">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-          <SectionHeader icon={Clock} title="История классификаций" />
+      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <SectionHeader
+            icon={Clock}
+            title="История классификаций"
+            eyebrow="Recent activity"
+            className="mb-0"
+          />
           {userInfo.emailVerified ? (
             <Button
               type="button"
@@ -821,9 +1029,9 @@ const Profile = () => {
         </div>
 
         {history.length === 0 && !historyLoading && (
-          <div className="py-10 text-center">
-            <FileText size={32} className="mx-auto mb-2 text-gray-300" />
-            <p className="text-sm text-gray-400">
+          <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 py-12 text-center">
+            <FileText size={34} className="mx-auto mb-3 text-slate-300" />
+            <p className="text-sm text-slate-500">
               {userInfo.emailVerified
                 ? "Нажмите «Обновить», чтобы загрузить историю"
                 : "Подтвердите email для доступа к истории"}
@@ -1042,7 +1250,7 @@ const Profile = () => {
             })}
           </div>
         )}
-      </div>
+      </section>
     </div>
   )
 }

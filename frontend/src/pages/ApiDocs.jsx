@@ -6,6 +6,7 @@ import {
   Check,
   Clock,
   Copy,
+  ExternalLink,
   Key,
   Rocket,
   Send,
@@ -27,10 +28,12 @@ const CodeBlock = ({ children, label }) => {
   }, [children])
 
   return (
-    <div className="group relative rounded-lg bg-gray-900 text-gray-100">
+    <div className="group relative overflow-hidden rounded-lg border border-med-200 bg-med-50 text-med-950">
       {label && (
-        <div className="flex items-center justify-between border-b border-gray-700/60 px-4 py-2">
-          <span className="text-xs font-medium text-gray-400">{label}</span>
+        <div className="flex items-center justify-between border-b border-med-200 bg-white px-4 py-2">
+          <span className="text-xs font-semibold uppercase tracking-wide text-med-700">
+            {label}
+          </span>
           <CopyBtn copied={copied} onClick={handleCopy} />
         </div>
       )}
@@ -51,8 +54,8 @@ const CopyBtn = ({ copied, onClick }) => (
     onClick={onClick}
     className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors ${
       copied
-        ? "bg-green-600/20 text-green-400"
-        : "bg-gray-700/60 text-gray-400 hover:bg-gray-700 hover:text-gray-200"
+        ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
+        : "bg-white text-med-700 ring-1 ring-med-200 hover:bg-med-100"
     }`}
   >
     {copied ? <Check size={13} /> : <Copy size={13} />}
@@ -61,18 +64,18 @@ const CopyBtn = ({ copied, onClick }) => (
 )
 
 const InlineCode = ({ children }) => (
-  <code className="rounded bg-gray-100 px-1.5 py-0.5 text-[13px] font-medium text-gray-800">
+  <code className="rounded bg-med-50 px-1.5 py-0.5 text-[13px] font-medium text-med-800 ring-1 ring-med-100">
     {children}
   </code>
 )
 
 const Badge = ({ children, color = "gray" }) => {
   const colors = {
-    green: "bg-green-100 text-green-700",
-    blue: "bg-med-50 text-med-700",
-    yellow: "bg-amber-50 text-amber-700",
-    red: "bg-red-50 text-red-700",
-    gray: "bg-gray-100 text-gray-600",
+    green: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200",
+    blue: "bg-med-50 text-med-700 ring-1 ring-med-200",
+    yellow: "bg-amber-50 text-amber-700 ring-1 ring-amber-200",
+    red: "bg-red-50 text-red-700 ring-1 ring-red-200",
+    gray: "bg-slate-100 text-slate-600 ring-1 ring-slate-200",
   }
   return (
     <span
@@ -89,17 +92,24 @@ const MethodBadge = ({ method }) => {
 }
 
 const Section = ({ id, icon: Icon, title, children }) => (
-  <section id={id} className="card-elevated space-y-5">
-    <h2 className="flex items-center gap-2.5 text-lg font-semibold text-gray-900">
-      {Icon && <Icon size={20} className="text-med-600" />}
-      {title}
-    </h2>
+  <section
+    id={id}
+    className="space-y-5 rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
+  >
+    <div className="flex items-center gap-3">
+      {Icon && (
+        <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-med-100 bg-med-50 text-med-700">
+          <Icon size={18} />
+        </span>
+      )}
+      <h2 className="text-lg font-semibold text-slate-950">{title}</h2>
+    </div>
     {children}
   </section>
 )
 
 const P = ({ children }) => (
-  <p className="text-sm leading-relaxed text-gray-600">{children}</p>
+  <p className="text-sm leading-relaxed text-slate-600">{children}</p>
 )
 
 const ApiDocs = () => {
@@ -113,29 +123,42 @@ const ApiDocs = () => {
   const v1 = `${base}${API_V1_PREFIX}`
 
   return (
-    <div className="mx-auto max-w-3xl space-y-8 pb-16">
-      <header>
+    <div className="mx-auto max-w-4xl space-y-6 pb-16">
+      <header className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <Link
           to={HOME}
-          className="mb-6 inline-flex items-center gap-1.5 text-sm text-med-600 hover:text-med-700"
+          className="mb-5 inline-flex items-center gap-1.5 text-sm font-medium text-med-600 hover:text-med-700"
         >
           <ArrowLeft size={16} />
           На главную
         </Link>
 
-        <div className="flex items-start gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-med-600 text-white">
-            <BookOpen size={24} />
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex min-w-0 items-start gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-med-600 text-white">
+              <BookOpen size={24} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wide text-med-700">
+                Developer docs
+              </p>
+              <h1 className="mt-1 text-2xl font-bold text-slate-950">
+                API для разработчиков
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">
+                Классифицируйте дерматоскопические изображения из вашего кода за
+                три шага: получите ключ, отправьте снимок, заберите результат.
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              API для разработчиков
-            </h1>
-            <p className="mt-1 text-sm text-gray-500">
-              Классифицируйте дерматоскопические изображения из вашего кода за
-              три шага: получите ключ, отправьте снимок, заберите результат.
-            </p>
-          </div>
+
+          <a
+            href="#quickstart"
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-med-200 bg-med-50 px-4 py-2 text-sm font-semibold text-med-700 transition-colors hover:bg-med-100"
+          >
+            Быстрый старт
+            <ExternalLink size={14} />
+          </a>
         </div>
       </header>
 
@@ -225,28 +248,28 @@ const ApiDocs = () => {
           кавычки. Просто строка целиком.
         </P>
 
-        <div className="overflow-x-auto rounded-lg border border-gray-200">
+        <div className="overflow-x-auto rounded-lg border border-slate-200">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 bg-gray-50">
-                <th className="px-4 py-2.5 text-left font-semibold text-gray-700">
+              <tr className="border-b border-slate-200 bg-slate-50">
+                <th className="px-4 py-2.5 text-left font-semibold text-slate-700">
                   Код
                 </th>
-                <th className="px-4 py-2.5 text-left font-semibold text-gray-700">
+                <th className="px-4 py-2.5 text-left font-semibold text-slate-700">
                   Что произошло
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-slate-100">
               <tr>
                 <td className="px-4 py-2.5 font-mono text-red-600">401</td>
-                <td className="px-4 py-2.5 text-gray-600">
+                <td className="px-4 py-2.5 text-slate-600">
                   Ключ не передан, неверный или отозван
                 </td>
               </tr>
               <tr>
                 <td className="px-4 py-2.5 font-mono text-red-600">403</td>
-                <td className="px-4 py-2.5 text-gray-600">
+                <td className="px-4 py-2.5 text-slate-600">
                   Email владельца не подтверждён
                 </td>
               </tr>
@@ -418,34 +441,34 @@ const ApiDocs = () => {
               подписан и имеет ограниченный срок жизни.
             </P>
 
-            <div className="overflow-x-auto rounded-lg border border-gray-200">
+            <div className="overflow-x-auto rounded-lg border border-slate-200">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-200 bg-gray-50">
-                    <th className="px-4 py-2.5 text-left font-semibold text-gray-700">
+                  <tr className="border-b border-slate-200 bg-slate-50">
+                    <th className="px-4 py-2.5 text-left font-semibold text-slate-700">
                       Код
                     </th>
-                    <th className="px-4 py-2.5 text-left font-semibold text-gray-700">
+                    <th className="px-4 py-2.5 text-left font-semibold text-slate-700">
                       Причина
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-slate-100">
                   <tr>
                     <td className="px-4 py-2.5 font-mono text-green-600">200</td>
-                    <td className="px-4 py-2.5 text-gray-600">
+                    <td className="px-4 py-2.5 text-slate-600">
                       Изображение, Content-Type определяется автоматически
                     </td>
                   </tr>
                   <tr>
                     <td className="px-4 py-2.5 font-mono text-red-600">403</td>
-                    <td className="px-4 py-2.5 text-gray-600">
+                    <td className="px-4 py-2.5 text-slate-600">
                       Токен невалидный или истёк
                     </td>
                   </tr>
                   <tr>
                     <td className="px-4 py-2.5 font-mono text-red-600">404</td>
-                    <td className="px-4 py-2.5 text-gray-600">
+                    <td className="px-4 py-2.5 text-slate-600">
                       Файл не найден
                     </td>
                   </tr>
@@ -458,7 +481,7 @@ const ApiDocs = () => {
 
       {/* ---- lifecycle ---- */}
       <Section id="lifecycle" icon={Clock} title="Жизненный цикл задания">
-        <div className="flex flex-wrap items-center gap-2 rounded-lg bg-gray-50 px-4 py-3 font-mono text-sm">
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 font-mono text-sm">
           <Badge color="blue">pending</Badge>
           <span className="text-gray-400">&rarr;</span>
           <Badge color="yellow">processing</Badge>
@@ -467,22 +490,22 @@ const ApiDocs = () => {
           <span className="mx-1 text-gray-300">|</span>
           <Badge color="red">error</Badge>
         </div>
-        <ul className="space-y-1.5 text-sm text-gray-600">
+        <ul className="space-y-1.5 text-sm text-slate-600">
           <li>
-            <strong className="font-medium text-gray-800">pending</strong> —
+            <strong className="font-medium text-slate-800">pending</strong> —
             задание принято, ожидает очереди.
           </li>
           <li>
-            <strong className="font-medium text-gray-800">processing</strong> —
+            <strong className="font-medium text-slate-800">processing</strong> —
             модель работает над снимком.
           </li>
           <li>
-            <strong className="font-medium text-gray-800">completed</strong> —
+            <strong className="font-medium text-slate-800">completed</strong> —
             классификация готова в поле <InlineCode>result</InlineCode>; описание
             может ещё догружаться через <InlineCode>description_status</InlineCode>.
           </li>
           <li>
-            <strong className="font-medium text-gray-800">error</strong> —
+            <strong className="font-medium text-slate-800">error</strong> —
             что-то пошло не так, подробности в{" "}
             <InlineCode>result.detail</InlineCode>.
           </li>
@@ -503,8 +526,8 @@ const ApiDocs = () => {
       </Section>
 
       {/* ---- errors ---- */}
-      <section className="card-elevated space-y-4">
-        <h2 className="text-lg font-semibold text-gray-900">Формат ошибок</h2>
+      <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-slate-950">Формат ошибок</h2>
         <P>Все ошибки приходят как JSON:</P>
         <CodeBlock>{`{ "detail": "Текстовое описание проблемы" }`}</CodeBlock>
         <P>
@@ -514,8 +537,8 @@ const ApiDocs = () => {
       </section>
 
       {/* ---- health ---- */}
-      <section className="card-elevated space-y-4">
-        <h2 className="text-lg font-semibold text-gray-900">
+      <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-slate-950">
           Проверка доступности
         </h2>
         <P>
@@ -530,8 +553,8 @@ const ApiDocs = () => {
       </section>
 
       {/* ---- full example ---- */}
-      <section className="card-elevated space-y-4">
-        <h2 className="text-lg font-semibold text-gray-900">
+      <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-slate-950">
           Полный пример
         </h2>
         <P>Загрузка, ожидание результата и получение истории — одним скриптом:</P>
@@ -582,21 +605,21 @@ curl -sS -X POST "$BASE/api/v1/gethistory" \\
 }
 
 const Endpoint = ({ method, path, description, children, noAuth }) => (
-  <div className="space-y-3 rounded-lg border border-gray-200 bg-white p-5">
+  <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50/70 p-5">
     <div className="flex flex-wrap items-center gap-2">
       <MethodBadge method={method} />
-      <code className="text-sm font-semibold text-gray-800">{path}</code>
+      <code className="text-sm font-semibold text-slate-800">{path}</code>
       {noAuth && (
-        <span className="text-xs text-gray-400">(без ключа)</span>
+        <span className="text-xs text-slate-400">(без ключа)</span>
       )}
     </div>
-    <p className="text-sm font-medium text-gray-700">{description}</p>
+    <p className="text-sm font-medium text-slate-700">{description}</p>
     {children}
   </div>
 )
 
 const Callout = ({ children }) => (
-  <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+  <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-relaxed text-amber-800">
     {children}
   </div>
 )
