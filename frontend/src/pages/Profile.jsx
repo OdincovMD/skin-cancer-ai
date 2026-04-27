@@ -32,6 +32,8 @@ import {
   ShieldCheck,
   SquareTerminal,
   Workflow,
+  Eye,
+  EyeOff,
 } from "lucide-react"
 
 import { useAvatarObjectUrl } from "../hooks/useAvatarObjectUrl"
@@ -125,6 +127,9 @@ const Profile = () => {
   const [pwdCurrent, setPwdCurrent] = useState("")
   const [pwdNew, setPwdNew] = useState("")
   const [pwdConfirm, setPwdConfirm] = useState("")
+  const [showPwdCurrent, setShowPwdCurrent] = useState(false)
+  const [showPwdNew, setShowPwdNew] = useState(false)
+  const [showPwdConfirm, setShowPwdConfirm] = useState(false)
   const [pwdPending, setPwdPending] = useState(false)
   const [pwdMessage, setPwdMessage] = useState({ type: "", text: "" })
 
@@ -935,25 +940,45 @@ const Profile = () => {
           <form onSubmit={submitChangePassword} className="grid gap-4 sm:grid-cols-3">
             <div>
               <label htmlFor="pwd-cur" className="input-label">Текущий пароль</label>
-              <input
-                id="pwd-cur"
-                type="password"
-                autoComplete="current-password"
-                value={pwdCurrent}
-                onChange={(e) => setPwdCurrent(e.target.value)}
-                className="input-field"
-              />
+              <div className="relative">
+                <input
+                  id="pwd-cur"
+                  type={showPwdCurrent ? "text" : "password"}
+                  autoComplete="current-password"
+                  value={pwdCurrent}
+                  onChange={(e) => setPwdCurrent(e.target.value)}
+                  className="input-field pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPwdCurrent((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  aria-label={showPwdCurrent ? "Скрыть пароль" : "Показать пароль"}
+                >
+                  {showPwdCurrent ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
             <div>
               <label htmlFor="pwd-new" className="input-label">Новый пароль</label>
-              <input
-                id="pwd-new"
-                type="password"
-                autoComplete="new-password"
-                value={pwdNew}
-                onChange={(e) => setPwdNew(e.target.value)}
-                className="input-field"
-              />
+              <div className="relative">
+                <input
+                  id="pwd-new"
+                  type={showPwdNew ? "text" : "password"}
+                  autoComplete="new-password"
+                  value={pwdNew}
+                  onChange={(e) => setPwdNew(e.target.value)}
+                  className="input-field pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPwdNew((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  aria-label={showPwdNew ? "Скрыть пароль" : "Показать пароль"}
+                >
+                  {showPwdNew ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
               {pwdNew && !pwdNewValid && (
                 <p className="mt-1 text-xs text-amber-700">
                   Мин. 8 символов, латиница и цифры
@@ -962,14 +987,24 @@ const Profile = () => {
             </div>
             <div>
               <label htmlFor="pwd-conf" className="input-label">Подтверждение</label>
-              <input
-                id="pwd-conf"
-                type="password"
-                autoComplete="new-password"
-                value={pwdConfirm}
-                onChange={(e) => setPwdConfirm(e.target.value)}
-                className="input-field"
-              />
+              <div className="relative">
+                <input
+                  id="pwd-conf"
+                  type={showPwdConfirm ? "text" : "password"}
+                  autoComplete="new-password"
+                  value={pwdConfirm}
+                  onChange={(e) => setPwdConfirm(e.target.value)}
+                  className="input-field pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPwdConfirm((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  aria-label={showPwdConfirm ? "Скрыть пароль" : "Показать пароль"}
+                >
+                  {showPwdConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
               {pwdConfirm && !pwdMatch && pwdNewValid && (
                 <p className="mt-1 text-xs text-red-600">Пароли не совпадают</p>
               )}

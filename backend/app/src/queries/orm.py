@@ -11,7 +11,7 @@ from sqlalchemy import delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from services.mail import send_verification_email
+from services.mail import send_password_reset_email, send_verification_email
 from src.config import settings
 from src.models import ClassificationResults, DescriptionJob, File, User
 
@@ -524,7 +524,9 @@ class Orm:
         session: AsyncSession, login: str, password: str
     ) -> Union[Dict[str, Union[int, str]], str]:
         try:
-            stmt = select(User).where(User.login == login)
+            stmt = select(User).where(
+                (User.login == login) | (User.email == login)
+            )
             result = await session.execute(stmt)
             user = result.scalar_one_or_none()
             if not user:
@@ -781,3 +783,80 @@ class Orm:
             User.email_verified.is_(True),
         )
         return (await session.execute(stmt)).scalar_one_or_none()
+
+    @staticmethod
+    async def request_password_reset(
+        session: AsyncSession, email: str
+    ) -> Optional[str]:
+        """
+        Инициирует сброс пароля по email.
+        Возвращает None в случае успеха (или если email не найден — не раскрываем).
+        Возвращает строку с ошибкой при проблемах (cooldown, SMTP).
+        """
+        stmt = select(User).where(User.email == email.strip().lower())
+        result = await session.execute(stmt)
+        user = result.scalar_one_or_none()
+
+        if not user:
+            # Не раскрываем наличие/отсутствие email в системе
+            return None
+
+        # Cooldown: не спамим письмами
+        last = user.password_reset_last_sent_at
+        if last is not None:
+            if last.tzinfo is None:
+                last = last.replace(tzinfo=timezone.utc)
+            elapsed = (datetime.now(timezone.utc) - last).total_seconds()
+            cooldown = max(1, int(settings.PASSWORD_RESET_COOLDOWN_SEC))
+            remaining = int(math.ceil(cooldown - elapsed))
+            if remaining > 0:
+                return f"Повторная отправка возможна через {remaining} с."
+
+        raw_token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+        user.password_reset_token = token_hash
+        user.password_reset_expires_at = datetime.now(timezone.utc) + timedelta(
+            hours=settings.PASSWORD_RESET_TOKEN_TTL_HOURS
+        )
+        await session.flush()
+
+        try:
+            await send_password_reset_email(user.email, raw_token)
+        except Exception:
+            await session.rollback()
+            return "Не удалось отправить письмо. Проверьте настройки SMTP или попробуйте позже."
+
+        user.password_reset_last_sent_at = datetime.now(timezone.utc)
+        await session.commit()
+        return None
+
+    @staticmethod
+    async def reset_password_by_token(
+        session: AsyncSession, raw_token: str, new_password: str
+    ) -> Optional[str]:
+        """
+        Устанавливает новый пароль по токену из письма.
+        Возвращает None при успехе или строку с ошибкой.
+        """
+        if not raw_token or not raw_token.strip():
+            return "Токен не указан."
+        token_hash = hashlib.sha256(raw_token.strip().encode()).hexdigest()
+        stmt = select(User).where(User.password_reset_token == token_hash)
+        result = await session.execute(stmt)
+        user = result.scalar_one_or_none()
+        if not user:
+            return "Ссылка недействительна или уже использована."
+
+        now = datetime.now(timezone.utc)
+        exp = user.password_reset_expires_at
+        if exp is not None and exp.tzinfo is None:
+            exp = exp.replace(tzinfo=timezone.utc)
+        if exp is None or exp < now:
+            return "Срок действия ссылки истёк. Запросите новое письмо."
+
+        user.password = await asyncio.to_thread(pwd_context.hash, new_password)
+        # Инвалидируем токен после использования
+        user.password_reset_token = None
+        user.password_reset_expires_at = None
+        await session.commit()
+        return None

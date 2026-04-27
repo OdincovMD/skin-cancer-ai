@@ -6,7 +6,7 @@ import { CheckCircle2, Eye, EyeOff, LogIn, Scan } from "lucide-react"
 import Alert from "../components/ui/Alert"
 import Button from "../components/ui/Button"
 import { onVerify } from "../asyncActions/onVerify"
-import { HOME, SIGN_IN, SIGN_UP } from "../imports/ENDPOINTS"
+import { FORGOT_PASSWORD, HOME, SIGN_IN, SIGN_UP } from "../imports/ENDPOINTS"
 import { mappingInfo } from "../imports/HELPERS"
 import { noError, toggleRememberMe } from "../store/userReducer"
 
@@ -111,13 +111,13 @@ const SignIn = () => {
             <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
               <div>
                 <label htmlFor="login" className="input-label">
-                  Логин
+                  Логин или email
                 </label>
                 <input
                   id="login"
                   type="text"
                   autoComplete="username"
-                  placeholder="Ваш логин"
+                  placeholder="Логин или email"
                   className="input-field"
                   value={formState.login}
                   onChange={(e) =>
@@ -153,15 +153,20 @@ const SignIn = () => {
                 </div>
               </div>
 
-              <label className="flex items-center gap-2.5 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={userInfo.isRememberMeChecked}
-                  onChange={() => dispatch(toggleRememberMe())}
-                  className="h-4 w-4 rounded border-gray-300 text-med-600 focus:ring-med-500"
-                />
-                <span className="text-sm text-gray-600">Запомнить меня</span>
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={userInfo.isRememberMeChecked}
+                    onChange={() => dispatch(toggleRememberMe())}
+                    className="h-4 w-4 rounded border-gray-300 text-med-600 focus:ring-med-500"
+                  />
+                  <span className="text-sm text-gray-600">Запомнить меня</span>
+                </label>
+                <Link to={FORGOT_PASSWORD} className="text-sm text-link">
+                  Забыли пароль?
+                </Link>
+              </div>
 
               {userInfo.error && (
                 <Alert variant="error" className="animate-slideIn">

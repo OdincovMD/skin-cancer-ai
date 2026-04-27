@@ -52,6 +52,24 @@ class UpdateProfileBody(BaseModel):
         return self
 
 
+class ForgotPasswordBody(BaseModel):
+    email: str = Field(min_length=1, max_length=320)
+
+
+class ResetPasswordBody(BaseModel):
+    token: str = Field(min_length=1)
+    new_password: str = Field(min_length=8, max_length=128)
+
+    @field_validator("new_password")
+    @classmethod
+    def new_password_rules(cls, v: str) -> str:
+        if not re.fullmatch(r"[0-9A-Za-z]{8,}", v):
+            raise ValueError(
+                "Пароль: не менее 8 символов, только латинские буквы и цифры."
+            )
+        return v
+
+
 class DescriptionCallbackBody(BaseModel):
     model_config = ConfigDict(extra="allow")
 

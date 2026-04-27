@@ -4,7 +4,9 @@ import { Routes, Route, Navigate } from "react-router-dom"
 
 import {
   API_DOCS,
+  FORGOT_PASSWORD,
   HOME,
+  RESET_PASSWORD,
   SIGN_IN,
   PROFILE,
   VERIFY_EMAIL,
@@ -17,6 +19,8 @@ import About from "../pages/About.jsx"
 import ApiDocs from "../pages/ApiDocs.jsx"
 import Profile from "../pages/Profile.jsx"
 import VerifyEmail from "../pages/VerifyEmail.jsx"
+import ForgotPassword from "../pages/ForgotPassword.jsx"
+import ResetPassword from "../pages/ResetPassword.jsx"
 
 const AppRoutes = () => {
   const userInfo = useSelector(state => state.user)
@@ -30,6 +34,8 @@ const AppRoutes = () => {
         <Route path="/about" element={<About />} />
         <Route path={API_DOCS} element={<ApiDocs />} />
         <Route path={VERIFY_EMAIL} element={<VerifyEmail />} />
+        <Route path={FORGOT_PASSWORD} element={<ForgotPassword />} />
+        <Route path={RESET_PASSWORD} element={<ResetPassword />} />
         <Route path="/profile" element={isAuthed ? <Profile /> : <Navigate to={SIGN_IN} />}/>
         <Route path="/*" element={<Navigate to={HOME}/>}/>
       </Routes>
