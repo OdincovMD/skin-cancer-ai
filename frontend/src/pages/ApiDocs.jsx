@@ -114,10 +114,7 @@ const P = ({ children }) => (
 
 const ApiDocs = () => {
   const base = useMemo(() => {
-    const origin =
-      typeof window !== "undefined" ? window.location.origin : ""
-    const api = env.BACKEND_URL.replace(/\/$/, "")
-    return `${origin}${api}`
+    return typeof window !== "undefined" ? window.location.origin : ""
   }, [])
 
   const v1 = `${base}${API_V1_PREFIX}`
@@ -589,17 +586,6 @@ curl -sS -X POST "$BASE/api/v1/gethistory" \\
         </CodeBlock>
       </section>
 
-      <footer className="text-center text-sm text-gray-400 pt-4">
-        Skin Cancer AI &mdash; подробнее на{" "}
-        <a
-          href="https://skin-cancer-ai.ru"
-          className="text-link"
-          target="_blank"
-          rel="noreferrer"
-        >
-          skin-cancer-ai.ru
-        </a>
-      </footer>
     </div>
   )
 }

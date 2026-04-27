@@ -22,12 +22,12 @@ const App = () => {
   }, [dispatch])
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="flex min-h-screen flex-col bg-gray-50">
       <Header toggleSidebar={() => setIsSidebarOpen((o) => !o)} />
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
       <main
-        className={`pt-14 transition-all duration-200 ${
+        className={`flex-1 pt-14 transition-all duration-200 ${
           isSidebarOpen ? "lg:pl-64" : "pl-0"
         }`}
       >
@@ -35,6 +35,22 @@ const App = () => {
           <AppRoutes />
         </div>
       </main>
+
+      <footer
+        className={`border-t border-slate-200 py-6 text-center text-sm text-slate-500 transition-all duration-200 ${
+          isSidebarOpen ? "lg:pl-64" : "pl-0"
+        }`}
+      >
+        <a
+          href="https://skin-cancer-ai.ru"
+          target="_blank"
+          rel="noreferrer"
+          className="font-medium text-med-600 hover:text-med-700 hover:underline"
+        >
+          Skin Cancer AI
+        </a>{" "}
+        &copy; 2026
+      </footer>
     </div>
   )
 }

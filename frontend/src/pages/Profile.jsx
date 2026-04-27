@@ -551,8 +551,12 @@ const Profile = () => {
     : null
 
   const extractFileName = (raw) => {
-    const m = /^(?:.*?_){3}(?<filename>.*)$/.exec(raw)
-    return m?.groups?.filename ?? raw
+    if (!raw) return null
+    const baseName = raw.split("/").pop()
+    const hexMatch = /^[0-9a-fA-F]{16}_(?<filename>.*)$/.exec(baseName)
+    if (hexMatch) return hexMatch.groups.filename
+    const oldMatch = /^(?:.*?_){3}(?<filename>.*)$/.exec(baseName)
+    return oldMatch?.groups?.filename ?? baseName
   }
 
   return (
@@ -1129,7 +1133,11 @@ const Profile = () => {
                       <div className="mt-3 flex flex-wrap gap-2">
                         <button
                           type="button"
-                          onClick={() => setOpenTreeKey((k) => (k === rowKey ? null : rowKey))}
+                          onClick={() => {
+                            const nk = openTreeKey === rowKey ? null : rowKey
+                            setOpenTreeKey(nk)
+                            if (nk) setTimeout(() => document.getElementById(`tree-${nk}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 50)
+                          }}
                           className="inline-flex items-center gap-1.5 rounded-md bg-white border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
                         >
                           {openTreeKey === rowKey ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -1138,7 +1146,11 @@ const Profile = () => {
                         {imgSrc && (
                           <button
                             type="button"
-                            onClick={() => setOpenHistoryImageKey((k) => (k === rowKey ? null : rowKey))}
+                            onClick={() => {
+                              const nk = openHistoryImageKey === rowKey ? null : rowKey
+                              setOpenHistoryImageKey(nk)
+                              if (nk) setTimeout(() => document.getElementById(`img-${nk}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 50)
+                            }}
                             className="inline-flex items-center gap-1.5 rounded-md bg-white border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
                           >
                             <ImageIcon size={14} />
@@ -1148,7 +1160,11 @@ const Profile = () => {
                         {hasDescriptionInfo && (
                           <button
                             type="button"
-                            onClick={() => setOpenDescriptionKey((k) => (k === rowKey ? null : rowKey))}
+                            onClick={() => {
+                              const nk = openDescriptionKey === rowKey ? null : rowKey
+                              setOpenDescriptionKey(nk)
+                              if (nk) setTimeout(() => document.getElementById(`desc-${nk}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 50)
+                            }}
                             className="inline-flex items-center gap-1.5 rounded-md bg-white border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
                           >
                             {openDescriptionKey === rowKey ? (
@@ -1162,7 +1178,7 @@ const Profile = () => {
                       </div>
 
                       {openTreeKey === rowKey && (
-                        <div className="mt-3 animate-fadeIn">
+                        <div id={`tree-${rowKey}`} className="mt-3 animate-fadeIn">
                           <TreeComponent
                             classificationResult={result}
                             displaySize={{ width: "100%", height: "300px" }}
@@ -1174,7 +1190,7 @@ const Profile = () => {
                       )}
 
                       {openHistoryImageKey === rowKey && imgSrc && (
-                        <div className="mt-3 animate-fadeIn">
+                        <div id={`img-${rowKey}`} className="mt-3 animate-fadeIn">
                           <img
                             src={imgSrc}
                             alt={row.file_name || "Снимок"}
@@ -1185,7 +1201,7 @@ const Profile = () => {
                       )}
 
                       {hasDescriptionInfo && openDescriptionKey === rowKey && (
-                        <div className="mt-4 animate-fadeIn rounded-lg border border-gray-200 bg-white p-4">
+                        <div id={`desc-${rowKey}`} className="mt-4 animate-fadeIn rounded-lg border border-gray-200 bg-white p-4">
                           <div className="flex items-center gap-2">
                             <FileText size={14} className="text-med-600" />
                             <p className="text-sm font-medium text-gray-800">

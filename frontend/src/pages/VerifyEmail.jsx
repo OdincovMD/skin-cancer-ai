@@ -18,14 +18,17 @@ const VerifyEmail = () => {
   const [detail, setDetail] = useState("")
 
   useEffect(() => {
-    const previousBodyOverflow = document.body.style.overflow
-    const previousHtmlOverflow = document.documentElement.style.overflow
-    document.body.style.overflow = "hidden"
-    document.documentElement.style.overflow = "hidden"
-
+    const mq = window.matchMedia("(min-width: 768px)")
+    const apply = (matches) => {
+      document.body.style.overflow = matches ? "hidden" : ""
+      document.documentElement.style.overflow = matches ? "hidden" : ""
+    }
+    apply(mq.matches)
+    mq.addEventListener("change", (e) => apply(e.matches))
     return () => {
-      document.body.style.overflow = previousBodyOverflow
-      document.documentElement.style.overflow = previousHtmlOverflow
+      document.body.style.overflow = ""
+      document.documentElement.style.overflow = ""
+      mq.removeEventListener("change", (e) => apply(e.matches))
     }
   }, [])
 
@@ -95,8 +98,8 @@ const VerifyEmail = () => {
   }, [token, dispatch])
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] overflow-hidden items-center justify-center px-4 py-4 sm:py-6">
-      <div className="max-h-full w-full max-w-sm overflow-hidden rounded-2xl shadow-xl ring-1 ring-gray-900/[0.07]">
+    <div className="flex md:h-[calc(100vh-3.5rem)] md:overflow-hidden items-center justify-center px-4 py-6 md:py-4">
+      <div className="w-full max-w-sm md:max-h-full md:overflow-hidden rounded-2xl shadow-xl ring-1 ring-gray-900/[0.07]">
 
         {/* Colored header band */}
         <div className="bg-gradient-to-r from-med-900 to-med-600 px-6 py-5">

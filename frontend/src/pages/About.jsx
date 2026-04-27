@@ -13,19 +13,22 @@ import Button from "../components/ui/Button"
 
 const About = () => {
   useEffect(() => {
-    const previousBodyOverflow = document.body.style.overflow
-    const previousHtmlOverflow = document.documentElement.style.overflow
-    document.body.style.overflow = "hidden"
-    document.documentElement.style.overflow = "hidden"
-
+    const mq = window.matchMedia("(min-width: 768px)")
+    const apply = (matches) => {
+      document.body.style.overflow = matches ? "hidden" : ""
+      document.documentElement.style.overflow = matches ? "hidden" : ""
+    }
+    apply(mq.matches)
+    mq.addEventListener("change", (e) => apply(e.matches))
     return () => {
-      document.body.style.overflow = previousBodyOverflow
-      document.documentElement.style.overflow = previousHtmlOverflow
+      document.body.style.overflow = ""
+      document.documentElement.style.overflow = ""
+      mq.removeEventListener("change", (e) => apply(e.matches))
     }
   }, [])
 
   return (
-    <div className="flex h-[calc(100vh-8.5rem)] overflow-hidden items-center justify-center">
+    <div className="flex md:h-[calc(100vh-8.5rem)] md:overflow-hidden items-center justify-center py-4 md:py-0">
       <section className="w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="grid lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="p-6 sm:p-8">
@@ -44,7 +47,7 @@ const About = () => {
             </p>
 
             <div className="mt-7 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 transition-transform duration-200 hover:-translate-y-0.5">
                 <BrainCircuit size={20} className="text-med-700" />
                 <p className="mt-3 text-sm font-semibold text-slate-950">
                   Машинное обучение
@@ -53,7 +56,7 @@ const About = () => {
                   Автоматическая оценка изображения и признаков.
                 </p>
               </div>
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 transition-transform duration-200 hover:-translate-y-0.5">
                 <GitBranch size={20} className="text-med-700" />
                 <p className="mt-3 text-sm font-semibold text-slate-950">
                   Метод Киттлера
@@ -62,7 +65,7 @@ const About = () => {
                   Прозрачная логика диагностического дерева.
                 </p>
               </div>
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 transition-transform duration-200 hover:-translate-y-0.5">
                 <ShieldCheck size={20} className="text-med-700" />
                 <p className="mt-3 text-sm font-semibold text-slate-950">
                   Поддержка врача
@@ -97,7 +100,7 @@ const About = () => {
                   variant="secondary"
                   href="https://miro.com/app/board/uXjVMwEeFQ8=/"
                   external
-                  className="w-full !justify-between border-med-200 bg-white text-med-800 hover:bg-med-50"
+                  className="w-full !justify-between border-med-200 bg-white text-med-800 hover:bg-med-50 transition-transform duration-200 hover:-translate-y-0.5"
                 >
                   <span className="flex items-center gap-2">
                     <GitBranch size={16} />
@@ -108,9 +111,9 @@ const About = () => {
 
                 <Button
                   variant="secondary"
-                  href="https://t.me/horokami"
+                  href="https://t.me/hardbox1"
                   external
-                  className="w-full !justify-between border-med-200 bg-white text-med-800 hover:bg-med-50"
+                  className="w-full !justify-between border-med-200 bg-white text-med-800 hover:bg-med-50 transition-transform duration-200 hover:-translate-y-0.5"
                 >
                   <span className="flex items-center gap-2">
                     <MessageCircle size={16} />

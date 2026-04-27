@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   Blocks,
   FileSearch,
+  FileText,
 } from "lucide-react"
 
 import { fetchActiveClassificationJob } from "../asyncActions/fetchActiveClassificationJob"
@@ -38,8 +39,11 @@ import { getValues } from "../imports/HELPERS"
 
 function displayNameFromStoredFileName(storedName) {
   if (!storedName) return null
-  const m = /^(?:.*?_){3}(?<filename>.*)$/.exec(storedName)
-  return m?.groups?.filename ?? storedName
+  const baseName = storedName.split("/").pop()
+  const hexMatch = /^[0-9a-fA-F]{16}_(?<filename>.*)$/.exec(baseName)
+  if (hexMatch) return hexMatch.groups.filename
+  const oldMatch = /^(?:.*?_){3}(?<filename>.*)$/.exec(baseName)
+  return oldMatch?.groups?.filename ?? baseName
 }
 
 const defaultClassificationResult = () => ({
@@ -60,6 +64,8 @@ const defaultDescriptionState = () => ({
 const Home = () => {
   const userInfo = useSelector((state) => state.user)
   const resumeEffectGen = useRef(0)
+  const resultsRef = useRef(null)
+  const imageContainerRef = useRef(null)
 
   const [isImageLoading, setIsImageLoading] = useState(false)
   const [activeJobLabel, setActiveJobLabel] = useState(null)
@@ -158,6 +164,14 @@ const Home = () => {
       cancelled = true
     }
   }, [userInfo?.userData?.id, userInfo?.accessToken, userInfo?.emailVerified])
+
+  useEffect(() => {
+    if (classificationResult.final_class && imageSrc && resultsRef.current) {
+      resultsRef.current.scrollIntoView({ behavior: "smooth", block: "start" })
+    } else if (imageSrc && !classificationResult.final_class && imageContainerRef.current) {
+      imageContainerRef.current.scrollIntoView({ behavior: "smooth", block: "start" })
+    }
+  }, [classificationResult.final_class, imageSrc])
 
   const processFile = (file) => {
     if (!file || !file.type.startsWith("image/")) return
@@ -285,14 +299,6 @@ const Home = () => {
                   className="h-72 w-full object-cover lg:h-[300px]"
                 />
               </div>
-              <div className="px-2 pb-1 pt-3">
-                <p className="text-sm font-semibold text-slate-900">
-                  Реальное дерматоскопическое изображение
-                </p>
-                <p className="mt-1 text-xs leading-relaxed text-slate-500">
-                  Превью используется как пример входного снимка для анализа.
-                </p>
-              </div>
             </div>
 
             <div className="border-t border-amber-100 bg-amber-50 px-4 py-3.5">
@@ -312,7 +318,7 @@ const Home = () => {
             </div>
 
             <div className="border-t border-slate-100 bg-slate-50 px-4 py-3.5">
-              <p className="text-xs leading-relaxed text-slate-500">
+              <p className="pl-7 text-xs leading-relaxed text-slate-500">
                 Классификаторы обучены на изображениях 2560&times;1920. Другие
                 разрешения <em>могут</em> повлиять на точность.
               </p>
@@ -364,7 +370,7 @@ const Home = () => {
       )}
 
       {isAuthed && isVerified && (
-        <div className="card-elevated">
+        <div className="card-elevated" ref={imageContainerRef}>
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
             {imageSrc ? "Загруженное изображение" : "Загрузите изображение"}
           </h2>
@@ -491,7 +497,7 @@ const Home = () => {
       )}
 
       {classificationResult.final_class && imageSrc && (
-        <div className="card-elevated space-y-4">
+        <div className="card-elevated space-y-4" ref={resultsRef}>
           <div className="flex items-center gap-2">
             <CheckCircle2 size={20} className="text-green-500" />
             <h2 className="text-lg font-semibold text-gray-900">
