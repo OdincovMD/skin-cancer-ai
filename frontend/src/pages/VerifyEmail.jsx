@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 import { useDispatch } from "react-redux"
-import { Mail, Scan } from "lucide-react"
+import { CheckCircle2, Scan, XCircle } from "lucide-react"
 
 import { fetchSessionMe } from "../asyncActions/fetchSessionMe"
-import Alert from "../components/ui/Alert"
 import Button from "../components/ui/Button"
 import Spinner from "../components/ui/Spinner"
 import { env } from "../imports/ENV"
@@ -17,6 +16,21 @@ const VerifyEmail = () => {
   const token = searchParams.get("token")
   const [phase, setPhase] = useState("loading")
   const [detail, setDetail] = useState("")
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)")
+    const apply = (matches) => {
+      document.body.style.overflow = matches ? "hidden" : ""
+      document.documentElement.style.overflow = matches ? "hidden" : ""
+    }
+    apply(mq.matches)
+    mq.addEventListener("change", (e) => apply(e.matches))
+    return () => {
+      document.body.style.overflow = ""
+      document.documentElement.style.overflow = ""
+      mq.removeEventListener("change", (e) => apply(e.matches))
+    }
+  }, [])
 
   useEffect(() => {
     if (!token) {
@@ -84,52 +98,76 @@ const VerifyEmail = () => {
   }, [token, dispatch])
 
   return (
-    <div className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center px-4 py-12">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 flex flex-col items-center text-center">
-          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-med-600 text-white">
-            <Scan size={24} />
-          </div>
-          <div className="flex items-center justify-center gap-2 text-gray-900">
-            <Mail size={20} className="text-med-600" />
-            <h1 className="text-2xl font-bold">Подтверждение email</h1>
+    <div className="flex md:h-[calc(100vh-3.5rem)] md:overflow-hidden items-center justify-center px-4 py-6 md:py-4">
+      <div className="w-full max-w-sm md:max-h-full md:overflow-hidden rounded-2xl shadow-xl ring-1 ring-gray-900/[0.07]">
+
+        {/* Colored header band */}
+        <div className="bg-gradient-to-r from-med-900 to-med-600 px-6 py-5">
+          <div className="flex items-center gap-3 text-white">
+            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/20">
+              <Scan size={18} />
+            </div>
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-med-300">
+                Skin Cancer AI
+              </p>
+              <h1 className="text-lg font-bold leading-tight">
+                Подтверждение email
+              </h1>
+            </div>
           </div>
         </div>
 
-        <div className="card-elevated text-center">
+        {/* Phase content */}
+        <div className="bg-white px-6 py-8 text-center">
+
           {phase === "loading" && (
-            <div className="flex flex-col items-center gap-4 py-4">
-              <Spinner size="md" />
-              <p className="text-sm text-gray-600">Проверяем ссылку…</p>
+            <div className="flex flex-col items-center gap-4">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-med-50 ring-1 ring-med-100">
+                <Spinner size="md" />
+              </div>
+              <div>
+                <p className="font-semibold text-gray-800">Проверяем ссылку…</p>
+                <p className="mt-1 text-sm text-gray-500">Это займёт несколько секунд</p>
+              </div>
             </div>
           )}
 
           {phase === "ok" && (
-            <div className="space-y-6">
-              <Alert variant="success" title="Готово">
-                {detail}
-              </Alert>
-              <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
-                <Button variant="primary" to={PROFILE} className="sm:min-w-[10rem]">
+            <div className="flex flex-col items-center gap-5">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-50 ring-1 ring-green-100">
+                <CheckCircle2 size={32} className="text-green-500" />
+              </div>
+              <div>
+                <p className="text-lg font-bold text-gray-900">Email подтверждён!</p>
+                <p className="mt-1.5 text-sm leading-relaxed text-gray-500">{detail}</p>
+              </div>
+              <div className="flex w-full flex-col gap-2.5 sm:flex-row sm:justify-center">
+                <Button variant="primary" to={PROFILE} className="sm:min-w-[9rem]">
                   Личный кабинет
                 </Button>
-                <Button variant="secondary" to={SIGN_IN} className="sm:min-w-[10rem]">
-                  Вход
+                <Button variant="secondary" to={SIGN_IN} className="sm:min-w-[9rem]">
+                  Войти
                 </Button>
               </div>
             </div>
           )}
 
           {phase === "error" && (
-            <div className="space-y-6">
-              <Alert variant="error" title="Не удалось подтвердить">
-                {detail}
-              </Alert>
-              <Button variant="secondary" to={SIGN_IN} className="w-full">
+            <div className="flex flex-col items-center gap-5">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-50 ring-1 ring-red-100">
+                <XCircle size={32} className="text-red-500" />
+              </div>
+              <div>
+                <p className="text-lg font-bold text-gray-900">Не удалось подтвердить</p>
+                <p className="mt-1.5 text-sm leading-relaxed text-gray-500">{detail}</p>
+              </div>
+              <Button variant="secondary" to={SIGN_IN} className="w-full sm:w-auto sm:min-w-[12rem]">
                 На страницу входа
               </Button>
             </div>
           )}
+
         </div>
       </div>
     </div>

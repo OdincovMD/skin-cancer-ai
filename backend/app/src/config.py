@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     EMAIL_VERIFICATION_TOKEN_TTL_HOURS: int = Field(default=24)
     # Минимальный интервал между письмами верификации (повторная отправка)
     VERIFICATION_EMAIL_RESEND_COOLDOWN_SEC: int = Field(default=120)
+    # Сброс пароля
+    PASSWORD_RESET_TOKEN_TTL_HOURS: int = Field(default=1)
+    PASSWORD_RESET_COOLDOWN_SEC: int = Field(default=120)
     # Публичный URL фронта (как в браузере). В Docker через NGINX обычно :90, не :3000.
     FRONTEND_PUBLIC_URL: str = Field(default="http://localhost:90")
 

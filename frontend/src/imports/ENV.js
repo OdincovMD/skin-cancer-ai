@@ -1,3 +1,3 @@
 export const env = {
-  BACKEND_URL: import.meta.env.VITE_BACKEND_URL || "/backend",
+  BACKEND_URL: import.meta.env.VITE_BACKEND_URL || "/_api",
 }

@@ -6,13 +6,15 @@ import {
   Loader2,
   Trash2,
   Play,
-  ShieldCheck,
-  Zap,
-  Clock,
-  Activity,
+  ScanSearch,
+  Gauge,
+  History,
+  GitBranch,
   AlertTriangle,
   ImageIcon,
   CheckCircle2,
+  Blocks,
+  FileSearch,
   FileText,
 } from "lucide-react"
 
@@ -37,8 +39,11 @@ import { getValues } from "../imports/HELPERS"
 
 function displayNameFromStoredFileName(storedName) {
   if (!storedName) return null
-  const m = /^(?:.*?_){3}(?<filename>.*)$/.exec(storedName)
-  return m?.groups?.filename ?? storedName
+  const baseName = storedName.split("/").pop()
+  const hexMatch = /^[0-9a-fA-F]{16}_(?<filename>.*)$/.exec(baseName)
+  if (hexMatch) return hexMatch.groups.filename
+  const oldMatch = /^(?:.*?_){3}(?<filename>.*)$/.exec(baseName)
+  return oldMatch?.groups?.filename ?? baseName
 }
 
 const defaultClassificationResult = () => ({
@@ -59,6 +64,8 @@ const defaultDescriptionState = () => ({
 const Home = () => {
   const userInfo = useSelector((state) => state.user)
   const resumeEffectGen = useRef(0)
+  const resultsRef = useRef(null)
+  const imageContainerRef = useRef(null)
 
   const [isImageLoading, setIsImageLoading] = useState(false)
   const [activeJobLabel, setActiveJobLabel] = useState(null)
@@ -158,6 +165,14 @@ const Home = () => {
     }
   }, [userInfo?.userData?.id, userInfo?.accessToken, userInfo?.emailVerified])
 
+  useEffect(() => {
+    if (classificationResult.final_class && imageSrc && resultsRef.current) {
+      resultsRef.current.scrollIntoView({ behavior: "smooth", block: "start" })
+    } else if (imageSrc && !classificationResult.final_class && imageContainerRef.current) {
+      imageContainerRef.current.scrollIntoView({ behavior: "smooth", block: "start" })
+    }
+  }, [classificationResult.final_class, imageSrc])
+
   const processFile = (file) => {
     if (!file || !file.type.startsWith("image/")) return
     setUploadError(null)
@@ -177,7 +192,7 @@ const Home = () => {
     setDescriptionState(defaultDescriptionState())
   }
 
-  const handleFileChange = (e) => processFile(e.target.files[0])
+  const handleFileChange = (e) => processFile(e.target.files?.[0])
 
   const handleDrop = (e) => {
     e.preventDefault()
@@ -194,12 +209,18 @@ const Home = () => {
       fileData,
       accessToken: userInfo.accessToken,
       onProgress: applyPollingSnapshot,
-    }).then((res) => {
-      setUploadError(res.error)
-      applyPollingSnapshot(res)
-      setIsImageLoading(false)
-      setActiveJobLabel(null)
     })
+      .then((res) => {
+        setUploadError(res.error)
+        applyPollingSnapshot(res)
+      })
+      .catch((err) => {
+        setUploadError(String(err?.message || err))
+      })
+      .finally(() => {
+        setIsImageLoading(false)
+        setActiveJobLabel(null)
+      })
   }
 
   const resetImage = () => {
@@ -214,78 +235,97 @@ const Home = () => {
   return (
     <div className="space-y-6">
       <div className="card-elevated">
-        <div className="flex flex-col lg:flex-row gap-8">
-          <div className="flex-1 space-y-5">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1.15fr)_360px] lg:items-stretch">
+          <div className="flex flex-col gap-5">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
+              <h1 className="max-w-3xl text-2xl font-bold leading-tight text-gray-900 sm:text-3xl">
                 Диагностика новообразований кожи
               </h1>
-              <p className="mt-2 text-gray-600 leading-relaxed">
-                Наш сервис помогает в ранней диагностике новообразований кожи с
-                использованием современных технологий машинного обучения и метода
-                Киттлера.
+              <p className="mt-3 max-w-2xl text-base leading-7 text-gray-500">
+                Сервис помогает быстро оценить дерматоскопическое изображение,
+                выделить визуальные признаки и получить понятное объяснение
+                результата на базе машинного обучения и метода Киттлера.
               </p>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="flex items-center gap-3">
+              <div className="h-px flex-1 bg-gray-100" />
+              <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-400">
+                Возможности
+              </span>
+              <div className="h-px flex-1 bg-gray-100" />
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
               <FeatureCard
-                icon={ShieldCheck}
+                icon={ScanSearch}
                 title="Раннее выявление"
-                text="Обнаружение потенциальных проблем на ранней стадии"
+                text="Выделяет подозрительные признаки на раннем этапе."
               />
               <FeatureCard
-                icon={Zap}
+                icon={Gauge}
                 title="Быстрый анализ"
-                text="Предварительная оценка изображения за минуты"
+                text="Возвращает предварительный результат за несколько минут."
               />
               <FeatureCard
-                icon={Clock}
+                icon={History}
                 title="Мониторинг"
-                text="Отслеживание изменений с историей запросов"
+                text="Сохраняет историю снимков и помогает сравнивать изменения."
               />
               <FeatureCard
-                icon={Activity}
+                icon={GitBranch}
                 title="Прозрачность"
-                text="Дерево решений объясняет каждый шаг диагностики"
+                text="Показывает логику решения шаг за шагом."
+              />
+              <FeatureCard
+                icon={FileSearch}
+                title="Описание изображения"
+                text="Формирует текстовое описание ключевых находок."
+              />
+              <FeatureCard
+                icon={Blocks}
+                title="Интеграция для разработчиков"
+                text="Даёт HTTP API для встраивания в свои продукты."
               />
             </div>
+          </div>
 
-            <div className="rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 text-xs text-gray-500 leading-relaxed space-y-1">
-              <p>
-                Классификаторы обучены на изображениях 2560&times;1920.
-                Другие разрешения <em>могут</em> повлиять на точность.
-              </p>
-              <p>
-                Видимое искажение на превью <em>не влияет</em> на результат.
+          <div className="flex flex-col overflow-hidden rounded-xl border border-slate-200 shadow-[0_24px_60px_-36px_rgba(15,23,42,0.4)]">
+            <div className="bg-white p-3">
+              <div className="relative overflow-hidden rounded-lg bg-med-900">
+                <img
+                  src="/images/hero-clinical.jpg"
+                  alt="Дерматоскопическое изображение для анализа"
+                  className="h-72 w-full object-cover lg:h-[300px]"
+                />
+              </div>
+            </div>
+
+            <div className="border-t border-amber-100 bg-amber-50 px-4 py-3.5">
+              <div className="flex items-start gap-3">
+                <AlertTriangle
+                  size={16}
+                  className="mt-0.5 flex-shrink-0 text-amber-500"
+                />
+                <div>
+                  <p className="text-sm font-semibold text-amber-900">Важно</p>
+                  <p className="mt-0.5 text-sm leading-relaxed text-amber-700">
+                    Сервис не заменяет консультацию врача. При любых сомнениях
+                    обратитесь к квалифицированному дерматологу.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-slate-100 bg-slate-50 px-4 py-3.5">
+              <p className="pl-7 text-xs leading-relaxed text-slate-500">
+                Классификаторы обучены на изображениях 2560&times;1920. Другие
+                разрешения <em>могут</em> повлиять на точность.
               </p>
             </div>
           </div>
 
-          <div className="relative w-full lg:w-80 flex-shrink-0">
-            <img
-              src="/images/example.jpg"
-              alt="Пример дерматоскопического изображения"
-              className="h-64 w-full rounded-xl object-cover lg:h-full"
-            />
-            <div className="absolute inset-x-0 bottom-0 rounded-b-xl bg-gradient-to-t from-black/60 to-transparent px-4 py-3">
-              <p className="text-xs text-white/90">
-                Пример дерматоскопического изображения
-              </p>
-            </div>
-          </div>
         </div>
-      </div>
-
-      <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
-        <AlertTriangle
-          size={18}
-          className="mt-0.5 flex-shrink-0 text-amber-600"
-        />
-        <p className="text-sm text-amber-800 leading-relaxed">
-          <strong>Важно:</strong> Сервис не заменяет консультацию врача.
-          При любых сомнениях обязательно обратитесь к квалифицированному
-          дерматологу.
-        </p>
       </div>
 
       {!isAuthed && (
@@ -330,7 +370,7 @@ const Home = () => {
       )}
 
       {isAuthed && isVerified && (
-        <div className="card-elevated">
+        <div className="card-elevated" ref={imageContainerRef}>
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
             {imageSrc ? "Загруженное изображение" : "Загрузите изображение"}
           </h2>
@@ -457,7 +497,7 @@ const Home = () => {
       )}
 
       {classificationResult.final_class && imageSrc && (
-        <div className="card-elevated space-y-4">
+        <div className="card-elevated space-y-4" ref={resultsRef}>
           <div className="flex items-center gap-2">
             <CheckCircle2 size={20} className="text-green-500" />
             <h2 className="text-lg font-semibold text-gray-900">

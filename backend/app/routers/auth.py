@@ -24,6 +24,8 @@ from src.database import get_db
 from src.schemas import (
     ChangePasswordBody,
     Credentials,
+    ForgotPasswordBody,
+    ResetPasswordBody,
     UpdateProfileBody,
     UserSignUp,
 )
@@ -321,6 +323,28 @@ async def verify_email(
     session: AsyncSession = Depends(get_db),
 ):
     err = await Orm.verify_email_by_token(session, token)
+    if err:
+        return {"ok": False, "error": err}
+    return {"ok": True, "error": None}
+
+
+@router.post("/forgot-password")
+async def forgot_password(
+    body: ForgotPasswordBody,
+    session: AsyncSession = Depends(get_db),
+):
+    err = await Orm.request_password_reset(session, body.email)
+    if err:
+        return {"error": err}
+    return {"error": None}
+
+
+@router.post("/reset-password")
+async def reset_password(
+    body: ResetPasswordBody,
+    session: AsyncSession = Depends(get_db),
+):
+    err = await Orm.reset_password_by_token(session, body.token, body.new_password)
     if err:
         return {"ok": False, "error": err}
     return {"ok": True, "error": None}
