@@ -22,6 +22,7 @@ flowchart LR
     Backend["Backend\n(FastAPI)"]
     Celery["Celery Worker"]
     ML["ML-сервис\n(YOLO + UNet)"]
+    Desc["Img2Txt\nDescription Service"]
     PG["PostgreSQL"]
     Redis["Redis"]
     MinIO["MinIO\n(S3)"]
@@ -36,16 +37,19 @@ flowchart LR
     Celery --> Redis
     Celery --> PG
     Celery --> MinIO
-    Celery -->|"POST /uploadfile"| ML
-    ML -->|"JSON классификации"| Celery
+    Celery -->|"POST /mask, /classify"| ML
+    Celery -->|"POST /v1/description-jobs"| Desc
+    Desc -->|"POST /internal/description-results/{job_id}"| Backend
+    ML -->|"PNG mask + JSON классификации"| Celery
 ```
 
 ### Поток классификации
 
 1. Пользователь загружает изображение через **`POST /uploadfile`**.
 2. Backend сохраняет метаданные в PostgreSQL, файл — в MinIO, создаёт задание со статусом `pending` и ставит задачу в очередь Celery.
-3. Воркер Celery забирает задачу, скачивает изображение из MinIO, отправляет его в ML-сервис и записывает результат в PostgreSQL.
-4. Frontend опрашивает **`GET /classification-jobs/{job_id}`**, пока статус не станет `completed`, затем отображает дерево решений.
+3. Воркер Celery забирает задачу, скачивает изображение из MinIO, получает маску из ML-сервиса, затем отправляет изображение и маску на классификацию.
+4. Если включён description service, воркер параллельно регистрирует там задание и позже передаёт результат классификации для генерации текстового описания и признаков.
+5. Frontend опрашивает **`GET /classification-jobs/{job_id}`**: сначала появляется статус основной классификации, затем при необходимости дозагружаются `description_status`, `description`, `important_labels` и другие поля description pipeline.
 
 Одновременно допускается только одно активное задание на пользователя; повторная загрузка до завершения даёт **429**.
 
@@ -103,23 +107,24 @@ flowchart LR
 
 ### Backend
 
-- **FastAPI** — HTTP API: маршруты auth, classification, health, API v1.
+- **FastAPI** — HTTP API: маршруты auth, classification, health, API v1, internal callback для description service.
 - **PostgreSQL** через SQLAlchemy 2.x async и asyncpg.
 - **Redis** — брокер и бэкенд результатов Celery, ограничение частоты запросов.
 - **Celery** — фоновые задачи классификации.
 - **MinIO** — S3-совместимое хранилище (boto3, path-style, SigV4).
+- **Description service (`img2txt`)** — опциональный внешний сервис для текстового описания и выделения признаков.
 
 ### Frontend
 
 **React** (Vite), **React Router**, **Redux**, **Tailwind CSS**.
 
 - **Главная** — загрузка с лупой, опрос задания, дерево решений.
-- **Профиль** — настройки, история классификаций, превью из хранилища, управление API-ключом.
+- **Профиль** — настройки, история классификаций, превью из хранилища, управление API-ключом, восстановление доступа к аккаунту.
 - **Документация API** — встроенная страница по HTTP API v1.
 
 ### ML-сервис
 
-- Приложение FastAPI: `POST /uploadfile`, `GET /health`.
+- Приложение FastAPI: `POST /uploadfile`, `POST /mask`, `POST /classify`, `GET /health`.
 - Конвейер сегментации YOLO + UNet, классификаторы паттернов, дерево Киттлера.
 - `ThreadPoolExecutor` для параллельного инференса.
 - Веса монтируются из `ml/weight/`.
@@ -133,9 +138,15 @@ flowchart LR
 | Документ | Для кого | Содержание |
 |----------|-----------|------------|
 | [docs/DEPLOY.md](docs/DEPLOY.md) | Операторы | Переменные окружения, порты, секреты, бэкапы, неполадки |
-| [docs/API.md](docs/API.md) | Разработчики | Справочник HTTP API (все эндпоинты) |
+| [docs/API.md](docs/API.md) | Разработчики и интеграторы | Справочник HTTP API, публичная API v1 интеграция, внутренний callback API |
 | [docs/USER_GUIDE.md](docs/USER_GUIDE.md) | Пользователи | Регистрация, классификация, профиль, API-ключ |
+| [docs/MODEL_LIMITATIONS.md](docs/MODEL_LIMITATIONS.md) | Исследователи, разработчики, reviewers | Ограничения модели, границы применимости, ответственные сценарии использования |
 | [docs/DISCLAIMER.md](docs/DISCLAIMER.md) | Все | Медицинский дисклеймер (RU + EN) |
+
+Дополнительно:
+
+- [CONTRIBUTING.md](CONTRIBUTING.md) — правила и ожидания для контрибьюторов
+- [SECURITY.md](SECURITY.md) — порядок приватного сообщения об уязвимостях
 
 На фронтенде также есть страница документации API: `/api-docs`.
 

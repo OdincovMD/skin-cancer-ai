@@ -73,6 +73,36 @@ ML-сервис стартует дольше всех (`start_period: 600s`) и
 | `DOMAIN` | Домен (если используется) | `skin-cancer-ai.ru` |
 | `HOST` | Передаётся в NGINX (опционально) | — |
 
+### Description service (`img2txt`)
+
+В проекте подразумевается интеграция с внешним сервисом описания изображений
+[`OdincovMD/img2txt`](https://github.com/OdincovMD/img2txt).
+
+| Переменная | По умолчанию | Описание |
+|------------|-------------|----------|
+| `DESCRIPTION_ENABLED` | `false` | Включает интеграцию с внешним сервисом генерации описаний |
+| `DESCRIPTION_SERVICE_URL` | `http://description_service:8000` | Внутренний URL description service |
+| `DESCRIPTION_SERVICE_API_TOKEN` | пусто | Токен, который backend/celery отправляет во внешний description service |
+| `DESCRIPTION_CALLBACK_API_TOKEN` | пусто | Токен, который backend ожидает на callback-маршруте `/internal/description-results/{job_id}` |
+
+Если `DESCRIPTION_ENABLED=false`, основная классификация продолжит работать без внешнего сервиса описаний. Режим `features_only` при этом будет недоступен.
+
+Для рабочей интеграции с внешним description service нужно обеспечить двустороннюю связность:
+
+- `backend`/`celery_worker` должны иметь сетевой доступ к `DESCRIPTION_SERVICE_URL`
+- внешний description service должен иметь доступ к backend-маршруту `/internal/description-results/{job_id}`
+- токен `DESCRIPTION_SERVICE_API_TOKEN` используется для исходящих запросов из Skin Cancer AI
+- токен `DESCRIPTION_CALLBACK_API_TOKEN` требуется во входящем callback от description service
+
+На стороне `img2txt` должны поддерживаться маршруты:
+
+- `POST /v1/description-jobs`
+- `POST /v1/description-jobs/{job_id}/classification`
+
+А на стороне Skin Cancer AI должен быть доступен callback:
+
+- `POST /internal/description-results/{job_id}`
+
 ### Секреты (обязательно менять в проде)
 
 | Переменная | Зачем | Как генерировать |
@@ -106,6 +136,8 @@ ML-сервис стартует дольше всех (`start_period: 600s`) и
 | `MAIL_FROM_NAME` | `Skin Cancer AI` | Имя отправителя |
 | `EMAIL_VERIFICATION_TOKEN_TTL_HOURS` | `24` | Срок жизни ссылки верификации |
 | `VERIFICATION_EMAIL_RESEND_COOLDOWN_SEC` | `120` | Минимальный интервал между повторными письмами |
+| `PASSWORD_RESET_TOKEN_TTL_HOURS` | `1` | Срок жизни ссылки на сброс пароля |
+| `PASSWORD_RESET_COOLDOWN_SEC` | `120` | Минимальный интервал между письмами сброса пароля |
 | `FRONTEND_PUBLIC_URL` | `http://localhost:90` | URL, который видит пользователь в браузере (для ссылки в письме) |
 
 ### Rate Limiting (API v1)
@@ -212,6 +244,12 @@ docker compose up --build -d
 1. Проверьте, что `SMTP_HOST` не пустой.
 2. Проверьте логи: `docker compose logs backend | grep -i smtp`.
 3. Убедитесь, что `FRONTEND_PUBLIC_URL` указывает на адрес, доступный из браузера пользователя (не `localhost`, если деплой удалённый).
+
+### Письма сброса пароля не приходят
+
+1. Проверьте те же SMTP-параметры, что и для писем верификации.
+2. Убедитесь, что `FRONTEND_PUBLIC_URL` ведёт на реальный адрес фронтенда.
+3. Если запросы на сброс повторяются слишком часто, дождитесь окончания `PASSWORD_RESET_COOLDOWN_SEC`.
 
 ### `429 Too Many Requests` на API v1
 
