@@ -21,7 +21,7 @@ def create_model() -> nn.Sequential:
         model (torch.nn.Sequential): The model of the required architecture for class prediction.
     """
 
-    model = models.vgg16(pretrained=True)
+    model = models.vgg16(weights=None)
     model = torch.nn.Sequential(*(list(model.children())[:-2]))
 
     classifier = nn.Sequential(
@@ -36,14 +36,27 @@ def create_model() -> nn.Sequential:
     )
 
     model.classifier = classifier
-    model.to(DEVICE)
     return model
 
 
-MODEL = create_model()
-STATE = torch.load(PATH_TO_MODEL, map_location=torch.device(DEVICE))
-MODEL.load_state_dict(STATE)
-MODEL.to(DEVICE)
+MODEL = None
+
+
+def get_model() -> nn.Module:
+    global MODEL
+    if MODEL is None:
+        model = create_model()
+        state = torch.load(PATH_TO_MODEL, map_location=torch.device(DEVICE))
+        model.load_state_dict(state)
+        model.to(DEVICE)
+        model.eval()
+        MODEL = model
+    return MODEL
+
+
+def clear_model() -> None:
+    global MODEL
+    MODEL = None
 
 
 # В дальнейшем при разработке можно переобучить модель на изображениях с маской, тогда можно оставить только обрезку до размера 400*400
@@ -128,7 +141,7 @@ def main(image: np.ndarray) -> str:
     input_image = transform(Image.fromarray(image))
 
     input_image = torch.FloatTensor(input_image).to(DEVICE).unsqueeze(0)
-    prediction = MODEL(input_image)
+    prediction = get_model()(input_image)
     predicted_index = torch.argmax(prediction, dim=1).item()
 
     classes = {0: 'Бесструктурная область', 1: 'Комки', 2: 'Круги', 3: 'Линии', 4: 'Точки'}

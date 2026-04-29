@@ -1,5 +1,6 @@
 import copy
 import torch
+from torchvision import models
 from torchvision.transforms import transforms
 import numpy as np
 from resizeimage import resizeimage
@@ -13,9 +14,7 @@ _HUB_WIDE_RESNET_TEMPLATE: Optional[torch.nn.Module] = None
 def _get_hub_wide_resnet_template() -> torch.nn.Module:
     global _HUB_WIDE_RESNET_TEMPLATE
     if _HUB_WIDE_RESNET_TEMPLATE is None:
-        _HUB_WIDE_RESNET_TEMPLATE = torch.hub.load(
-            "pytorch/vision:v0.10.0", "wide_resnet50_2", pretrained=True
-        )
+        _HUB_WIDE_RESNET_TEMPLATE = models.wide_resnet50_2(weights=None)
     return _HUB_WIDE_RESNET_TEMPLATE
 
 

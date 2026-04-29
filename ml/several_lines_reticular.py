@@ -44,7 +44,7 @@ def load_model(checkpoint_path: str = MODEL_PATH, num_classes: int = 2) -> Tuple
         Tuple[EfficientNet, torch.device]: A tuple containing the loaded model and the device.
     """
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = EfficientNet.from_pretrained('efficientnet-b1', num_classes=num_classes)
+    model = EfficientNet.from_name('efficientnet-b1', num_classes=num_classes)
     checkpoint = torch.load(checkpoint_path, map_location=device)
     model.load_state_dict(checkpoint['model_state_dict'])
     model.to(device).eval()
@@ -67,6 +67,13 @@ def get_model() -> Any:
     if not _model_several_lines_reticular and not _device_several_lines_reticular:
         _model_several_lines_reticular, _device_several_lines_reticular = load_model()
     return _model_several_lines_reticular, _device_several_lines_reticular
+
+
+def clear_model() -> None:
+    global _model_several_lines_reticular
+    global _device_several_lines_reticular
+    _model_several_lines_reticular = None
+    _device_several_lines_reticular = None
 
 
 def main(img: np.ndarray) -> str:

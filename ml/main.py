@@ -16,6 +16,8 @@ import asyncio
 
 # Локальные модули
 from log import Logger
+import isolated_inference
+import model_cache
 
 # Основные модули
 import one_several
@@ -49,8 +51,6 @@ import several
 import several_lines
 import several_lines_parallel
 import several_lines_reticular
-import several_lines_reticular_asymmetric
-import several_lines_parallel_furrow
 import several_lines_radial_pereferic  # не реализуется узел выше: несколько признаков -> линни -> радиальные
 
 # Модули для обработки "several_circles"
@@ -62,8 +62,6 @@ import several_dots
 # Модули для обработки "several_globules"
 import several_globules
 import several_globules_asymmetrical
-import several_globules_asymmetrical_other
-import several_globules_asymmetrical_melanin
 
 # Финальный модуль
 import final
@@ -146,6 +144,7 @@ class ImageClassifier:
         )
 
         final_class = self._get_final_classification(image)
+        model_cache.evict_if_needed(logger)
 
         return ClassificationResult(feature_type, structure, properties, final_class)
     
@@ -213,12 +212,14 @@ class ImageClassifier:
     @staticmethod
     def _process_single_lines(image, mask) -> List[str]:
         properties = [log.log_function_entry_exit(one_lines.main)(image)]
+        model_cache.touch("one_lines")
 
         if properties[0] == LineType.RETICULAR.value:
             properties.append(log.log_function_entry_exit(one_lines_reticular.main)(image))
 
             if properties[1] == CountColor.ONE.value:
                 properties.append(log.log_function_entry_exit(one_lines_reticular_one_color.main)(image))
+                model_cache.touch("one_lines_reticular_one_color")
             else:
                 properties.append(log.log_function_entry_exit(one_lines_reticular_several_colors.main)(image))
 
@@ -227,6 +228,7 @@ class ImageClassifier:
 
         elif properties[0] == LineType.PARALLEL.value:
             properties.append(log.log_function_entry_exit(one_lines_parallel.main)(image))
+            model_cache.touch("one_lines_parallel")
 
         return properties
 
@@ -237,14 +239,28 @@ class ImageClassifier:
     @staticmethod
     def _process_multiple_globules(image, mask) -> List[str]:
         properties = [log.log_function_entry_exit(several_globules.main)(image, mask)]
+        model_cache.touch("several_globules")
 
         if properties[0] == Symmetry.ASYMMETRIC.value:
             properties.append(log.log_function_entry_exit(several_globules_asymmetrical.main)(image))
+            model_cache.touch("several_globules_asymmetrical")
 
             if properties[1] == PigmentType.MELANIN.value:
-                properties.append(log.log_function_entry_exit(several_globules_asymmetrical_melanin.main)(image, mask))
+                properties.append(
+                    log.log_function_entry_exit(isolated_inference.run_isolated)(
+                        "several_globules_asymmetrical_melanin",
+                        image,
+                        mask,
+                    )
+                )
             else:
-                properties.append(log.log_function_entry_exit(several_globules_asymmetrical_other.main)(image, mask))
+                properties.append(
+                    log.log_function_entry_exit(isolated_inference.run_isolated)(
+                        "several_globules_asymmetrical_other",
+                        image,
+                        mask,
+                    )
+                )
 
         return properties
 
@@ -254,15 +270,29 @@ class ImageClassifier:
 
         if properties[0] == LineType.PARALLEL.value:
             properties.append(log.log_function_entry_exit(several_lines_parallel.main)(image))
+            model_cache.touch("several_lines_parallel")
 
             if properties[1] == "Борозды":
-                properties.append(log.log_function_entry_exit(several_lines_parallel_furrow.main)(image, mask))
+                properties.append(
+                    log.log_function_entry_exit(isolated_inference.run_isolated)(
+                        "several_lines_parallel_furrow",
+                        image,
+                        mask,
+                    )
+                )
 
         elif properties[0] == LineType.RETICULAR.value:
             properties.append(log.log_function_entry_exit(several_lines_reticular.main)(image))
+            model_cache.touch("several_lines_reticular")
 
             if properties[1] == Symmetry.ASYMMETRIC.value:
-                properties.append(log.log_function_entry_exit(several_lines_reticular_asymmetric.main)(image, mask))
+                properties.append(
+                    log.log_function_entry_exit(isolated_inference.run_isolated)(
+                        "several_lines_reticular_asymmetric",
+                        image,
+                        mask,
+                    )
+                )
 
         return properties
 

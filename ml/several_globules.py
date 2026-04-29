@@ -25,7 +25,19 @@ def load_model():
     model.load_state_dict(torch.load(MODEL_PATH, map_location=torch.device(DEVICE),  weights_only=True))
     return model.to(DEVICE).eval()
 
-MODEL = load_model()
+MODEL = None
+
+
+def get_model():
+    global MODEL
+    if MODEL is None:
+        MODEL = load_model()
+    return MODEL
+
+
+def clear_model() -> None:
+    global MODEL
+    MODEL = None
 
 def detect_globs(image: np.ndarray) -> np.ndarray:
     """
@@ -87,7 +99,7 @@ def predict_symmetry(image: np.ndarray) -> str:
     ])
     image_tensor = transform(image)
     image_tensor = image_tensor.to(DEVICE, non_blocking=True)
-    output = MODEL(image_tensor.unsqueeze(0))
+    output = get_model()(image_tensor.unsqueeze(0))
     prediction = torch.sigmoid(output) >= 0.5
     return "Асимметричные" if prediction else "Симметричные"
 

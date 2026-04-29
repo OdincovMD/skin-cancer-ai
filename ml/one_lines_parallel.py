@@ -32,11 +32,24 @@ class ConvolutionalNetwork(nn.Module):
         return F.log_softmax(x, dim=1)
 
 model_path = 'weight/one_lines_parallel.pt'
-CNNmodel = ConvolutionalNetwork()
+CNNmodel = None
 
-state = torch.load(model_path, map_location=device)
-CNNmodel.load_state_dict(state)
-CNNmodel.to(device)
+
+def get_model():
+    global CNNmodel
+    if CNNmodel is None:
+        model = ConvolutionalNetwork()
+        state = torch.load(model_path, map_location=device)
+        model.load_state_dict(state)
+        model.to(device)
+        model.eval()
+        CNNmodel = model
+    return CNNmodel
+
+
+def clear_model() -> None:
+    global CNNmodel
+    CNNmodel = None
 
 
 class AddGaussianNoise:
@@ -77,7 +90,7 @@ def classify_image(image_np):
     input_image = transform(image).unsqueeze(0).to(device)
 
     with torch.no_grad():
-        output = CNNmodel(input_image)
+        output = get_model()(input_image)
         probabilities = F.softmax(output, dim=1)
         predicted_class = torch.argmax(probabilities, dim=1).item()
 
@@ -102,4 +115,3 @@ def main(image_np):
     """
     predicted_class = classify_image(image_np)
     return predicted_class
-

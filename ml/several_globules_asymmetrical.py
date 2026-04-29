@@ -91,7 +91,7 @@ def create_model() -> nn.Sequential:
     Returns:
         nn.Sequential: Configured model ready for predictions.
     """
-    model = models.vgg16(pretrained=True)
+    model = models.vgg16(weights=None)
     model = nn.Sequential(*(list(model.children())[:-2]))
 
     classifier = nn.Sequential(
@@ -106,14 +106,26 @@ def create_model() -> nn.Sequential:
     )
 
     model.classifier = classifier
-    model.to(DEVICE)
-
     return model
 
 
-model = create_model()
-model.load_state_dict(torch.load(PATH_TO_MODEL, map_location=DEVICE))
-model.to(DEVICE)
+model = None
+
+
+def get_model() -> nn.Module:
+    global model
+    if model is None:
+        loaded_model = create_model()
+        loaded_model.load_state_dict(torch.load(PATH_TO_MODEL, map_location=DEVICE))
+        loaded_model.to(DEVICE)
+        loaded_model.eval()
+        model = loaded_model
+    return model
+
+
+def clear_model() -> None:
+    global model
+    model = None
 
 
 def main(image: np.ndarray) -> str:
@@ -135,10 +147,9 @@ def main(image: np.ndarray) -> str:
     input_image = input_image.unsqueeze(0).to(DEVICE)
 
     with torch.no_grad():
-        output = model(input_image)
+        output = get_model()(input_image)
         probabilities = nn.Softmax(dim=1)(output)
         predicted_class = torch.argmax(probabilities, dim=1).item()
 
     classes = {0: 'Другой', 1: 'Меланин'}
     return classes[predicted_class]
-

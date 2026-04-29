@@ -32,32 +32,10 @@ def warmup_all() -> None:
     import several_lines
     import several_lines_parallel
     import several_lines_reticular
-    import several_lines_parallel_furrow
-    import several_lines_reticular_asymmetric
-    import several_lines_radial_pereferic
-    import several_globules_asymmetrical_melanin
-    import several_globules_asymmetrical_other
 
     _safe("several_lines.get_model", several_lines.get_model)
     _safe("several_lines_parallel.get_model", several_lines_parallel.get_model)
     _safe("several_lines_reticular.get_model", several_lines_reticular.get_model)
-    _safe("several_lines_parallel_furrow.get_model", several_lines_parallel_furrow.get_model)
-    _safe(
-        "several_lines_reticular_asymmetric.get_model",
-        several_lines_reticular_asymmetric.get_model,
-    )
-    _safe(
-        "several_lines_radial_pereferic.get_model",
-        several_lines_radial_pereferic.get_model,
-    )
-    _safe(
-        "several_globules_asymmetrical_melanin.get_model",
-        several_globules_asymmetrical_melanin.get_model,
-    )
-    _safe(
-        "several_globules_asymmetrical_other.get_model",
-        several_globules_asymmetrical_other.get_model,
-    )
 
     import mask_builder
 

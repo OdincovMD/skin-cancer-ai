@@ -20,7 +20,7 @@ def set_parameter_requires_grad(model, feature_extracting):
         for param in model.parameters():
             param.requires_grad = False
 
-def initialize_model(num_classes, feature_extract, use_pretrained=True):
+def initialize_model(num_classes, feature_extract, use_pretrained=False):
     """
     Function for initialization of classification model
 
@@ -41,7 +41,7 @@ def initialize_model(num_classes, feature_extract, use_pretrained=True):
             size of input image
     """
 
-    model_ft = models.inception_v3(pretrained=use_pretrained)
+    model_ft = models.inception_v3(weights=None)
     set_parameter_requires_grad(model_ft, feature_extract)
     num_ftrs = model_ft.AuxLogits.fc.in_features
     model_ft.AuxLogits.fc = nn.Linear(num_ftrs, num_classes)
@@ -50,15 +50,23 @@ def initialize_model(num_classes, feature_extract, use_pretrained=True):
     input_size = 299
     return model_ft, input_size
 
-# Загрузка модели в глобальную зону видимости
 MODEL_PATH = 'weight/one_lines.pth'
 NUM_CLASSES = 4
 FEATURE_EXTRACT = True
 model_ft, input_size = None, None
 
-if os.path.exists(MODEL_PATH):
-    model_ft, input_size = initialize_model(NUM_CLASSES, FEATURE_EXTRACT, use_pretrained=True)
-    model_ft.load_state_dict(torch.load(MODEL_PATH))
+
+def get_model():
+    global model_ft, input_size
+    if model_ft is None:
+        model_ft, input_size = initialize_model(NUM_CLASSES, FEATURE_EXTRACT, use_pretrained=False)
+        model_ft.load_state_dict(torch.load(MODEL_PATH, map_location="cpu"))
+    return model_ft, input_size
+
+
+def clear_model() -> None:
+    global model_ft, input_size
+    model_ft, input_size = None, None
 
 def get_transformations():
     """
@@ -122,10 +130,7 @@ def main(img_to_classify):
     """
 
     global model_ft, input_size
-
-    if model_ft is None:
-        model_ft, input_size = initialize_model(NUM_CLASSES, FEATURE_EXTRACT, use_pretrained=True)
-        model_ft.load_state_dict(torch.load(MODEL_PATH))
+    model_ft, input_size = get_model()
 
     img_to_classify = cv2.cvtColor(img_to_classify, cv2.COLOR_BGR2RGB)
     img_transforms = get_transformations()
@@ -136,4 +141,3 @@ def main(img_to_classify):
     class_map = {0: 'Ретикулярные', 1: 'Разветвленные', 2: 'Параллельные', 3: 'Изогнутые'}
     result = class_map[eval_res]
     return result
-

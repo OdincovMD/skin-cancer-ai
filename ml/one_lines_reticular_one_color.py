@@ -79,8 +79,19 @@ def predict(model: torch.nn.Module, image_tensor: torch.Tensor) -> str:
 
 model_path = "weight/one_lines_reticular_one_color.pth"
 model_name = "resnet50"
+model = None
 
-model = load_model(model_name, model_path)
+
+def get_model() -> torch.nn.Module:
+    global model
+    if model is None:
+        model = load_model(model_name, model_path)
+    return model
+
+
+def clear_model() -> None:
+    global model
+    model = None
 
 
 def main(image: np.ndarray) -> str:
@@ -100,8 +111,6 @@ def main(image: np.ndarray) -> str:
            Черные, Коричневые
    """
     image_tensor = preprocess_image(image)
-    result = predict(model, image_tensor)
+    result = predict(get_model(), image_tensor)
     return result
-
-
 

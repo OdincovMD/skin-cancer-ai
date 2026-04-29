@@ -23,7 +23,7 @@ class CustomNeuralNetResNet(torch.nn.Module):
     """
     def __init__(self, outputs_number):
         super(CustomNeuralNetResNet, self).__init__()
-        self.net = models.resnet152(pretrained=True)
+        self.net = models.resnet152(weights=None)
 
         # Выключаем переобучение весов каждого слоя модели, кроме последнего
         for param in self.net.parameters():

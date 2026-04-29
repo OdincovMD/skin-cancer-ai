@@ -47,6 +47,10 @@ services:
     build:
       context: ./ml
       dockerfile: Dockerfile
+    environment:
+      - MODEL_CACHE_MEMORY_LIMIT_MB=${MODEL_CACHE_MEMORY_LIMIT_MB:-4608}
+      - MODEL_CACHE_IDLE_TTL_SECONDS=${MODEL_CACHE_IDLE_TTL_SECONDS:-600}
+      - ISOLATED_RARE_MODEL_WORKERS=${ISOLATED_RARE_MODEL_WORKERS:-1}
     expose:
       - "8000"
     networks:

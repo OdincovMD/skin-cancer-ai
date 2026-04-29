@@ -23,6 +23,7 @@ flowchart LR
     Celery["Celery Worker"]
     ML["ML-сервис\n(YOLO + UNet)"]
     Desc["Img2Txt\nDescription Service"]
+    SMTP["SMTP Provider\n(Email Service)"]
     PG["PostgreSQL"]
     Redis["Redis"]
     MinIO["MinIO\n(S3)"]
@@ -33,6 +34,7 @@ flowchart LR
     Backend --> PG
     Backend --> Redis
     Backend --> MinIO
+    Backend -->|"SMTP: verify/reset emails"| SMTP
     Backend -->|"задача в очередь"| Celery
     Celery --> Redis
     Celery --> PG
@@ -112,6 +114,7 @@ flowchart LR
 - **Redis** — брокер и бэкенд результатов Celery, ограничение частоты запросов.
 - **Celery** — фоновые задачи классификации.
 - **MinIO** — S3-совместимое хранилище (boto3, path-style, SigV4).
+- **SMTP provider** — внешний почтовый сервис для писем верификации и сброса пароля.
 - **Description service (`img2txt`)** — опциональный внешний сервис для текстового описания и выделения признаков.
 
 ### Frontend
@@ -140,6 +143,7 @@ flowchart LR
 | [docs/DEPLOY.md](docs/DEPLOY.md) | Операторы | Переменные окружения, порты, секреты, бэкапы, неполадки |
 | [docs/API.md](docs/API.md) | Разработчики и интеграторы | Справочник HTTP API, публичная API v1 интеграция, внутренний callback API |
 | [docs/USER_GUIDE.md](docs/USER_GUIDE.md) | Пользователи | Регистрация, классификация, профиль, API-ключ |
+| [docs/ML_MEMORY_PROFILE.md](docs/ML_MEMORY_PROFILE.md) | Операторы и разработчики ML | Профиль памяти ML-сервиса, результаты замеров и стратегия изоляции редких моделей |
 | [docs/MODEL_LIMITATIONS.md](docs/MODEL_LIMITATIONS.md) | Исследователи, разработчики, reviewers | Ограничения модели, границы применимости, ответственные сценарии использования |
 | [docs/DISCLAIMER.md](docs/DISCLAIMER.md) | Все | Медицинский дисклеймер (RU + EN) |
 

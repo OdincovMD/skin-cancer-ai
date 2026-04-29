@@ -35,7 +35,7 @@ def load_model(model_path: str = MODEL_PATH) -> Tuple[EfficientNet, torch.device
         Tuple[EfficientNet, torch.device]: Loaded model and the device it will be executed on.
     """
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    model = EfficientNet.from_pretrained('efficientnet-b1', num_classes=2)
+    model = EfficientNet.from_name('efficientnet-b1', num_classes=2)
     checkpoint = torch.load(model_path, map_location=device)
     model.load_state_dict(checkpoint['model_state_dict'])
     model.to(device)
@@ -59,6 +59,13 @@ def get_model():
     if not _model_several_lines_parallel and not _device_several_lines_parallel:
         _model_several_lines_parallel, _device_several_lines_parallel = load_model()
     return _model_several_lines_parallel, _device_several_lines_parallel
+
+
+def clear_model() -> None:
+    global _model_several_lines_parallel
+    global _device_several_lines_parallel
+    _model_several_lines_parallel = None
+    _device_several_lines_parallel = None
 
 
 # до этого main была функцией для вызова двух функций
