@@ -2,14 +2,22 @@ import React, { useEffect, useState } from "react"
 import { useDispatch, useSelector } from "react-redux"
 
 import { fetchSessionMe } from "../asyncActions/fetchSessionMe"
-import { LS_SESSION_REFRESH_KEY } from "../imports/sessionSync"
-import { defaultState } from "../store/userReducer"
+import {
+  LS_SESSION_CLEAR_KEY,
+  LS_SESSION_REFRESH_KEY,
+  LS_SESSION_SHARE_REQUEST_KEY,
+  LS_SESSION_SHARE_RESPONSE_KEY,
+  publishSessionToOtherTabs,
+  requestSessionFromOtherTabs,
+} from "../imports/sessionSync"
+import { defaultState, onPageReload } from "../store/userReducer"
 import Header from "./Header.jsx"
 import Sidebar from "./Sidebar.jsx"
 import AppRoutes from "./Routes.jsx"
 
 const App = () => {
   const dispatch = useDispatch()
+  const accessToken = useSelector((state) => state.user.accessToken)
   const accessTokenExpiresAt = useSelector((state) => state.user.accessTokenExpiresAt)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
@@ -33,6 +41,31 @@ const App = () => {
     const onStorage = (e) => {
       if (e.key === LS_SESSION_REFRESH_KEY && e.newValue != null) {
         refreshSession()
+        return
+      }
+      if (e.key === LS_SESSION_SHARE_REQUEST_KEY && e.newValue != null) {
+        const raw =
+          sessionStorage.getItem("userInfo") ?? localStorage.getItem("userInfo")
+        publishSessionToOtherTabs(raw)
+        return
+      }
+      if (e.key === LS_SESSION_SHARE_RESPONSE_KEY && e.newValue != null) {
+        if (sessionStorage.getItem("userInfo") || localStorage.getItem("userInfo")) {
+          return
+        }
+        try {
+          const payload = JSON.parse(e.newValue)
+          if (typeof payload?.userInfo !== "string" || !payload.userInfo) return
+          sessionStorage.setItem("userInfo", payload.userInfo)
+          dispatch(onPageReload())
+          dispatch(fetchSessionMe())
+        } catch (_) {
+          /* ignore malformed cross-tab payload */
+        }
+        return
+      }
+      if (e.key === LS_SESSION_CLEAR_KEY && e.newValue != null) {
+        dispatch(defaultState())
       }
     }
     const onVisibilityChange = () => {
@@ -54,13 +87,16 @@ const App = () => {
     window.addEventListener("storage", onStorage)
     window.addEventListener("focus", refreshSession)
     document.addEventListener("visibilitychange", onVisibilityChange)
+    if (!accessToken && !sessionStorage.getItem("userInfo") && !localStorage.getItem("userInfo")) {
+      requestSessionFromOtherTabs()
+    }
     return () => {
       if (expiryTimerId != null) window.clearTimeout(expiryTimerId)
       window.removeEventListener("storage", onStorage)
       window.removeEventListener("focus", refreshSession)
       document.removeEventListener("visibilitychange", onVisibilityChange)
     }
-  }, [accessTokenExpiresAt, dispatch])
+  }, [accessToken, accessTokenExpiresAt, dispatch])
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">

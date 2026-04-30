@@ -17,6 +17,7 @@ import {
 
 import { API_DOCS, HOME, SIGN_IN, SIGN_UP, ABOUT, PROFILE } from "../imports/ENDPOINTS"
 import { useAvatarObjectUrl } from "../hooks/useAvatarObjectUrl"
+import { notifyOtherTabsSessionCleared } from "../imports/sessionSync"
 import { defaultState, noError } from "../store/userReducer"
 
 const iconMap = {
@@ -79,6 +80,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     if (pathname !== item.path) dispatch(noError())
     if (item.text === "Выйти") {
       dispatch(defaultState())
+      notifyOtherTabsSessionCleared()
       navigate(SIGN_IN)
     }
     onClose?.()

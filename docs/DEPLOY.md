@@ -16,7 +16,7 @@ cp .env.example .env
 docker compose up --build -d
 ```
 
-Compose-файл задаёт `name: skin`, поэтому контейнеры будут называться `skin-backend-1`, `skin-nginx-1` и т.д. Внутренние имена сервисов (`postgres`, `redis`, `minio`, `ml`, `backend`, `frontend`) остаются короткими. Сеть `skin-ai-network` создаётся самим Compose автоматически; вручную готовить её не нужно.
+Compose-файл задаёт `name: skin`, поэтому контейнеры будут называться `skin-backend-1`, `skin-nginx-1` и т.д. Внутренние имена сервисов (`postgres`, `redis`, `minio`, `ml`, `backend`, `frontend`) остаются короткими. Сеть `skin-ai-network` используется как внешняя общая сеть для интеграции с соседними сервисами; она должна существовать заранее.
 
 ### Порядок запуска
 

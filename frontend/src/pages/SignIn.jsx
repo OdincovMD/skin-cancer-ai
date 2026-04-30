@@ -8,6 +8,7 @@ import Button from "../components/ui/Button"
 import { onVerify } from "../asyncActions/onVerify"
 import { FORGOT_PASSWORD, HOME, SIGN_IN, SIGN_UP } from "../imports/ENDPOINTS"
 import { mappingInfo } from "../imports/HELPERS"
+import { publishStoredSessionToOtherTabs } from "../imports/sessionSync"
 import { noError, toggleRememberMe } from "../store/userReducer"
 
 const BRAND_FEATURES = [
@@ -59,6 +60,7 @@ const SignIn = () => {
         })
       ).unwrap()
       if (!result.error && result.userData?.id != null) {
+        publishStoredSessionToOtherTabs()
         navigate(HOME, { replace: true })
       }
     } finally {

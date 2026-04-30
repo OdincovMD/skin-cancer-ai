@@ -15,6 +15,7 @@ import Button from "../components/ui/Button"
 import { onVerify } from "../asyncActions/onVerify"
 import { SIGN_IN, SIGN_UP, PROFILE } from "../imports/ENDPOINTS"
 import { mappingInfo } from "../imports/HELPERS"
+import { publishStoredSessionToOtherTabs } from "../imports/sessionSync"
 import { noError } from "../store/userReducer"
 
 const BRAND_FEATURES = [
@@ -96,6 +97,7 @@ const SignUp = () => {
       ).unwrap()
 
       if (!outcome.error && outcome.accessToken) {
+        publishStoredSessionToOtherTabs()
         navigate(PROFILE, { replace: true })
       }
     } finally {
