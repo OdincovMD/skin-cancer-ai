@@ -11,6 +11,7 @@ const defaultUser = {
       email: null,
     },
     accessToken: null,
+    accessTokenExpiresAt: null,
     emailVerified: true,
     error: null,
     isRememberMeChecked: false,
@@ -39,8 +40,16 @@ const userSlice = createSlice({
           storage.removeItem('userInfo')
           return defaultUser
         }
+        const expiresAtRaw = parsedData.accessTokenExpiresAt
+        const expiresAtMs =
+          expiresAtRaw != null ? Date.parse(String(expiresAtRaw)) : NaN
+        if (Number.isFinite(expiresAtMs) && expiresAtMs <= Date.now()) {
+          storage.removeItem('userInfo')
+          return defaultUser
+        }
         state.userData = parsedData.userData
         state.accessToken = parsedData.accessToken ?? null
+        state.accessTokenExpiresAt = parsedData.accessTokenExpiresAt ?? null
         state.error = null
         state.isRememberMeChecked = parsedData.isRememberMeChecked
         state.emailVerified =
@@ -58,6 +67,7 @@ const userSlice = createSlice({
         storage.setItem('userInfo', JSON.stringify({
           userData: state.userData,
           accessToken: state.accessToken,
+          accessTokenExpiresAt: state.accessTokenExpiresAt,
           error: state.error,
           isRememberMeChecked: state.isRememberMeChecked,
           emailVerified: state.emailVerified,
@@ -96,6 +106,7 @@ const userSlice = createSlice({
         storage.setItem('userInfo', JSON.stringify({
           userData: state.userData,
           accessToken: state.accessToken,
+          accessTokenExpiresAt: state.accessTokenExpiresAt,
           error: state.error,
           isRememberMeChecked: state.isRememberMeChecked,
           emailVerified: state.emailVerified,
@@ -112,6 +123,7 @@ const userSlice = createSlice({
         storage.setItem('userInfo', JSON.stringify({
           userData: state.userData,
           accessToken: state.accessToken,
+          accessTokenExpiresAt: state.accessTokenExpiresAt,
           error: state.error,
           isRememberMeChecked: state.isRememberMeChecked,
           emailVerified: state.emailVerified,
@@ -130,6 +142,7 @@ const userSlice = createSlice({
         state.userData = action.payload.userData
         state.error = action.payload.error
         state.accessToken = action.payload.accessToken ?? null
+        state.accessTokenExpiresAt = action.payload.accessTokenExpiresAt ?? null
         state.emailVerified =
           action.payload.emailVerified !== undefined
             ? Boolean(action.payload.emailVerified)
@@ -151,6 +164,7 @@ const userSlice = createSlice({
           storage.setItem('userInfo', JSON.stringify({
             userData: state.userData,
             accessToken: state.accessToken,
+            accessTokenExpiresAt: state.accessTokenExpiresAt,
             error: state.error,
             isRememberMeChecked: state.isRememberMeChecked,
             emailVerified: state.emailVerified,
@@ -160,7 +174,21 @@ const userSlice = createSlice({
       })
       .addCase(fetchSessionMe.fulfilled, (state, action) => {
         if (action.payload?.skipped) return
+        if (action.payload?.error === 401) {
+          sessionStorage.removeItem('userInfo')
+          localStorage.removeItem('userInfo')
+          return defaultUser
+        }
         if (action.payload?.error || !action.payload?.userData) return
+        const expiresAtMs =
+          state.accessTokenExpiresAt != null
+            ? Date.parse(String(state.accessTokenExpiresAt))
+            : NaN
+        if (Number.isFinite(expiresAtMs) && expiresAtMs <= Date.now()) {
+          sessionStorage.removeItem('userInfo')
+          localStorage.removeItem('userInfo')
+          return defaultUser
+        }
         const ud = action.payload.userData
         state.userData = {
           id: ud.id ?? null,
@@ -179,6 +207,7 @@ const userSlice = createSlice({
           storage.setItem('userInfo', JSON.stringify({
             userData: state.userData,
             accessToken: state.accessToken,
+            accessTokenExpiresAt: state.accessTokenExpiresAt,
             error: state.error,
             isRememberMeChecked: state.isRememberMeChecked,
             emailVerified: state.emailVerified,

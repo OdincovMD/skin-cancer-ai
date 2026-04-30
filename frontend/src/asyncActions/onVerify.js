@@ -34,6 +34,7 @@ export const onVerify = createAsyncThunk("user/onVerify", async ({data, endpoint
         email: null,
       },
       accessToken: null,
+      accessTokenExpiresAt: null,
       error: null,
       requires_email_verification: false,
       emailVerified: true,
@@ -69,6 +70,8 @@ export const onVerify = createAsyncThunk("user/onVerify", async ({data, endpoint
         email: ud.email ?? null,
       }
       requestState.accessToken = responseJSON.access_token ?? null
+      requestState.accessTokenExpiresAt =
+        responseJSON.access_token_expires_at ?? null
       requestState.requires_email_verification =
         Boolean(responseJSON.requires_email_verification)
       requestState.emailVerified = ud.email_verified === true

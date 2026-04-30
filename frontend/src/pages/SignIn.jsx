@@ -53,6 +53,7 @@ const SignIn = () => {
           data: {
             [mappingInfo.LOGIN]: formState.login,
             [mappingInfo.PASSWORD]: formState.password,
+            remember_me: userInfo.isRememberMeChecked,
           },
           endpoint: SIGN_IN,
         })

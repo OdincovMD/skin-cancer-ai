@@ -15,6 +15,7 @@ class UserSignUp(BaseModel):
 class Credentials(BaseModel):
     login: str
     password: str
+    remember_me: bool = False
 
 
 class ChangePasswordBody(BaseModel):

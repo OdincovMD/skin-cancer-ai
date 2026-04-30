@@ -61,7 +61,7 @@ async def signup(
             }
 
         try:
-            token = create_access_token(result["id"])
+            token, token_expires_at = create_access_token(result["id"])
         except RuntimeError as e:
             return {
                 "userData": {
@@ -85,6 +85,7 @@ async def signup(
             "error": None,
             "requires_email_verification": True,
             "access_token": token,
+            "access_token_expires_at": token_expires_at,
             "token_type": "bearer",
             "verification_resend_after_seconds": result.get(
                 "verification_resend_after_seconds",
@@ -374,7 +375,14 @@ async def signin_user(
             }
 
         try:
-            token = create_access_token(result["id"])
+            expires_minutes = (
+                settings.JWT_REMEMBER_ME_EXPIRE_MINUTES
+                if credentials.remember_me
+                else settings.JWT_EXPIRE_MINUTES
+            )
+            token, token_expires_at = create_access_token(
+                result["id"], expires_minutes=expires_minutes
+            )
         except RuntimeError as e:
             return {
                 "userData": {
@@ -397,6 +405,7 @@ async def signin_user(
             },
             "error": None,
             "access_token": token,
+            "access_token_expires_at": token_expires_at,
             "token_type": "bearer",
             "verification_resend_after_seconds": result.get(
                 "verification_resend_after_seconds", 0

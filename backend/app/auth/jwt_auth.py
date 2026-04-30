@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Optional, Tuple
 
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -10,19 +10,25 @@ from src.config import settings
 security = HTTPBearer(auto_error=False)
 
 
-def create_access_token(user_id: int) -> str:
+def create_access_token(
+    user_id: int, expires_minutes: Optional[int] = None
+) -> Tuple[str, str]:
     secret = (settings.JWT_SECRET or "").strip()
     if len(secret) < 16:
         raise RuntimeError(
             "JWT_SECRET должен быть задан в .env (не короче 16 символов)"
         )
+    ttl_minutes = (
+        max(1, int(expires_minutes))
+        if expires_minutes is not None
+        else max(1, int(settings.JWT_EXPIRE_MINUTES))
+    )
     expire = datetime.now(timezone.utc) + timedelta(
-        minutes=max(1, int(settings.JWT_EXPIRE_MINUTES))
+        minutes=ttl_minutes
     )
     payload = {"sub": str(user_id), "exp": int(expire.timestamp())}
-    return jwt.encode(
-        payload, secret, algorithm=settings.JWT_ALGORITHM
-    )
+    token = jwt.encode(payload, secret, algorithm=settings.JWT_ALGORITHM)
+    return token, expire.isoformat()
 
 
 def get_current_user_id(

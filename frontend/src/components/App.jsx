@@ -1,25 +1,66 @@
 import React, { useEffect, useState } from "react"
-import { useDispatch } from "react-redux"
+import { useDispatch, useSelector } from "react-redux"
 
 import { fetchSessionMe } from "../asyncActions/fetchSessionMe"
 import { LS_SESSION_REFRESH_KEY } from "../imports/sessionSync"
+import { defaultState } from "../store/userReducer"
 import Header from "./Header.jsx"
 import Sidebar from "./Sidebar.jsx"
 import AppRoutes from "./Routes.jsx"
 
 const App = () => {
   const dispatch = useDispatch()
+  const accessTokenExpiresAt = useSelector((state) => state.user.accessTokenExpiresAt)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
   useEffect(() => {
+    const isExpired = () => {
+      if (!accessTokenExpiresAt) return false
+      const expiresAtMs = Date.parse(String(accessTokenExpiresAt))
+      return Number.isFinite(expiresAtMs) && expiresAtMs <= Date.now()
+    }
+
+    const refreshSession = () => {
+      if (isExpired()) {
+        dispatch(defaultState())
+        return
+      }
+      dispatch(fetchSessionMe())
+    }
+
+    refreshSession()
+
     const onStorage = (e) => {
       if (e.key === LS_SESSION_REFRESH_KEY && e.newValue != null) {
-        dispatch(fetchSessionMe())
+        refreshSession()
       }
     }
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        refreshSession()
+      }
+    }
+    let expiryTimerId = null
+    if (accessTokenExpiresAt) {
+      const expiresAtMs = Date.parse(String(accessTokenExpiresAt))
+      if (Number.isFinite(expiresAtMs)) {
+        const delay = expiresAtMs - Date.now()
+        expiryTimerId = window.setTimeout(() => {
+          dispatch(defaultState())
+        }, Math.max(0, delay))
+      }
+    }
+
     window.addEventListener("storage", onStorage)
-    return () => window.removeEventListener("storage", onStorage)
-  }, [dispatch])
+    window.addEventListener("focus", refreshSession)
+    document.addEventListener("visibilitychange", onVisibilityChange)
+    return () => {
+      if (expiryTimerId != null) window.clearTimeout(expiryTimerId)
+      window.removeEventListener("storage", onStorage)
+      window.removeEventListener("focus", refreshSession)
+      document.removeEventListener("visibilitychange", onVisibilityChange)
+    }
+  }, [accessTokenExpiresAt, dispatch])
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">

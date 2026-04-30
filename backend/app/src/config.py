@@ -32,7 +32,8 @@ class Settings(BaseSettings):
     # JWT (Authorization: Bearer) для API классификации и истории
     JWT_SECRET: str = Field(default="")
     JWT_ALGORITHM: str = Field(default="HS256")
-    JWT_EXPIRE_MINUTES: int = Field(default=1440)
+    JWT_EXPIRE_MINUTES: int = Field(default=240)
+    JWT_REMEMBER_ME_EXPIRE_MINUTES: int = Field(default=240)
 
     # SMTP (верификация email); пустой SMTP_HOST — отправка отключена
     SMTP_HOST: str = Field(default="")
