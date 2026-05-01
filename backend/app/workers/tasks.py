@@ -30,6 +30,48 @@ def _error_payload(detail: object) -> str:
     return json.dumps({"detail": detail}, ensure_ascii=True)
 
 
+def _stage_payload(stage: str, title: str, description: str) -> str:
+    return json.dumps(
+        {
+            "stage": stage,
+            "title": title,
+            "description": description,
+        },
+        ensure_ascii=True,
+    )
+
+
+def _unexpected_processing_error_message(exc: Exception) -> str:
+    message = str(exc).lower()
+    if "minio" in message or "s3" in message:
+        return "Не удалось получить изображение из хранилища. Попробуйте повторить попытку позже."
+    if "timeout" in message:
+        return "Обработка изображения заняла слишком много времени. Попробуйте повторить попытку позже."
+    return "Не удалось завершить обработку изображения. Попробуйте повторить попытку позже."
+
+
+def _ml_service_error_message(exc: httpx.HTTPError) -> str:
+    request = getattr(exc, "request", None)
+    url = str(request.url) if request else ""
+    text = str(exc).lower()
+    if any(token in text for token in ["4 channels", "alpha channel", "cannot identify image file"]):
+        return (
+            "Не удалось обработать изображение. "
+            "Загрузите файл в формате JPEG или PNG без прозрачности."
+        )
+    if url.endswith("/mask"):
+        return (
+            "Не удалось построить маску для изображения. "
+            "Попробуйте другое изображение или повторите попытку позже."
+        )
+    if url.endswith("/classify"):
+        return (
+            "Не удалось выполнить классификацию изображения. "
+            "Попробуйте повторить попытку позже."
+        )
+    return "Сервис обработки изображения временно недоступен. Попробуйте позже."
+
+
 async def _request_mask(
     client: httpx.AsyncClient,
     file_name: str,
@@ -63,8 +105,15 @@ async def _request_classification(
 
 
 def _http_error_detail(exc: httpx.HTTPStatusError) -> object:
+    if exc.response.status_code >= 500:
+        return _ml_service_error_message(exc)
     try:
-        return exc.response.json()
+        body = exc.response.json()
+        if isinstance(body, dict):
+            detail = body.get("detail")
+            if isinstance(detail, str) and detail.strip():
+                return detail
+        return body
     except Exception:
         return f"HTTP {exc.response.status_code}"
 
@@ -75,7 +124,14 @@ async def _run_classification_async(
     try:
         async with async_session_maker() as session:
             await Orm.update_classification_status(
-                session, classification_id, "processing"
+                session,
+                classification_id,
+                "processing",
+                result=_stage_payload(
+                    "preparing",
+                    "Подготовка изображения",
+                    "Проверяем файл и подготавливаем данные для анализа.",
+                ),
             )
 
             meta = await Orm.get_classification_file_meta(session, classification_id)
@@ -102,7 +158,9 @@ async def _run_classification_async(
                     session,
                     classification_id,
                     "error",
-                    result=_error_payload(f"Ошибка чтения из MinIO: {exc}"),
+                    result=_error_payload(
+                        "Не удалось получить изображение из хранилища. Повторите попытку позже."
+                    ),
                 )
                 return
 
@@ -116,12 +174,39 @@ async def _run_classification_async(
 
             try:
                 async with httpx.AsyncClient(timeout=httpx.Timeout(600.0)) as client:
-                    mask_bytes = await _request_mask(
-                        client,
-                        image_part_name,
-                        image_bytes,
-                        content_type,
+                    await Orm.update_classification_status(
+                        session,
+                        classification_id,
+                        "processing",
+                        result=_stage_payload(
+                            "mask",
+                            "Построение маски",
+                            "Выделяем область новообразования на изображении.",
+                        ),
                     )
+                    try:
+                        mask_bytes = await _request_mask(
+                            client,
+                            image_part_name,
+                            image_bytes,
+                            content_type,
+                        )
+                    except httpx.HTTPStatusError as exc:
+                        await Orm.update_classification_status(
+                            session,
+                            classification_id,
+                            "error",
+                            result=_error_payload(_http_error_detail(exc)),
+                        )
+                        return
+                    except httpx.RequestError as exc:
+                        await Orm.update_classification_status(
+                            session,
+                            classification_id,
+                            "error",
+                            result=_error_payload(_ml_service_error_message(exc)),
+                        )
+                        return
 
                     if features_only and not description_enabled():
                         await Orm.update_classification_status(
@@ -203,6 +288,16 @@ async def _run_classification_async(
                                 )
                                 return
 
+                    await Orm.update_classification_status(
+                        session,
+                        classification_id,
+                        "processing",
+                        result=_stage_payload(
+                            "classification",
+                            "Анализ признаков",
+                            "Определяем визуальные признаки и строим классификацию.",
+                        ),
+                    )
                     try:
                         result = await _request_classification(
                             client,
@@ -219,7 +314,25 @@ async def _run_classification_async(
                             result=_error_payload(_http_error_detail(exc)),
                         )
                         return
+                    except httpx.RequestError as exc:
+                        await Orm.update_classification_status(
+                            session,
+                            classification_id,
+                            "error",
+                            result=_error_payload(_ml_service_error_message(exc)),
+                        )
+                        return
 
+                    await Orm.update_classification_status(
+                        session,
+                        classification_id,
+                        "processing",
+                        result=_stage_payload(
+                            "finalizing",
+                            "Формирование результата",
+                            "Собираем итог анализа и подготавливаем ответ.",
+                        ),
+                    )
                     await Orm.update_classification_status(
                         session,
                         classification_id,
@@ -266,7 +379,7 @@ async def _run_classification_async(
                     session,
                     classification_id,
                     "error",
-                    result=_error_payload(str(exc)),
+                    result=_error_payload(_unexpected_processing_error_message(exc)),
                 )
     finally:
         await async_engine.dispose()

@@ -16,7 +16,7 @@ async function messageFromFailedResponse(response) {
   } catch {
   }
   const s = response.status
-  if (s === 401) return "Неверный логин или пароль."
+  if (s === 401) return "Неверный email или пароль."
   if (s === 403) return "Доступ запрещён."
   if (s === 422) return "Проверьте введённые данные."
   if (s === 503) return "Сервис временно недоступен. Попробуйте позже."

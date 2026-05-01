@@ -1,6 +1,7 @@
 import asyncio
 import hashlib
 import json
+import logging
 import math
 import secrets
 from typing import Any, Dict, List, Optional, Union
@@ -17,6 +18,7 @@ from src.models import ClassificationResults, DescriptionJob, File, User
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+logger = logging.getLogger(__name__)
 
 
 def _verification_resend_remaining_seconds(user: User) -> int:
@@ -454,9 +456,6 @@ class Orm:
     @staticmethod
     async def register_user(
         session: AsyncSession,
-        lastName: str,
-        firstName: str,
-        login: str,
         email: str,
         password: str,
     ) -> Union[str, Dict[str, Union[int, str, bool]]]:
@@ -470,9 +469,9 @@ class Orm:
             )
 
             user = User(
-                lastName=lastName,
-                firstName=firstName,
-                login=login,
+                lastName=None,
+                firstName=None,
+                login=email,
                 email=email,
                 password=hashed_password,
                 email_verified=False,
@@ -499,7 +498,6 @@ class Orm:
                 "id": user.id,
                 "lastName": user.lastName,
                 "firstName": user.firstName,
-                "login": user.login,
                 "email": user.email,
                 "email_verified": False,
                 "requires_email_verification": True,
@@ -510,8 +508,6 @@ class Orm:
         except IntegrityError as e:
             await session.rollback()
             err_txt = str(e.orig) if getattr(e, "orig", None) else str(e)
-            if "ix_users_login" in err_txt or "login" in err_txt.lower():
-                return "Ошибка: Пользователь с таким логином уже зарегистрирован."
             if "ix_users_email" in err_txt or "email" in err_txt.lower():
                 return "Ошибка: Пользователь с такой почтой уже зарегистрирован."
             return f"Ошибка при регистрации пользователя: {e}"
@@ -521,12 +517,10 @@ class Orm:
 
     @staticmethod
     async def signin_user(
-        session: AsyncSession, login: str, password: str
+        session: AsyncSession, email: str, password: str
     ) -> Union[Dict[str, Union[int, str]], str]:
         try:
-            stmt = select(User).where(
-                (User.login == login) | (User.email == login)
-            )
+            stmt = select(User).where(User.email == email)
             result = await session.execute(stmt)
             user = result.scalar_one_or_none()
             if not user:
@@ -823,6 +817,10 @@ class Orm:
         try:
             await send_password_reset_email(user.email, raw_token)
         except Exception:
+            logger.exception(
+                "Password reset email send failed for %s",
+                user.email,
+            )
             await session.rollback()
             return "Не удалось отправить письмо. Проверьте настройки SMTP или попробуйте позже."
 

@@ -48,10 +48,12 @@ const Sidebar = ({ isOpen, onClose }) => {
   )
   const firstName = userInfo.userData?.firstName || ""
   const lastName = userInfo.userData?.lastName || ""
-  const displayName = `${firstName} ${lastName}`.trim() || "Пользователь"
+  const email = userInfo.userData?.email || ""
+  const displayName = `${firstName} ${lastName}`.trim() || email || "Пользователь"
   const initials =
     (firstName.charAt(0) || "").toUpperCase() +
-    (lastName.charAt(0) || "").toUpperCase()
+    (lastName.charAt(0) || "").toUpperCase() ||
+    email.charAt(0).toUpperCase()
 
   const menuItems = [
     { text: "Главная", path: HOME, group: "main" },

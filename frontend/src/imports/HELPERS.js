@@ -31,8 +31,8 @@ export const getValues = (obj) => {
   return Object.values(obj).flatMap(getValues)
 }
 
-const snake = ["FIRST_NAME", "LAST_NAME", "LOGIN", "EMAIL",  "PASSWORD", "REP_PASSWORD", "REQUEST_DATE", "FILE_NAME", "STATUS", "RESULT",]
-const camel = ["firstName", "lastName", "login", "email", "password", "repPassword", "request_date", "file_name", "status", "result", ]
+const snake = ["EMAIL", "PASSWORD", "REP_PASSWORD", "REQUEST_DATE", "FILE_NAME", "STATUS", "RESULT"]
+const camel = ["email", "password", "repPassword", "request_date", "file_name", "status", "result"]
 
 const combineKeys = (key1, key2) => {
   var result = {}
@@ -45,4 +45,3 @@ const combineKeys = (key1, key2) => {
 }
 
 export const mappingInfo = combineKeys(snake, camel)
-

@@ -72,13 +72,10 @@ X-API-Key: <сырой_токен>
 
 | Поле | Тип | Описание |
 |------|-----|----------|
-| `firstName` | string | Имя |
-| `lastName` | string | Фамилия |
-| `login` | string | Логин |
 | `email` | string | Email |
 | `password` | string | Пароль |
 
-Успех (пример полей): `userData`, `error: null`, `access_token`, `token_type: "bearer"`, `requires_email_verification: true`, `verification_resend_after_seconds`. При ошибке валидации/БД — `userData` с `null`-полями и строка `error`.
+Успех (пример полей): `userData`, `error: null`, `access_token`, `token_type: "bearer"`, `requires_email_verification: true`, `verification_resend_after_seconds`. Имя и фамилию пользователь может заполнить позже в профиле. При ошибке валидации/БД — `userData` с `null`-полями и строка `error`.
 
 ### `POST /signin`
 
@@ -86,7 +83,7 @@ X-API-Key: <сырой_токен>
 
 | Поле | Тип |
 |------|-----|
-| `login` | string |
+| `email` | string |
 | `password` | string |
 
 Успех: `userData` (в т.ч. `email_verified`), `access_token`, `token_type`, `verification_resend_after_seconds`, `error: null`.
@@ -118,14 +115,11 @@ X-API-Key: <сырой_токен>
 
 `multipart/form-data`, поле **`file`**. Допустимые типы: JPEG, PNG, WebP; максимум **5 МБ**. Ответ: `{"error": null}` или `{"error": "..."}`.
 
-### `POST /change-password`
+Смена пароля в пользовательском интерфейсе выполняется через сценарий сброса пароля по email:
 
-Тело:
-
-| Поле | Тип |
-|------|-----|
-| `current_password` | string |
-| `new_password` | string (≥ 8 символов, латиница и цифры) |
+1. `POST /forgot-password`
+2. переход по ссылке из письма
+3. `POST /reset-password`
 
 ### `POST /resend-verification-email`
 
@@ -158,7 +152,7 @@ Query: **`token`** — одноразовый токен из письма.
 | Поле | Тип |
 |------|-----|
 | `token` | string |
-| `new_password` | string (≥ 8 символов, только латиница и цифры) |
+| `new_password` | string (≥ 8 символов) |
 
 Успех: `{"ok": true, "error": null}`.
 
@@ -381,7 +375,7 @@ BASE="http://localhost:90/backend"
 # Вход
 curl -sS -X POST "$BASE/signin" \
   -H "Content-Type: application/json" \
-  -d '{"login":"user","password":"secret"}'
+  -d '{"email":"user@example.com","password":"secret"}'
 
 # Профиль (подставьте JWT)
 curl -sS "$BASE/me" -H "Authorization: Bearer YOUR_JWT"

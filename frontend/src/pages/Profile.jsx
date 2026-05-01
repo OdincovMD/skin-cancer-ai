@@ -15,7 +15,6 @@ import {
   ChevronUp,
   AlertTriangle,
   CheckCircle2,
-  ClipboardCheck,
   Database,
   Fingerprint,
   Globe2,
@@ -32,8 +31,6 @@ import {
   ShieldCheck,
   SquareTerminal,
   Workflow,
-  Eye,
-  EyeOff,
 } from "lucide-react"
 
 import { useAvatarObjectUrl } from "../hooks/useAvatarObjectUrl"
@@ -42,7 +39,7 @@ import { env } from "../imports/ENV"
 import { bearerAuthHeaders } from "../imports/authHeaders"
 import {
   API_DOCS,
-  CHANGE_PASSWORD,
+  FORGOT_PASSWORD_API,
   HISTORY_IMAGE,
   ME_API_TOKEN,
   ME_API_TOKEN_ROTATE,
@@ -99,6 +96,8 @@ const StatusBadge = ({ tone = "slate", icon: Icon, children }) => {
   )
 }
 
+const PASSWORD_RESET_COOLDOWN_DEFAULT_SEC = 120
+
 const Profile = () => {
   const dispatch = useDispatch()
   const userInfo = useSelector((state) => state.user)
@@ -112,6 +111,10 @@ const Profile = () => {
   const [resendHint, setResendHint] = useState("")
   const [, tickResendCooldown] = useState(0)
   const verificationResendUntilMs = userInfo.verificationResendUntilMs
+  const [passwordResetPending, setPasswordResetPending] = useState(false)
+  const [passwordResetHint, setPasswordResetHint] = useState("")
+  const [passwordResetUntilMs, setPasswordResetUntilMs] = useState(null)
+  const [, tickPasswordResetCooldown] = useState(0)
 
   useEffect(() => {
     if (!verificationResendUntilMs || Date.now() >= verificationResendUntilMs) return
@@ -119,22 +122,23 @@ const Profile = () => {
     return () => window.clearInterval(id)
   }, [verificationResendUntilMs])
 
+  useEffect(() => {
+    if (!passwordResetUntilMs || Date.now() >= passwordResetUntilMs) return
+    const id = window.setInterval(
+      () => tickPasswordResetCooldown((n) => n + 1),
+      1000
+    )
+    return () => window.clearInterval(id)
+  }, [passwordResetUntilMs])
+
   const resendCooldownRemaining =
     verificationResendUntilMs && verificationResendUntilMs > Date.now()
       ? Math.ceil((verificationResendUntilMs - Date.now()) / 1000)
       : 0
-
-  const [pwdCurrent, setPwdCurrent] = useState("")
-  const [pwdNew, setPwdNew] = useState("")
-  const [pwdConfirm, setPwdConfirm] = useState("")
-  const [showPwdCurrent, setShowPwdCurrent] = useState(false)
-  const [showPwdNew, setShowPwdNew] = useState(false)
-  const [showPwdConfirm, setShowPwdConfirm] = useState(false)
-  const [pwdPending, setPwdPending] = useState(false)
-  const [pwdMessage, setPwdMessage] = useState({ type: "", text: "" })
-
-  const pwdNewValid = Boolean(pwdNew.match(/^[0-9A-Za-z]{8,}$/))
-  const pwdMatch = pwdNew === pwdConfirm && pwdConfirm.length > 0
+  const passwordResetCooldownRemaining =
+    passwordResetUntilMs && passwordResetUntilMs > Date.now()
+      ? Math.ceil((passwordResetUntilMs - Date.now()) / 1000)
+      : 0
 
   const avatarDisplayUrl = useAvatarObjectUrl(
     userInfo.accessToken,
@@ -283,52 +287,53 @@ const Profile = () => {
     }
   }
 
-  const submitChangePassword = async (e) => {
-    e.preventDefault()
-    setPwdMessage({ type: "", text: "" })
-    if (!pwdNewValid) {
-      setPwdMessage({ type: "err", text: "Не менее 8 символов, латиница и цифры." })
+  const requestPasswordReset = async () => {
+    const email = String(userInfo.userData?.email || "").trim()
+    if (!email) {
+      setPasswordResetHint("Email аккаунта не найден.")
       return
     }
-    if (!pwdMatch) {
-      setPwdMessage({ type: "err", text: "Пароли не совпадают." })
-      return
-    }
-    setPwdPending(true)
+    setPasswordResetHint("")
+    setPasswordResetPending(true)
     try {
-      const base = env.BACKEND_URL.replace(/\/$/, "")
-      const res = await fetch(`${base}${CHANGE_PASSWORD}`, {
+      const res = await fetch(`${env.BACKEND_URL}${FORGOT_PASSWORD_API}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           accept: "application/json",
-          ...bearerAuthHeaders(userInfo.accessToken),
         },
-        body: JSON.stringify({ current_password: pwdCurrent, new_password: pwdNew }),
+        body: JSON.stringify({ email }),
       })
       const data = await res.json().catch(() => ({}))
-      if (res.status === 401) {
-        setPwdMessage({ type: "err", text: "Сессия истекла." })
+      if (!res.ok) {
+        const d = data?.detail
+        setPasswordResetHint(
+          typeof d === "string"
+            ? d
+            : typeof data?.error === "string"
+            ? data.error
+            : "Ошибка сервера. Попробуйте позже."
+        )
         return
       }
-      if (res.status === 422) {
-        const d = data.detail
-        const msg = Array.isArray(d) && d[0]?.msg != null ? String(d[0].msg) : "Проверьте данные."
-        setPwdMessage({ type: "err", text: msg })
+      if (typeof data?.error === "string" && data.error) {
+        setPasswordResetHint(data.error)
+        const match = /через\s+(\d+)\s*с\.?$/i.exec(data.error)
+        if (match) {
+          setPasswordResetUntilMs(Date.now() + Number(match[1]) * 1000)
+        }
         return
       }
-      if (data.error) {
-        setPwdMessage({ type: "err", text: data.error })
-        return
-      }
-      setPwdCurrent("")
-      setPwdNew("")
-      setPwdConfirm("")
-      setPwdMessage({ type: "ok", text: "Пароль изменён" })
-    } catch (err) {
-      setPwdMessage({ type: "err", text: String(err?.message || err) })
+      setPasswordResetHint(
+        `Если аккаунт с адресом ${email} существует, письмо со ссылкой для сброса пароля уже отправлено.`
+      )
+      setPasswordResetUntilMs(
+        Date.now() + PASSWORD_RESET_COOLDOWN_DEFAULT_SEC * 1000
+      )
+    } catch {
+      setPasswordResetHint("Ошибка сети. Проверьте соединение и попробуйте снова.")
     } finally {
-      setPwdPending(false)
+      setPasswordResetPending(false)
     }
   }
 
@@ -937,104 +942,53 @@ const Profile = () => {
             title="Безопасность"
             eyebrow="Password"
           />
-          <form onSubmit={submitChangePassword} className="grid gap-4 sm:grid-cols-3">
-            <div>
-              <label htmlFor="pwd-cur" className="input-label">Текущий пароль</label>
-              <div className="relative">
-                <input
-                  id="pwd-cur"
-                  type={showPwdCurrent ? "text" : "password"}
-                  autoComplete="current-password"
-                  value={pwdCurrent}
-                  onChange={(e) => setPwdCurrent(e.target.value)}
-                  className="input-field pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPwdCurrent((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                  aria-label={showPwdCurrent ? "Скрыть пароль" : "Показать пароль"}
-                >
-                  {showPwdCurrent ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-            </div>
-            <div>
-              <label htmlFor="pwd-new" className="input-label">Новый пароль</label>
-              <div className="relative">
-                <input
-                  id="pwd-new"
-                  type={showPwdNew ? "text" : "password"}
-                  autoComplete="new-password"
-                  value={pwdNew}
-                  onChange={(e) => setPwdNew(e.target.value)}
-                  className="input-field pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPwdNew((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                  aria-label={showPwdNew ? "Скрыть пароль" : "Показать пароль"}
-                >
-                  {showPwdNew ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-              {pwdNew && !pwdNewValid && (
-                <p className="mt-1 text-xs text-amber-700">
-                  Мин. 8 символов, латиница и цифры
-                </p>
-              )}
-            </div>
-            <div>
-              <label htmlFor="pwd-conf" className="input-label">Подтверждение</label>
-              <div className="relative">
-                <input
-                  id="pwd-conf"
-                  type={showPwdConfirm ? "text" : "password"}
-                  autoComplete="new-password"
-                  value={pwdConfirm}
-                  onChange={(e) => setPwdConfirm(e.target.value)}
-                  className="input-field pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPwdConfirm((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                  aria-label={showPwdConfirm ? "Скрыть пароль" : "Показать пароль"}
-                >
-                  {showPwdConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-              {pwdConfirm && !pwdMatch && pwdNewValid && (
-                <p className="mt-1 text-xs text-red-600">Пароли не совпадают</p>
-              )}
-            </div>
-            {pwdMessage.text && (
+          <div className="space-y-4">
+            <p className="text-sm leading-6 text-slate-500">
+              Для смены пароля мы отправим ссылку на адрес{" "}
+              <span className="font-medium text-slate-700">
+                {userInfo.userData?.email || "вашего аккаунта"}
+              </span>
+              . По этой ссылке откроется отдельная страница сброса пароля.
+            </p>
+            {passwordResetHint && (
               <p
-                className={`sm:col-span-3 text-sm ${
-                  pwdMessage.type === "ok" ? "text-emerald-700" : "text-red-600"
+                className={`text-sm ${
+                  passwordResetHint.startsWith("Если аккаунт")
+                    ? "text-emerald-700"
+                    : "text-red-600"
                 }`}
               >
-                {pwdMessage.text}
+                {passwordResetHint}
               </p>
             )}
-            <div className="sm:col-span-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <Button
-                type="submit"
-                disabled={pwdPending || !pwdCurrent || !pwdNewValid || !pwdMatch}
+                type="button"
+                onClick={requestPasswordReset}
+                disabled={
+                  passwordResetPending ||
+                  passwordResetCooldownRemaining > 0 ||
+                  !userInfo.userData?.email
+                }
               >
-                {pwdPending ? (
+                {passwordResetPending ? (
                   <>
-                    <Loader2 size={16} className="animate-spin" /> Сохранение...
+                    <Loader2 size={16} className="animate-spin" /> Отправка...
                   </>
                 ) : (
                   <>
-                    <ClipboardCheck size={16} /> Обновить пароль
+                    <KeyRound size={16} /> Запросить смену пароля
                   </>
                 )}
               </Button>
+              {passwordResetCooldownRemaining > 0 && (
+                <span className="text-sm text-slate-500">
+                  Повторный запрос будет доступен через{" "}
+                  {passwordResetCooldownRemaining} с.
+                </span>
+              )}
             </div>
-          </form>
+          </div>
         </section>
       </div>
 

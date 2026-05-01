@@ -8,6 +8,8 @@ from email.utils import formataddr
 
 from src.config import settings
 
+_PASSWORD_RESET_SMTP_TIMEOUT_SEC = 15
+
 # Шаблоны лежат в корне приложения: app/templates/
 _TEMPLATE_FILE = (
     Path(__file__).resolve().parents[1] / "templates" / "verification_email.html"
@@ -87,11 +89,19 @@ async def send_password_reset_email(to_addr: str, reset_token: str) -> None:
         msg.add_alternative(html_body, subtype="html")
 
         if settings.SMTP_USE_SSL:
-            with smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT) as smtp:
+            with smtplib.SMTP_SSL(
+                settings.SMTP_HOST,
+                settings.SMTP_PORT,
+                timeout=_PASSWORD_RESET_SMTP_TIMEOUT_SEC,
+            ) as smtp:
                 smtp.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
                 smtp.send_message(msg)
         else:
-            with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as smtp:
+            with smtplib.SMTP(
+                settings.SMTP_HOST,
+                settings.SMTP_PORT,
+                timeout=_PASSWORD_RESET_SMTP_TIMEOUT_SEC,
+            ) as smtp:
                 smtp.ehlo()
                 if settings.SMTP_USE_TLS:
                     smtp.starttls()

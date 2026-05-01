@@ -41,9 +41,6 @@ async def signup(
     try:
         result = await Orm.register_user(
             session,
-            firstName=user_data.firstName,
-            lastName=user_data.lastName,
-            login=user_data.login,
             email=user_data.email,
             password=user_data.password,
         )
@@ -358,7 +355,7 @@ async def signin_user(
     try:
         result = await Orm.signin_user(
             session,
-            login=credentials.login,
+            email=credentials.email,
             password=credentials.password,
         )
 

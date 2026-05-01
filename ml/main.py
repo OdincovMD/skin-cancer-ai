@@ -330,7 +330,12 @@ app = FastAPI(lifespan=lifespan)
 
 @app.get("/health")
 async def health():
-    return {"status": "ok"}
+    from model_warmup import get_model_status
+
+    return {
+        "status": "ok",
+        "models": get_model_status(),
+    }
 
 
 async def _persist_upload(file: UploadFile) -> str:

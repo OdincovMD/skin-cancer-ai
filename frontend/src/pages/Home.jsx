@@ -61,6 +61,19 @@ const defaultDescriptionState = () => ({
   bucketedLabels: [],
 })
 
+const defaultStageState = () => ({
+  key: null,
+  title: null,
+  description: null,
+})
+
+const analysisSteps = [
+  { key: "preparing", label: "Подготовка" },
+  { key: "mask", label: "Маска" },
+  { key: "classification", label: "Анализ" },
+  { key: "finalizing", label: "Результат" },
+]
+
 const Home = () => {
   const userInfo = useSelector((state) => state.user)
   const resumeEffectGen = useRef(0)
@@ -76,6 +89,7 @@ const Home = () => {
     defaultClassificationResult
   )
   const [descriptionState, setDescriptionState] = useState(defaultDescriptionState)
+  const [analysisStage, setAnalysisStage] = useState(defaultStageState)
   const [isDragging, setIsDragging] = useState(false)
   const [uploadError, setUploadError] = useState(null)
 
@@ -98,6 +112,7 @@ const Home = () => {
         ? payload.bucketedLabels
         : [],
     })
+    setAnalysisStage(payload.stage ?? defaultStageState())
     if (payload.imageToken) {
       const base = env.BACKEND_URL.replace(/\/$/, "")
       setImageSrc(
@@ -110,6 +125,7 @@ const Home = () => {
     ) {
       setIsImageLoading(false)
       setActiveJobLabel(null)
+      setAnalysisStage(defaultStageState())
     }
   }
 
@@ -129,6 +145,7 @@ const Home = () => {
         if (!active) {
           clearPendingJob(uid)
           setDescriptionState(defaultDescriptionState())
+          setAnalysisStage(defaultStageState())
           return
         }
         savePendingJob(uid, active.job_id)
@@ -151,6 +168,7 @@ const Home = () => {
         if (!cancelled && resumeEffectGen.current === gen && !sawProgress) {
           setClassificationResult(defaultClassificationResult())
           setDescriptionState(defaultDescriptionState())
+          setAnalysisStage(defaultStageState())
         }
       } finally {
         if (!cancelled && resumeEffectGen.current === gen) {
@@ -190,6 +208,7 @@ const Home = () => {
     reader.readAsDataURL(processed)
     setClassificationResult(defaultClassificationResult())
     setDescriptionState(defaultDescriptionState())
+    setAnalysisStage(defaultStageState())
   }
 
   const handleFileChange = (e) => processFile(e.target.files?.[0])
@@ -204,6 +223,11 @@ const Home = () => {
     setUploadError(null)
     setIsImageLoading(true)
     setDescriptionState(defaultDescriptionState())
+    setAnalysisStage({
+      key: "preparing",
+      title: "Подготовка изображения",
+      description: "Загружаем файл и запускаем обработку.",
+    })
     handleUploadImage({
       id: userInfo.userData.id,
       fileData,
@@ -220,6 +244,7 @@ const Home = () => {
       .finally(() => {
         setIsImageLoading(false)
         setActiveJobLabel(null)
+        setAnalysisStage(defaultStageState())
       })
   }
 
@@ -227,6 +252,7 @@ const Home = () => {
     setUploadError(null)
     setClassificationResult(defaultClassificationResult())
     setDescriptionState(defaultDescriptionState())
+    setAnalysisStage(defaultStageState())
     setFileName(null)
     setImageSrc(null)
     setFileData(null)
@@ -483,13 +509,40 @@ const Home = () => {
         <div className="card-elevated flex flex-col items-center py-10 text-center">
           <Loader2 size={32} className="animate-spin text-med-500 mb-3" />
           <p className="font-medium text-gray-700">
-            Изображение обрабатывается...
+            {analysisStage.title || "Изображение обрабатывается..."}
           </p>
+          {analysisStage.description && (
+            <p className="mt-1.5 max-w-lg text-sm text-gray-500">
+              {analysisStage.description}
+            </p>
+          )}
           {activeJobLabel && (
             <p className="mt-1.5 text-sm text-gray-500 max-w-md break-words">
               {activeJobLabel}
             </p>
           )}
+          <div className="mt-5 flex flex-wrap justify-center gap-2">
+            {analysisSteps.map((step) => {
+              const isActive = step.key === analysisStage.key
+              const isPassed =
+                analysisSteps.findIndex((item) => item.key === analysisStage.key) >
+                analysisSteps.findIndex((item) => item.key === step.key)
+              return (
+                <span
+                  key={step.key}
+                  className={`rounded-full px-3 py-1 text-xs font-medium ${
+                    isActive
+                      ? "bg-med-100 text-med-800 ring-1 ring-med-200"
+                      : isPassed
+                        ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
+                        : "bg-gray-100 text-gray-500"
+                  }`}
+                >
+                  {step.label}
+                </span>
+              )
+            })}
+          </div>
           <p className="mt-3 text-xs text-gray-400">
             Обычно это занимает до 2 минут
           </p>

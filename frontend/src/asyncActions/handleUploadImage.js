@@ -23,6 +23,12 @@ function detailFromBody(body) {
   return JSON.stringify(d)
 }
 
+const emptyStage = () => ({
+  key: null,
+  title: null,
+  description: null,
+})
+
 async function parseResponseJson(response) {
   try {
     const text = await response.text()
@@ -48,6 +54,7 @@ export const handleUploadImage = async ({
     error: message,
     classification: emptyClassification(),
     imageToken: null,
+    stage: emptyStage(),
     descriptionStatus: null,
     description: null,
     descriptionError: null,
@@ -99,6 +106,7 @@ export const handleUploadImage = async ({
           error: null,
           classification: polled.classification,
           imageToken: polled.imageToken,
+          stage: polled.stage,
           descriptionStatus: polled.descriptionStatus,
           description: polled.description,
           descriptionError: polled.descriptionError,
@@ -112,6 +120,7 @@ export const handleUploadImage = async ({
             error: String(e?.message || e),
             classification: lastProgress.classification,
             imageToken: lastProgress.imageToken,
+            stage: lastProgress.stage,
             descriptionStatus: lastProgress.descriptionStatus,
             description: lastProgress.description,
             descriptionError: lastProgress.descriptionError,
@@ -127,6 +136,7 @@ export const handleUploadImage = async ({
       error: null,
       classification: data?.classification ?? data ?? emptyClassification(),
       imageToken: data?.image_token ?? null,
+      stage: emptyStage(),
       descriptionStatus: data?.description_status ?? null,
       description: data?.description ?? null,
       descriptionError: data?.description_error ?? null,

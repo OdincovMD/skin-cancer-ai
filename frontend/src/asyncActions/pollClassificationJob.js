@@ -22,6 +22,12 @@ const emptyClassification = () => ({
   final_class: null,
 })
 
+const emptyStage = () => ({
+  key: null,
+  title: null,
+  description: null,
+})
+
 const isDescriptionTerminal = (status) =>
   status == null || status === "completed" || status === "error"
 
@@ -36,6 +42,19 @@ function descriptionPayload(data) {
     bucketedLabels: Array.isArray(data?.bucketed_labels)
       ? data.bucketed_labels
       : [],
+  }
+}
+
+function stagePayload(data) {
+  const result = data?.result
+  if (result == null || typeof result !== "object" || Array.isArray(result)) {
+    return emptyStage()
+  }
+  return {
+    key: typeof result.stage === "string" ? result.stage : null,
+    title: typeof result.title === "string" ? result.title : null,
+    description:
+      typeof result.description === "string" ? result.description : null,
   }
 }
 
@@ -63,6 +82,15 @@ export async function pollClassificationJob({
     const data = await r.json()
     const imageToken = data.image_token ?? null
     const descriptionState = descriptionPayload(data)
+    const stageState = stagePayload(data)
+    if (data.status === "pending" || data.status === "processing") {
+      onUpdate?.({
+        classification: emptyClassification(),
+        imageToken,
+        stage: stageState,
+        ...descriptionState,
+      })
+    }
     if (data.status === "completed") {
       const res = data.result
       const classification =
@@ -72,6 +100,7 @@ export async function pollClassificationJob({
       const payload = {
         classification,
         imageToken,
+        stage: stageState,
         ...descriptionState,
       }
       onUpdate?.(payload)
@@ -90,6 +119,7 @@ export async function pollClassificationJob({
             detail: typeof d === "string" ? d : JSON.stringify(d),
           },
           imageToken: null,
+          stage: stageState,
           ...descriptionState,
         }
         onUpdate?.(payload)
@@ -98,6 +128,7 @@ export async function pollClassificationJob({
       const payload = {
         classification: { detail: "Ошибка классификации" },
         imageToken: null,
+        stage: stageState,
         ...descriptionState,
       }
       onUpdate?.(payload)

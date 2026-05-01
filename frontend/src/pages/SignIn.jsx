@@ -18,7 +18,7 @@ const BRAND_FEATURES = [
 ]
 
 const SignIn = () => {
-  const [formState, setFormState] = useState({ login: "", password: "" })
+  const [formState, setFormState] = useState({ email: "", password: "" })
   const [isRequestPending, setIsRequestPending] = useState(false)
   const [isPasswordVisible, setIsPasswordVisible] = useState(false)
 
@@ -52,7 +52,7 @@ const SignIn = () => {
       const result = await dispatch(
         onVerify({
           data: {
-            [mappingInfo.LOGIN]: formState.login,
+            [mappingInfo.EMAIL]: formState.email,
             [mappingInfo.PASSWORD]: formState.password,
             remember_me: userInfo.isRememberMeChecked,
           },
@@ -68,7 +68,7 @@ const SignIn = () => {
     }
   }
 
-  const canSubmit = formState.login && formState.password && !isRequestPending
+  const canSubmit = formState.email && formState.password && !isRequestPending
 
   return (
     <div className="flex md:h-[calc(100vh-3.5rem)] md:overflow-hidden items-center justify-center px-4 py-6 md:py-4">
@@ -113,18 +113,18 @@ const SignIn = () => {
 
             <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
               <div>
-                <label htmlFor="login" className="input-label">
-                  Логин или email
+                <label htmlFor="email" className="input-label">
+                  Email
                 </label>
                 <input
-                  id="login"
-                  type="text"
-                  autoComplete="username"
-                  placeholder="Логин или email"
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="ivanov@example.com"
                   className="input-field"
-                  value={formState.login}
+                  value={formState.email}
                   onChange={(e) =>
-                    setFormState({ ...formState, login: e.target.value })
+                    setFormState({ ...formState, email: e.target.value })
                   }
                 />
               </div>

@@ -39,8 +39,6 @@ const ResetPassword = () => {
   }, [token])
 
   const pwdLenOk = newPassword.length >= 8
-  const pwdCharsOk = /^[0-9A-Za-z]+$/.test(newPassword)
-  const isPasswordValid = pwdLenOk && pwdCharsOk
   const arePasswordsSame = newPassword === confirmPassword && confirmPassword.length > 0
 
   const canSubmit =
@@ -48,7 +46,7 @@ const ResetPassword = () => {
     token &&
     newPassword &&
     confirmPassword &&
-    isPasswordValid &&
+    pwdLenOk &&
     arePasswordsSame
 
   const handleSubmit = async (e) => {
@@ -154,7 +152,6 @@ const ResetPassword = () => {
                   {newPassword && (
                     <ul className="mt-2 space-y-1">
                       <PasswordHint ok={pwdLenOk} text="Не менее 8 символов" />
-                      <PasswordHint ok={pwdCharsOk} text="Только латинские буквы и цифры" />
                     </ul>
                   )}
                 </div>

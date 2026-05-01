@@ -37,9 +37,6 @@ const PasswordHint = ({ ok, text }) => (
 
 const SignUp = () => {
   const defaultFormState = {
-    [mappingInfo.FIRST_NAME]: "",
-    [mappingInfo.LAST_NAME]: "",
-    [mappingInfo.LOGIN]: "",
     [mappingInfo.EMAIL]: "",
     [mappingInfo.PASSWORD]: "",
     [mappingInfo.REP_PASSWORD]: "",
@@ -73,8 +70,6 @@ const SignUp = () => {
   }, [formState])
 
   const pwdLenOk = formState.password.length >= 8
-  const pwdCharsOk = /^[0-9A-Za-z]+$/.test(formState.password)
-  const isPasswordValid = pwdLenOk && pwdCharsOk
   const arePasswordsSame =
     formState.password === formState.repPassword &&
     formState.repPassword.length > 0
@@ -86,10 +81,7 @@ const SignUp = () => {
       const outcome = await dispatch(
         onVerify({
           data: {
-            [mappingInfo.FIRST_NAME]: formState.firstName,
-            [mappingInfo.LAST_NAME]: formState.lastName,
             [mappingInfo.EMAIL]: formState.email,
-            [mappingInfo.LOGIN]: formState.login,
             [mappingInfo.PASSWORD]: formState.password,
           },
           endpoint: SIGN_UP,
@@ -106,16 +98,13 @@ const SignUp = () => {
   }
 
   const allFieldsFilled =
-    formState.firstName &&
-    formState.lastName &&
-    formState.login &&
     formState.email &&
     formState.password
 
   const canSubmit =
     !isRequestPending &&
     allFieldsFilled &&
-    isPasswordValid &&
+    pwdLenOk &&
     arePasswordsSame
 
   const set = (field) => (e) =>
@@ -123,11 +112,11 @@ const SignUp = () => {
 
   return (
     <div className="flex md:h-[calc(100vh-3.5rem)] md:overflow-hidden items-center justify-center px-4 py-6 md:py-4">
-      <div className="w-full max-w-4xl md:max-h-full md:overflow-hidden rounded-2xl shadow-xl ring-1 ring-gray-900/[0.07]">
-        <div className="grid lg:grid-cols-[260px_1fr]">
+      <div className="w-full max-w-3xl md:max-h-full md:overflow-hidden rounded-2xl shadow-xl ring-1 ring-gray-900/[0.07]">
+        <div className="grid lg:grid-cols-[288px_1fr]">
 
           {/* ── Brand panel (desktop only) ── */}
-          <div className="relative hidden flex-col justify-between overflow-hidden bg-gradient-to-br from-med-900 to-med-600 px-8 py-8 text-white lg:flex">
+          <div className="relative hidden flex-col justify-between overflow-hidden bg-gradient-to-br from-med-900 to-med-600 px-8 py-10 text-white lg:flex">
             <div className="absolute -right-12 -top-12 h-44 w-44 rounded-full bg-white/[0.06]" />
             <div className="absolute -bottom-16 -left-8 h-52 w-52 rounded-full bg-white/[0.06]" />
             <div className="absolute bottom-8 right-6 opacity-[0.06]">
@@ -142,13 +131,13 @@ const SignUp = () => {
                 Skin Cancer AI
               </p>
               <p className="mt-2 text-sm leading-relaxed text-white/65">
-                Получите доступ к профессиональному дерматоскопическому анализатору.
+                Быстрый старт по email с дальнейшей настройкой профиля внутри кабинета.
               </p>
             </div>
           </div>
 
           {/* ── Form panel ── */}
-          <div className="bg-white px-6 py-6 sm:px-8">
+          <div className="bg-white px-8 py-10">
             {/* Mobile branding */}
             <div className="mb-6 flex items-center gap-3 lg:hidden">
               <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-med-600 text-white">
@@ -159,154 +148,86 @@ const SignUp = () => {
 
             <h1 className="text-2xl font-bold text-gray-900">Создание аккаунта</h1>
             <p className="mt-1 text-sm text-gray-500">
-              Заполните данные для регистрации в системе
+              Для регистрации нужны только email и пароль
             </p>
 
-            <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
-
-              {/* Personal data */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-400">
-                    Личные данные
-                  </span>
-                  <div className="h-px flex-1 bg-gray-100" />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label htmlFor="firstName" className="input-label">
-                      Имя
-                    </label>
-                    <input
-                      id="firstName"
-                      type="text"
-                      autoComplete="given-name"
-                      placeholder="Иван"
-                      required
-                      className="input-field"
-                      value={formState.firstName}
-                      onChange={set("firstName")}
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="lastName" className="input-label">
-                      Фамилия
-                    </label>
-                    <input
-                      id="lastName"
-                      type="text"
-                      autoComplete="family-name"
-                      placeholder="Иванов"
-                      required
-                      className="input-field"
-                      value={formState.lastName}
-                      onChange={set("lastName")}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label htmlFor="email" className="input-label">
-                    Электронная почта
-                  </label>
-                  <input
-                    id="email"
-                    type="email"
-                    autoComplete="email"
-                    placeholder="ivanov@example.com"
-                    required
-                    className="input-field"
-                    value={formState.email}
-                    onChange={set("email")}
-                  />
-                </div>
+            <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
+              <div>
+                <label htmlFor="email" className="input-label">
+                  Email
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="ivanov@example.com"
+                  required
+                  className="input-field"
+                  value={formState.email}
+                  onChange={set("email")}
+                />
+                <p className="mt-2 text-sm leading-relaxed text-gray-500">
+                  Имя и фамилию можно будет добавить позже в личном кабинете.
+                </p>
               </div>
 
-              {/* Account data */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-400">
-                    Данные аккаунта
-                  </span>
-                  <div className="h-px flex-1 bg-gray-100" />
-                </div>
-
-                <div>
-                  <label htmlFor="login" className="input-label">
-                    Логин
-                  </label>
+              <div>
+                <label htmlFor="reg-password" className="input-label">
+                  Пароль
+                </label>
+                <div className="relative">
                   <input
-                    id="login"
-                    type="text"
-                    autoComplete="username"
-                    placeholder="ivanov_doctor"
-                    required
-                    className="input-field"
-                    value={formState.login}
-                    onChange={set("login")}
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="reg-password" className="input-label">
-                    Пароль
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="reg-password"
-                      type={isPasswordVisible ? "text" : "password"}
-                      autoComplete="new-password"
-                      placeholder="Минимум 8 символов"
-                      required
-                      className="input-field pr-10"
-                      value={formState.password}
-                      onChange={set("password")}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setIsPasswordVisible((v) => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                      aria-label={isPasswordVisible ? "Скрыть пароль" : "Показать пароль"}
-                    >
-                      {isPasswordVisible ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
-
-                  {formState.password && (
-                    <ul className="mt-2 space-y-1">
-                      <PasswordHint ok={pwdLenOk} text="Не менее 8 символов" />
-                      <PasswordHint ok={pwdCharsOk} text="Только латинские буквы и цифры" />
-                    </ul>
-                  )}
-                </div>
-
-                <div>
-                  <label htmlFor="reg-password-confirm" className="input-label">
-                    Подтверждение пароля
-                  </label>
-                  <input
-                    id="reg-password-confirm"
-                    type="password"
+                    id="reg-password"
+                    type={isPasswordVisible ? "text" : "password"}
                     autoComplete="new-password"
-                    placeholder="Повторите пароль"
-                    className="input-field"
-                    value={formState.repPassword}
-                    onChange={set("repPassword")}
+                    placeholder="Минимум 8 символов"
+                    required
+                    className="input-field pr-10"
+                    value={formState.password}
+                    onChange={set("password")}
                   />
-                  {formState.repPassword && !arePasswordsSame && (
-                    <p className="mt-1.5 flex items-center gap-1.5 text-xs text-red-600">
-                      <XCircle size={14} className="flex-shrink-0" />
-                      Пароли не совпадают
-                    </p>
-                  )}
-                  {arePasswordsSame && (
-                    <p className="mt-1.5 flex items-center gap-1.5 text-xs text-green-600">
-                      <CheckCircle2 size={14} className="flex-shrink-0" />
-                      Пароли совпадают
-                    </p>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => setIsPasswordVisible((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    aria-label={isPasswordVisible ? "Скрыть пароль" : "Показать пароль"}
+                  >
+                    {isPasswordVisible ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
                 </div>
+
+                {formState.password && (
+                  <ul className="mt-2 space-y-1">
+                    <PasswordHint ok={pwdLenOk} text="Не менее 8 символов" />
+                  </ul>
+                )}
+              </div>
+
+              <div>
+                <label htmlFor="reg-password-confirm" className="input-label">
+                  Подтверждение пароля
+                </label>
+                <input
+                  id="reg-password-confirm"
+                  type="password"
+                  autoComplete="new-password"
+                  placeholder="Повторите пароль"
+                  className="input-field"
+                  value={formState.repPassword}
+                  onChange={set("repPassword")}
+                />
+                {formState.repPassword && !arePasswordsSame && (
+                  <p className="mt-1.5 flex items-center gap-1.5 text-xs text-red-600">
+                    <XCircle size={14} className="flex-shrink-0" />
+                    Пароли не совпадают
+                  </p>
+                )}
+                {arePasswordsSame && (
+                  <p className="mt-1.5 flex items-center gap-1.5 text-xs text-green-600">
+                    <CheckCircle2 size={14} className="flex-shrink-0" />
+                    Пароли совпадают
+                  </p>
+                )}
               </div>
 
               {userInfo.error && (
