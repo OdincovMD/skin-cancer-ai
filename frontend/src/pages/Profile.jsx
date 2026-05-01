@@ -552,8 +552,21 @@ const Profile = () => {
   }
 
   const formatDate = (raw) => {
-    const m = /^(?<date>.*)T(?<time>.*)\..*\+/.exec(raw)
-    return m ? `${m.groups.date} ${m.groups.time}` : raw
+    if (!raw) return raw
+    const parsed = new Date(raw)
+    if (Number.isNaN(parsed.getTime())) return raw
+
+    const utcPlusThree = new Date(parsed.getTime() + 3 * 60 * 60 * 1000)
+    const pad = (value) => String(value).padStart(2, "0")
+
+    return (
+      `${utcPlusThree.getUTCFullYear()}-` +
+      `${pad(utcPlusThree.getUTCMonth() + 1)}-` +
+      `${pad(utcPlusThree.getUTCDate())} ` +
+      `${pad(utcPlusThree.getUTCHours())}:` +
+      `${pad(utcPlusThree.getUTCMinutes())}:` +
+      `${pad(utcPlusThree.getUTCSeconds())}`
+    )
   }
 
   const apiCreatedAt = apiTokStatus?.created_at
@@ -563,10 +576,13 @@ const Profile = () => {
   const extractFileName = (raw) => {
     if (!raw) return null
     const baseName = raw.split("/").pop()
-    const hexMatch = /^[0-9a-fA-F]{16}_(?<filename>.*)$/.exec(baseName)
-    if (hexMatch) return hexMatch.groups.filename
-    const oldMatch = /^(?:.*?_){3}(?<filename>.*)$/.exec(baseName)
-    return oldMatch?.groups?.filename ?? baseName
+    const withoutHex = /^[0-9a-fA-F]{16}_(?<filename>.*)$/.exec(baseName)?.groups
+      ?.filename ?? baseName
+    const stampedMatch =
+      /^(?:\d{1,2}-){2}\d{4}_(?:\d{1,2}-){2}\d{1,2}_\d+_(?<filename>.*)$/.exec(
+        withoutHex
+      )
+    return stampedMatch?.groups?.filename ?? withoutHex
   }
 
   return (

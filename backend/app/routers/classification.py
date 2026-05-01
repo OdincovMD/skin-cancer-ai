@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth.deps import require_verified_email_user_id
@@ -17,10 +17,11 @@ router = APIRouter(tags=["classification"])
 @router.post("/uploadfile")
 async def handle_upload(
     file: UploadFile = File(),
+    features_only: bool = Form(False),
     session: AsyncSession = Depends(get_db),
     user_id: int = Depends(require_verified_email_user_id),
 ):
-    return await perform_upload(session, user_id, file)
+    return await perform_upload(session, user_id, file, features_only=features_only)
 
 
 @router.get("/classification-jobs/active")

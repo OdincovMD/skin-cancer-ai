@@ -72,6 +72,30 @@ def _ml_service_error_message(exc: httpx.HTTPError) -> str:
     return "Сервис обработки изображения временно недоступен. Попробуйте позже."
 
 
+def _description_service_error_message(exc: Exception) -> str:
+    message = str(exc).lower()
+    if any(
+        token in message
+        for token in [
+            "name or service not known",
+            "temporary failure in name resolution",
+            "nodename nor servname provided",
+            "failed to resolve",
+            "getaddrinfo",
+            "connection refused",
+            "all connection attempts failed",
+            "connecterror",
+        ]
+    ):
+        return "Сервис клинического описания временно недоступен. Попробуйте позже."
+    if "timeout" in message:
+        return (
+            "Сервис клинического описания не ответил вовремя. "
+            "Попробуйте повторить попытку позже."
+        )
+    return "Не удалось получить клиническое описание. Попробуйте позже."
+
+
 async def _request_mask(
     client: httpx.AsyncClient,
     file_name: str,
@@ -208,18 +232,7 @@ async def _run_classification_async(
                         )
                         return
 
-                    if features_only and not description_enabled():
-                        await Orm.update_classification_status(
-                            session,
-                            classification_id,
-                            "error",
-                            result=_error_payload(
-                                "Description service is not configured."
-                            ),
-                        )
-                        return
-
-                    if description_enabled():
+                    if description_enabled() and not features_only:
                         await Orm.upsert_description_job(
                             session,
                             classification_result_id=classification_id,
@@ -249,44 +262,26 @@ async def _run_classification_async(
                                 callback_sent=False,
                             )
                             description_registered = True
-                            if features_only:
-                                return
                         except httpx.HTTPStatusError as exc:
                             await Orm.upsert_description_job(
                                 session,
                                 classification_result_id=classification_id,
                                 service_job_id=description_job_id,
                                 status="error",
-                                error=f"Description service register failed: {_http_error_detail(exc)}",
+                                error=_description_service_error_message(exc),
                                 features_only=features_only,
                                 callback_sent=False,
                             )
-                            if features_only:
-                                await Orm.update_classification_status(
-                                    session,
-                                    classification_id,
-                                    "error",
-                                    result=_error_payload(_http_error_detail(exc)),
-                                )
-                                return
                         except Exception as exc:
                             await Orm.upsert_description_job(
                                 session,
                                 classification_result_id=classification_id,
                                 service_job_id=description_job_id,
                                 status="error",
-                                error=f"Description service register failed: {exc}",
+                                error=_description_service_error_message(exc),
                                 features_only=features_only,
                                 callback_sent=False,
                             )
-                            if features_only:
-                                await Orm.update_classification_status(
-                                    session,
-                                    classification_id,
-                                    "error",
-                                    result=_error_payload(str(exc)),
-                                )
-                                return
 
                     await Orm.update_classification_status(
                         session,
@@ -362,7 +357,7 @@ async def _run_classification_async(
                                 classification_result_id=classification_id,
                                 service_job_id=description_job_id,
                                 status="error",
-                                error=f"Description classification submit failed: {_http_error_detail(exc)}",
+                                error=_description_service_error_message(exc),
                                 callback_sent=False,
                             )
                         except Exception as exc:
@@ -371,7 +366,7 @@ async def _run_classification_async(
                                 classification_result_id=classification_id,
                                 service_job_id=description_job_id,
                                 status="error",
-                                error=f"Description classification submit failed: {exc}",
+                                error=_description_service_error_message(exc),
                                 callback_sent=False,
                             )
             except Exception as exc:

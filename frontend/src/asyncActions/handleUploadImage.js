@@ -43,10 +43,12 @@ export const handleUploadImage = async ({
   id,
   fileData,
   accessToken,
+  featuresOnly = false,
   onProgress,
 }) => {
   const formData = new FormData()
   formData.append("file", fileData)
+  formData.append("features_only", featuresOnly ? "true" : "false")
 
   const base = env.BACKEND_URL.replace(/\/$/, "")
   let lastProgress = null

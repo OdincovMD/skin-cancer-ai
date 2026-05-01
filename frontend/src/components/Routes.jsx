@@ -6,6 +6,7 @@ import {
   API_DOCS,
   FORGOT_PASSWORD,
   HOME,
+  WORKSPACE,
   RESET_PASSWORD,
   SIGN_IN,
   PROFILE,
@@ -13,6 +14,7 @@ import {
 } from "../imports/ENDPOINTS.js"
 
 import Home from "../pages/Home.jsx"
+import Workspace from "../pages/Workspace.jsx"
 import SignIn from "../pages/SignIn.jsx"
 import SignUp from "../pages/SignUp.jsx"
 import About from "../pages/About.jsx"
@@ -29,6 +31,7 @@ const AppRoutes = () => {
   return (
       <Routes>
         <Route index element={<Home />}/>
+        <Route path={WORKSPACE} element={<Workspace />}/>
         <Route path="/signin" element={isAuthed ?  <Navigate to={PROFILE} /> : <SignIn />} />
         <Route path="/signup" element={isAuthed ?  <Navigate to={PROFILE} /> : <SignUp />} />
         <Route path="/about" element={<About />} />

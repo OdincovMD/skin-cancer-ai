@@ -1,4 +1,5 @@
 export const HOME = "/"
+export const WORKSPACE = "/workspace"
 export const SIGN_IN = "/signin"
 export const SIGN_UP = "/signup"
 export const VERIFY_EMAIL = "/verify-email"

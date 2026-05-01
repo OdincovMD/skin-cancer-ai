@@ -56,6 +56,10 @@
     @apply rounded-xl bg-white p-6 shadow-md ring-1 ring-gray-900/5;
   }
 
+  .hover-lift {
+    @apply transition-transform duration-200 hover:-translate-y-0.5;
+  }
+
   .text-link {
     @apply font-medium text-med-600 transition-colors hover:text-med-800
            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-med-500

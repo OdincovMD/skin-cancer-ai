@@ -9,19 +9,21 @@ import {
   LogIn,
   LogOut,
   Scan,
+  ScanSearch,
   ShieldCheck,
   UserPlus,
   UserRoundCog,
   X,
 } from "lucide-react"
 
-import { API_DOCS, HOME, SIGN_IN, SIGN_UP, ABOUT, PROFILE } from "../imports/ENDPOINTS"
+import { API_DOCS, HOME, SIGN_IN, SIGN_UP, ABOUT, PROFILE, WORKSPACE } from "../imports/ENDPOINTS"
 import { useAvatarObjectUrl } from "../hooks/useAvatarObjectUrl"
 import { notifyOtherTabsSessionCleared } from "../imports/sessionSync"
 import { defaultState, noError } from "../store/userReducer"
 
 const iconMap = {
   "Главная": Home,
+  "Рабочая область": ScanSearch,
   "Личный кабинет": UserRoundCog,
   "Войти": LogIn,
   "Регистрация": UserPlus,
@@ -31,7 +33,7 @@ const iconMap = {
 }
 
 const navigationGroups = {
-  main: "Рабочая область",
+  main: "Сервис",
   account: "Аккаунт",
 }
 
@@ -57,6 +59,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
   const menuItems = [
     { text: "Главная", path: HOME, group: "main" },
+    { text: "Рабочая область", path: WORKSPACE, group: "main" },
     { text: "Документация API", path: API_DOCS, group: "main", badge: "v1" },
     ...(isAuthed
       ? [
