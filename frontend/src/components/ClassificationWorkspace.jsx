@@ -119,16 +119,29 @@ const ClassificationWorkspace = () => {
     setClassificationResult(
       payload.classification ?? defaultClassificationResult()
     )
-    setDescriptionState({
-      status: payload.descriptionStatus ?? null,
-      text: payload.description ?? null,
-      error: payload.descriptionError ?? null,
-      importantLabels: Array.isArray(payload.importantLabels)
-        ? payload.importantLabels
-        : [],
-      bucketedLabels: Array.isArray(payload.bucketedLabels)
-        ? payload.bucketedLabels
-        : [],
+    setDescriptionState((prev) => {
+      const nextText =
+        typeof payload.description === "string" && payload.description.length > 0
+          ? payload.description
+          : prev.text
+      const nextImportantLabels = Array.isArray(payload.importantLabels)
+        ? payload.importantLabels.length > 0
+          ? payload.importantLabels
+          : prev.importantLabels
+        : prev.importantLabels
+      const nextBucketedLabels = Array.isArray(payload.bucketedLabels)
+        ? payload.bucketedLabels.length > 0
+          ? payload.bucketedLabels
+          : prev.bucketedLabels
+        : prev.bucketedLabels
+
+      return {
+        status: payload.descriptionStatus ?? prev.status ?? null,
+        text: nextText,
+        error: payload.descriptionError ?? prev.error ?? null,
+        importantLabels: nextImportantLabels,
+        bucketedLabels: nextBucketedLabels,
+      }
     })
     setAnalysisStage(payload.stage ?? defaultStageState())
     if (payload.imageToken) {
@@ -581,6 +594,7 @@ const ClassificationWorkspace = () => {
           {(descriptionState.status ||
             descriptionState.text ||
             descriptionState.error ||
+            descriptionState.importantLabels.length > 0 ||
             descriptionState.bucketedLabels.length > 0) && (
             <div className="space-y-3 rounded-xl border border-gray-200 bg-gray-50/70 p-4">
               <div className="flex items-center gap-2">

@@ -96,6 +96,35 @@ def _description_service_error_message(exc: Exception) -> str:
     return "Не удалось получить клиническое описание. Попробуйте позже."
 
 
+def _description_response_fields(payload: object) -> dict:
+    if not isinstance(payload, dict):
+        return {}
+
+    fields = {"description_result": payload}
+
+    description = payload.get("description")
+    if isinstance(description, str):
+        fields["description"] = description
+
+    important_labels = payload.get("important_labels")
+    if isinstance(important_labels, list):
+        fields["important_labels"] = important_labels
+
+    bucketed_labels = payload.get("bucketed_labels")
+    if isinstance(bucketed_labels, list):
+        fields["bucketed_labels"] = bucketed_labels
+
+    error = payload.get("error")
+    if isinstance(error, str) and error.strip():
+        fields["error"] = error
+
+    features_only = payload.get("features_only")
+    if isinstance(features_only, bool):
+        fields["features_only"] = features_only
+
+    return fields
+
+
 async def _request_mask(
     client: httpx.AsyncClient,
     file_name: str,
@@ -257,9 +286,9 @@ async def _run_classification_async(
                                 classification_result_id=classification_id,
                                 service_job_id=description_job_id,
                                 status=str(description_response.get("status") or "received"),
-                                description_result=description_response,
-                                features_only=features_only,
                                 callback_sent=False,
+                                **_description_response_fields(description_response),
+                                features_only=features_only,
                             )
                             description_registered = True
                         except httpx.HTTPStatusError as exc:
@@ -349,6 +378,7 @@ async def _run_classification_async(
                                 status=str(
                                     description_response.get("status") or "classification_ready"
                                 ),
+                                **_description_response_fields(description_response),
                                 callback_sent=False,
                             )
                         except httpx.HTTPStatusError as exc:
