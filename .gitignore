@@ -6,11 +6,12 @@ ml/model_weights.pth
 **/__pycache__/**
 .cursor/
 ml/runs/
-node_modules
+node_modules/
+frontend/node_modules/
 log
 uploads
 Full_tree.png
 .env
 start.sh
 .gitnexus
-frontend/dist/assets/
+frontend/dist/

@@ -63,17 +63,23 @@ flowchart LR
    cp .env.example .env
    ```
 
-   Минимум: `DB_PASS`, `MINIO_USER`, `MINIO_PASSWORD`, `JWT_SECRET`, `IMAGE_ACCESS_SIGNING_SECRET`. Полный перечень переменных — в [docs/DEPLOY.md](docs/DEPLOY.md).
+   Для полного пользовательского сценария с регистрацией, подтверждением email и сбросом пароля также обязательно настройте SMTP (`SMTP_HOST`, `SMTP_USER`, `SMTP_PASSWORD`, при необходимости `MAIL_FROM`). Полный перечень переменных — в [docs/DEPLOY.md](docs/DEPLOY.md).
 
-2. Запустите стек:
+2. Создайте общую Docker-сеть, если её ещё нет:
+
+   ```bash
+   docker network create skin-ai-network
+   ```
+
+3. Запустите стек:
 
    ```bash
    docker compose up --build -d
    ```
 
-3. Откройте в браузере `http://localhost:90`.
+4. Откройте в браузере `http://localhost:90`.
 
-4. Проверьте доступность:
+5. Проверьте доступность:
 
    ```bash
    curl http://localhost:90/backend/health

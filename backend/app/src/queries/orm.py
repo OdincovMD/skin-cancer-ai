@@ -471,7 +471,6 @@ class Orm:
             user = User(
                 lastName=None,
                 firstName=None,
-                login=email,
                 email=email,
                 password=hashed_password,
                 email_verified=False,
