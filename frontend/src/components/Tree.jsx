@@ -1,11 +1,26 @@
-import React, { useMemo, useState } from "react"
+import React, { useEffect, useMemo, useState } from "react"
 import Tree from "react-d3-tree"
-import { GitBranch } from "lucide-react"
+import { GitBranch, Minus, Plus, RotateCcw } from "lucide-react"
 
 import { classificationTree } from "../imports/TREE"
 import { convertToD3Tree, getValues } from "../imports/HELPERS"
 
 const LABEL_WRAP = 20
+const ZOOM_STEP = 0.12
+const SCALE_EXTENT = { min: 0.3, max: 1.35 }
+
+function clampZoom(value) {
+  return Math.min(SCALE_EXTENT.max, Math.max(SCALE_EXTENT.min, value))
+}
+
+function isSameViewport(left, right) {
+  if (!left || !right) return false
+  return (
+    Math.abs(left.zoom - right.zoom) < 0.001 &&
+    Math.abs(left.translate.x - right.translate.x) < 0.5 &&
+    Math.abs(left.translate.y - right.translate.y) < 0.5
+  )
+}
 
 function wrapLabel(label) {
   const text = String(label || "").trim()
@@ -33,7 +48,6 @@ const renderNode = ({ nodeDatum, toggleNode }) => {
   const state = nodeDatum.attributes?.state || "branch"
   const isFinal = Boolean(nodeDatum.attributes?.final)
   const lines = wrapLabel(nodeDatum.name)
-  const isHighlighted = state === "active" || state === "final"
   const width = isFinal ? 252 : state === "active" ? 236 : 214
   const lineHeight = 17
   const height = Math.max(58, 28 + lines.length * lineHeight)
@@ -43,7 +57,7 @@ const renderNode = ({ nodeDatum, toggleNode }) => {
       ? {
           fill: "#f3fbff",
           stroke: "#0891b2",
-          text: "#475569",
+          text: "#5b6b7f",
           shadow: "rgba(8, 145, 178, 0.12)",
           accent: "#67e8f9",
         }
@@ -51,7 +65,7 @@ const renderNode = ({ nodeDatum, toggleNode }) => {
         ? {
             fill: "#f0fdfa",
             stroke: "#14b8a6",
-            text: "#475569",
+            text: "#6b7a8c",
             shadow: "rgba(20, 184, 166, 0.1)",
             accent: "#2dd4bf",
           }
@@ -98,7 +112,8 @@ const renderNode = ({ nodeDatum, toggleNode }) => {
         textAnchor="middle"
         fill={palette.text}
         fontSize="13.2"
-        fontWeight={500}
+        fontWeight={state === "branch" ? 430 : 340}
+        letterSpacing="-0.01em"
       >
         {lines.map((line, index) => (
           <tspan
@@ -129,10 +144,21 @@ const TreeComponent = ({
   translate,
 }) => {
   const [showBranches, setShowBranches] = useState(true)
+  const [viewport, setViewport] = useState(() => ({
+    zoom: clampZoom(typeof zoom === "number" ? zoom : 0.6),
+    translate: translate ?? { x: 0, y: 0 },
+  }))
   const startingPoint = "Начало"
   const values = useMemo(
     () => [startingPoint, ...getValues(classificationResult)],
     [classificationResult]
+  )
+  const initialViewport = useMemo(
+    () => ({
+      zoom: clampZoom(typeof zoom === "number" ? zoom : 0.6),
+      translate: translate ?? { x: 0, y: 0 },
+    }),
+    [translate?.x, translate?.y, zoom]
   )
 
   const routeLabels = useMemo(() => values.slice(1), [values])
@@ -151,6 +177,23 @@ const TreeComponent = ({
 
   const finalLabel =
     routeLabels.length > 0 ? routeLabels[routeLabels.length - 1] : null
+
+  useEffect(() => {
+    setViewport((current) =>
+      isSameViewport(current, initialViewport) ? current : initialViewport
+    )
+  }, [initialViewport])
+
+  const changeZoom = (delta) => {
+    setViewport((current) => ({
+      ...current,
+      zoom: clampZoom(current.zoom + delta),
+    }))
+  }
+
+  const resetViewport = () => {
+    setViewport(initialViewport)
+  }
 
   return (
     <div
@@ -180,28 +223,63 @@ const TreeComponent = ({
             </>
           )}
         </div>
-        <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-slate-500">
-          <button
-            type="button"
-            onClick={() => setShowBranches((current) => !current)}
-            className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 font-medium text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50"
-          >
-            {showBranches ? "Показать только основной путь" : "Показать все ветки"}
-          </button>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-teal-500" />
-            активный путь
-          </span>
-          {showBranches && (
+        <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
+          <div className="flex flex-wrap gap-2 text-[11px] text-slate-500">
+            <button
+              type="button"
+              onClick={() => setShowBranches((current) => !current)}
+              className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 font-medium text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50"
+            >
+              {showBranches ? "Показать только основной путь" : "Показать все ветки"}
+            </button>
             <span className="inline-flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
-              соседние ветки
+              <span className="h-2.5 w-2.5 rounded-full bg-teal-500" />
+              активный путь
             </span>
-          )}
-          <span className="inline-flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-cyan-500" />
-            итоговый узел
-          </span>
+            {showBranches && (
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
+                соседние ветки
+              </span>
+            )}
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-cyan-500" />
+              итоговый узел
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600">
+              Масштаб {Math.round(viewport.zoom * 100)}%
+            </span>
+            <div className="inline-flex items-center rounded-full border border-slate-200 bg-white p-1 shadow-sm">
+              <button
+                type="button"
+                onClick={() => changeZoom(ZOOM_STEP)}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-slate-100"
+                aria-label="Увеличить дерево"
+              >
+                <Plus size={15} />
+              </button>
+              <button
+                type="button"
+                onClick={() => changeZoom(-ZOOM_STEP)}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-slate-100"
+                aria-label="Уменьшить дерево"
+              >
+                <Minus size={15} />
+              </button>
+              <button
+                type="button"
+                onClick={resetViewport}
+                className="inline-flex h-8 items-center justify-center rounded-full px-2.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100"
+                aria-label="Сбросить масштаб и центрировать дерево"
+              >
+                <RotateCcw size={14} className="mr-1" />
+                Сброс
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -231,11 +309,23 @@ const TreeComponent = ({
         </style>
         <Tree
           data={treeData}
-          zoom={zoom}
-          translate={translate}
+          zoom={viewport.zoom}
+          translate={viewport.translate}
           orientation="horizontal"
           nodeSize={nodeSize}
           separation={{ siblings: 1.55, nonSiblings: 1.9 }}
+          scaleExtent={SCALE_EXTENT}
+          onUpdate={(nextViewport) => {
+            const normalizedViewport = {
+              zoom: clampZoom(nextViewport.zoom),
+              translate: nextViewport.translate,
+            }
+            setViewport((current) =>
+              isSameViewport(current, normalizedViewport)
+                ? current
+                : normalizedViewport
+            )
+          }}
           renderCustomNodeElement={renderNode}
           pathClassFunc={pathClassFunc}
         />

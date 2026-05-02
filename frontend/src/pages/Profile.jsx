@@ -700,6 +700,127 @@ const Profile = () => {
         </div>
       </section>
 
+      <div className={`grid gap-6 ${
+        hasLocalPassword
+          ? "lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]"
+          : "lg:grid-cols-1"
+      }`}>
+        <section className={`rounded-xl border border-slate-200 bg-white p-6 shadow-sm ${
+          hasLocalPassword ? "" : "max-w-none"
+        }`}>
+          <SectionHeader
+            icon={UserRoundCog}
+            title="Личные данные"
+            eyebrow="Account"
+          />
+          <form onSubmit={submitProfileNames} className="space-y-4">
+            <div>
+              <label htmlFor="prof-fn" className="input-label">Имя</label>
+              <input
+                id="prof-fn"
+                type="text"
+                autoComplete="given-name"
+                value={editFirstName}
+                onChange={(e) => setEditFirstName(e.target.value)}
+                maxLength={100}
+                className="input-field"
+              />
+            </div>
+            <div>
+              <label htmlFor="prof-ln" className="input-label">Фамилия</label>
+              <input
+                id="prof-ln"
+                type="text"
+                autoComplete="family-name"
+                value={editLastName}
+                onChange={(e) => setEditLastName(e.target.value)}
+                maxLength={100}
+                className="input-field"
+              />
+            </div>
+            {profileMessage.text && (
+              <p
+                className={`text-sm ${
+                  profileMessage.type === "ok"
+                    ? "text-emerald-700"
+                    : "text-red-600"
+                }`}
+              >
+                {profileMessage.text}
+              </p>
+            )}
+            <Button type="submit" disabled={profilePending}>
+              {profilePending ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" /> Сохранение...
+                </>
+              ) : (
+                <>
+                  <Save size={16} /> Сохранить изменения
+                </>
+              )}
+            </Button>
+          </form>
+        </section>
+
+        {hasLocalPassword && (
+          <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <SectionHeader
+              icon={Lock}
+              title="Безопасность"
+              eyebrow="Password"
+            />
+            <div className="space-y-4">
+              <p className="text-sm leading-6 text-slate-500">
+                Для смены пароля мы отправим ссылку на адрес{" "}
+                <span className="font-medium text-slate-700">
+                  {userInfo.userData?.email || "вашего аккаунта"}
+                </span>
+                . По этой ссылке откроется отдельная страница сброса пароля.
+              </p>
+              {passwordResetHint && (
+                <p
+                  className={`text-sm ${
+                    passwordResetHint.startsWith("Если аккаунт")
+                      ? "text-emerald-700"
+                      : "text-red-600"
+                  }`}
+                >
+                  {passwordResetHint}
+                </p>
+              )}
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <Button
+                  type="button"
+                  onClick={requestPasswordReset}
+                  disabled={
+                    passwordResetPending ||
+                    passwordResetCooldownRemaining > 0 ||
+                    !userInfo.userData?.email
+                  }
+                >
+                  {passwordResetPending ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" /> Отправка...
+                    </>
+                  ) : (
+                    <>
+                      <KeyRound size={16} /> Запросить смену пароля
+                    </>
+                  )}
+                </Button>
+                {passwordResetCooldownRemaining > 0 && (
+                  <span className="text-sm text-slate-500">
+                    Повторный запрос будет доступен через{" "}
+                    {passwordResetCooldownRemaining} с.
+                  </span>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
+      </div>
+
       {userInfo.emailVerified && (
         <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_360px]">
@@ -896,127 +1017,6 @@ const Profile = () => {
         </section>
       )}
 
-      <div className={`grid gap-6 ${
-        hasLocalPassword
-          ? "lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]"
-          : "lg:grid-cols-1"
-      }`}>
-        <section className={`rounded-xl border border-slate-200 bg-white p-6 shadow-sm ${
-          hasLocalPassword ? "" : "max-w-none"
-        }`}>
-          <SectionHeader
-            icon={UserRoundCog}
-            title="Личные данные"
-            eyebrow="Account"
-          />
-          <form onSubmit={submitProfileNames} className="space-y-4">
-            <div>
-              <label htmlFor="prof-fn" className="input-label">Имя</label>
-              <input
-                id="prof-fn"
-                type="text"
-                autoComplete="given-name"
-                value={editFirstName}
-                onChange={(e) => setEditFirstName(e.target.value)}
-                maxLength={100}
-                className="input-field"
-              />
-            </div>
-            <div>
-              <label htmlFor="prof-ln" className="input-label">Фамилия</label>
-              <input
-                id="prof-ln"
-                type="text"
-                autoComplete="family-name"
-                value={editLastName}
-                onChange={(e) => setEditLastName(e.target.value)}
-                maxLength={100}
-                className="input-field"
-              />
-            </div>
-            {profileMessage.text && (
-              <p
-                className={`text-sm ${
-                  profileMessage.type === "ok"
-                    ? "text-emerald-700"
-                    : "text-red-600"
-                }`}
-              >
-                {profileMessage.text}
-              </p>
-            )}
-            <Button type="submit" disabled={profilePending}>
-              {profilePending ? (
-                <>
-                  <Loader2 size={16} className="animate-spin" /> Сохранение...
-                </>
-              ) : (
-                <>
-                  <Save size={16} /> Сохранить изменения
-                </>
-              )}
-            </Button>
-          </form>
-        </section>
-
-        {hasLocalPassword && (
-          <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-            <SectionHeader
-              icon={Lock}
-              title="Безопасность"
-              eyebrow="Password"
-            />
-            <div className="space-y-4">
-              <p className="text-sm leading-6 text-slate-500">
-                Для смены пароля мы отправим ссылку на адрес{" "}
-                <span className="font-medium text-slate-700">
-                  {userInfo.userData?.email || "вашего аккаунта"}
-                </span>
-                . По этой ссылке откроется отдельная страница сброса пароля.
-              </p>
-              {passwordResetHint && (
-                <p
-                  className={`text-sm ${
-                    passwordResetHint.startsWith("Если аккаунт")
-                      ? "text-emerald-700"
-                      : "text-red-600"
-                  }`}
-                >
-                  {passwordResetHint}
-                </p>
-              )}
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <Button
-                  type="button"
-                  onClick={requestPasswordReset}
-                  disabled={
-                    passwordResetPending ||
-                    passwordResetCooldownRemaining > 0 ||
-                    !userInfo.userData?.email
-                  }
-                >
-                  {passwordResetPending ? (
-                    <>
-                      <Loader2 size={16} className="animate-spin" /> Отправка...
-                    </>
-                  ) : (
-                    <>
-                      <KeyRound size={16} /> Запросить смену пароля
-                    </>
-                  )}
-                </Button>
-                {passwordResetCooldownRemaining > 0 && (
-                  <span className="text-sm text-slate-500">
-                    Повторный запрос будет доступен через{" "}
-                    {passwordResetCooldownRemaining} с.
-                  </span>
-                )}
-              </div>
-            </div>
-          </section>
-        )}
-      </div>
-
       <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <SectionHeader
@@ -1195,10 +1195,10 @@ const Profile = () => {
                         <div id={`tree-${rowKey}`} className="mt-3 animate-fadeIn">
                           <TreeComponent
                             classificationResult={result}
-                            displaySize={{ width: "100%", height: "300px" }}
+                            displaySize={{ width: "100%", height: "420px" }}
                             nodeSize={{ x: 300, y: 50 }}
-                            zoom={0.4}
-                            translate={{ x: 50, y: 180 }}
+                            zoom={0.5}
+                            translate={{ x: 120, y: 210 }}
                           />
                         </div>
                       )}
