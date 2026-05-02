@@ -1,4 +1,13 @@
-from sqlalchemy import Boolean, Column, Integer, String, DateTime, ForeignKey, Text
+from sqlalchemy import (
+    Boolean,
+    Column,
+    Integer,
+    String,
+    DateTime,
+    ForeignKey,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from src.database import Base
@@ -11,7 +20,7 @@ class User(Base):
     lastName = Column(String, index=True)
     firstName = Column(String, index=True)
     email = Column(String, unique=True, index=True)
-    password = Column(String)
+    password = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), default=func.now())
 
     email_verified = Column(Boolean, nullable=False, default=False)
@@ -32,6 +41,24 @@ class User(Base):
     api_token_created_at = Column(DateTime(timezone=True), nullable=True)
 
     classification_results = relationship("ClassificationResults", back_populates="user")
+    identities = relationship("UserIdentity", back_populates="user")
+
+
+class UserIdentity(Base):
+    __tablename__ = "user_identities"
+    __table_args__ = (
+        UniqueConstraint("provider", "provider_user_id", name="uq_user_identities_provider_user"),
+        UniqueConstraint("user_id", "provider", name="uq_user_identities_user_provider"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    provider = Column(String(32), nullable=False, index=True)
+    provider_user_id = Column(String(255), nullable=False, index=True)
+    provider_email = Column(String(320), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=func.now())
+
+    user = relationship("User", back_populates="identities")
 
 class File(Base):
     __tablename__ = "files"

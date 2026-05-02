@@ -49,6 +49,22 @@ class ResetPasswordBody(BaseModel):
     new_password: str = Field(min_length=8, max_length=128)
 
 
+class VkExchangeBody(BaseModel):
+    code: str = Field(min_length=1)
+    code_verifier: str = Field(min_length=1)
+    device_id: str = Field(min_length=1)
+    redirect_uri: str = Field(min_length=1)
+    state: Optional[str] = None
+    remember_me: bool = False
+
+
+class VkLinkConfirmBody(BaseModel):
+    vk_link_token: str = Field(min_length=1)
+    email: str = Field(min_length=1, max_length=320)
+    password: str = Field(min_length=1, max_length=128)
+    remember_me: bool = False
+
+
 class DescriptionCallbackBody(BaseModel):
     model_config = ConfigDict(extra="allow")
 

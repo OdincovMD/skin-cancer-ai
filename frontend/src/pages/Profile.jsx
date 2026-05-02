@@ -139,6 +139,7 @@ const Profile = () => {
     passwordResetUntilMs && passwordResetUntilMs > Date.now()
       ? Math.ceil((passwordResetUntilMs - Date.now()) / 1000)
       : 0
+  const hasLocalPassword = userInfo.userData?.hasPassword === true
 
   const avatarDisplayUrl = useAvatarObjectUrl(
     userInfo.accessToken,
@@ -665,12 +666,12 @@ const Profile = () => {
               {displayName}
             </h1>
             <p className="mt-1 truncate text-sm text-slate-500">
-              {userInfo.userData?.email}
+              {userInfo.userData?.email || "VK ID аккаунт без локального email"}
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               {userInfo.emailVerified ? (
                 <StatusBadge tone="green" icon={BadgeCheck}>
-                  Email подтверждён
+                  {userInfo.userData?.email ? "Email подтверждён" : "VK ID подключён"}
                 </StatusBadge>
               ) : (
                 <StatusBadge tone="amber" icon={AlertTriangle}>
@@ -895,8 +896,14 @@ const Profile = () => {
         </section>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-        <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className={`grid gap-6 ${
+        hasLocalPassword
+          ? "lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]"
+          : "lg:grid-cols-1"
+      }`}>
+        <section className={`rounded-xl border border-slate-200 bg-white p-6 shadow-sm ${
+          hasLocalPassword ? "" : "max-w-none"
+        }`}>
           <SectionHeader
             icon={UserRoundCog}
             title="Личные данные"
@@ -952,60 +959,62 @@ const Profile = () => {
           </form>
         </section>
 
-        <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-          <SectionHeader
-            icon={Lock}
-            title="Безопасность"
-            eyebrow="Password"
-          />
-          <div className="space-y-4">
-            <p className="text-sm leading-6 text-slate-500">
-              Для смены пароля мы отправим ссылку на адрес{" "}
-              <span className="font-medium text-slate-700">
-                {userInfo.userData?.email || "вашего аккаунта"}
-              </span>
-              . По этой ссылке откроется отдельная страница сброса пароля.
-            </p>
-            {passwordResetHint && (
-              <p
-                className={`text-sm ${
-                  passwordResetHint.startsWith("Если аккаунт")
-                    ? "text-emerald-700"
-                    : "text-red-600"
-                }`}
-              >
-                {passwordResetHint}
-              </p>
-            )}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <Button
-                type="button"
-                onClick={requestPasswordReset}
-                disabled={
-                  passwordResetPending ||
-                  passwordResetCooldownRemaining > 0 ||
-                  !userInfo.userData?.email
-                }
-              >
-                {passwordResetPending ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" /> Отправка...
-                  </>
-                ) : (
-                  <>
-                    <KeyRound size={16} /> Запросить смену пароля
-                  </>
-                )}
-              </Button>
-              {passwordResetCooldownRemaining > 0 && (
-                <span className="text-sm text-slate-500">
-                  Повторный запрос будет доступен через{" "}
-                  {passwordResetCooldownRemaining} с.
+        {hasLocalPassword && (
+          <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <SectionHeader
+              icon={Lock}
+              title="Безопасность"
+              eyebrow="Password"
+            />
+            <div className="space-y-4">
+              <p className="text-sm leading-6 text-slate-500">
+                Для смены пароля мы отправим ссылку на адрес{" "}
+                <span className="font-medium text-slate-700">
+                  {userInfo.userData?.email || "вашего аккаунта"}
                 </span>
+                . По этой ссылке откроется отдельная страница сброса пароля.
+              </p>
+              {passwordResetHint && (
+                <p
+                  className={`text-sm ${
+                    passwordResetHint.startsWith("Если аккаунт")
+                      ? "text-emerald-700"
+                      : "text-red-600"
+                  }`}
+                >
+                  {passwordResetHint}
+                </p>
               )}
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <Button
+                  type="button"
+                  onClick={requestPasswordReset}
+                  disabled={
+                    passwordResetPending ||
+                    passwordResetCooldownRemaining > 0 ||
+                    !userInfo.userData?.email
+                  }
+                >
+                  {passwordResetPending ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" /> Отправка...
+                    </>
+                  ) : (
+                    <>
+                      <KeyRound size={16} /> Запросить смену пароля
+                    </>
+                  )}
+                </Button>
+                {passwordResetCooldownRemaining > 0 && (
+                  <span className="text-sm text-slate-500">
+                    Повторный запрос будет доступен через{" "}
+                    {passwordResetCooldownRemaining} с.
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
       </div>
 
       <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">

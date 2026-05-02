@@ -11,9 +11,11 @@ import {
 } from "lucide-react"
 
 import Alert from "../components/ui/Alert"
+import VkIdButton from "../components/auth/VkIdButton"
 import Button from "../components/ui/Button"
 import { onVerify } from "../asyncActions/onVerify"
 import { SIGN_IN, SIGN_UP, PROFILE } from "../imports/ENDPOINTS"
+import { isVkIdConfigured } from "../imports/vkId"
 import { mappingInfo } from "../imports/HELPERS"
 import { publishStoredSessionToOtherTabs } from "../imports/sessionSync"
 import { noError } from "../store/userReducer"
@@ -45,6 +47,7 @@ const SignUp = () => {
   const [isRequestPending, setIsRequestPending] = useState(false)
   const [formState, setFormState] = useState(defaultFormState)
   const [isPasswordVisible, setIsPasswordVisible] = useState(false)
+  const [socialError, setSocialError] = useState(null)
 
   const dispatch = useDispatch()
   const navigate = useNavigate()
@@ -67,6 +70,7 @@ const SignUp = () => {
 
   useEffect(() => {
     if (!isRequestPending && userInfo.error) dispatch(noError())
+    if (socialError) setSocialError(null)
   }, [formState])
 
   const pwdLenOk = formState.password.length >= 8
@@ -77,6 +81,7 @@ const SignUp = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setIsRequestPending(true)
+    setSocialError(null)
     try {
       const outcome = await dispatch(
         onVerify({
@@ -109,6 +114,7 @@ const SignUp = () => {
 
   const set = (field) => (e) =>
     setFormState({ ...formState, [field]: e.target.value })
+  const showVkId = isVkIdConfigured()
 
   return (
     <div className="flex md:h-[calc(100vh-3.5rem)] md:overflow-hidden items-center justify-center px-4 py-6 md:py-4">
@@ -230,9 +236,9 @@ const SignUp = () => {
                 )}
               </div>
 
-              {userInfo.error && (
+              {(socialError || userInfo.error) && (
                 <Alert variant="error" className="animate-slideIn">
-                  {userInfo.error}
+                  {socialError || userInfo.error}
                 </Alert>
               )}
 
@@ -249,6 +255,14 @@ const SignUp = () => {
                   </>
                 )}
               </Button>
+
+              {showVkId && (
+                <VkIdButton
+                  children="Продолжить через VK ID"
+                  onError={setSocialError}
+                  className="mt-1"
+                />
+              )}
             </form>
 
             <p className="mt-4 text-center text-sm text-gray-500">

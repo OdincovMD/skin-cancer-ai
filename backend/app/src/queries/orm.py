@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from services.mail import send_password_reset_email, send_verification_email
 from src.config import settings
-from src.models import ClassificationResults, DescriptionJob, File, User
+from src.models import ClassificationResults, DescriptionJob, File, User, UserIdentity
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -95,6 +95,20 @@ def _parsed_labels(raw: Any) -> List[str]:
 def _parsed_description_result(raw: Any) -> Optional[Dict[str, Any]]:
     parsed = _parse_json_value(raw)
     return parsed if isinstance(parsed, dict) else None
+
+
+def _user_auth_payload(user: User) -> Dict[str, Union[int, str, bool]]:
+    return {
+        "id": user.id,
+        "lastName": user.lastName,
+        "firstName": user.firstName,
+        "email": user.email,
+        "email_verified": bool(user.email_verified),
+        "has_password": bool(user.password),
+        "verification_resend_after_seconds": _verification_resend_remaining_seconds(
+            user
+        ),
+    }
 
 
 class Orm:
@@ -493,17 +507,9 @@ class Orm:
             await session.commit()
             await session.refresh(user)
 
-            return {
-                "id": user.id,
-                "lastName": user.lastName,
-                "firstName": user.firstName,
-                "email": user.email,
-                "email_verified": False,
-                "requires_email_verification": True,
-                "verification_resend_after_seconds": _verification_resend_remaining_seconds(
-                    user
-                ),
-            }
+            payload = _user_auth_payload(user)
+            payload["requires_email_verification"] = True
+            return payload
         except IntegrityError as e:
             await session.rollback()
             err_txt = str(e.orig) if getattr(e, "orig", None) else str(e)
@@ -524,21 +530,14 @@ class Orm:
             user = result.scalar_one_or_none()
             if not user:
                 return "Пользователь не зарегистрирован."
+            if not user.password:
+                return "Для этого аккаунта не настроен вход по паролю. Используйте VK ID."
 
             ok = await asyncio.to_thread(pwd_context.verify, password, user.password)
             if not ok:
                 return "Неверный пароль."
 
-            return {
-                "id": user.id,
-                "lastName": user.lastName,
-                "firstName": user.firstName,
-                "email": user.email,
-                "email_verified": bool(user.email_verified),
-                "verification_resend_after_seconds": _verification_resend_remaining_seconds(
-                    user
-                ),
-            }
+            return _user_auth_payload(user)
         except Exception as e:
             return f"Ошибка при входе: {e}"
 
@@ -620,6 +619,7 @@ class Orm:
             "firstName": user.firstName,
             "lastName": user.lastName,
             "email": user.email,
+            "has_password": bool(user.password),
             "email_verified": bool(user.email_verified),
             "verification_resend_after_seconds": _verification_resend_remaining_seconds(
                 user
@@ -638,6 +638,8 @@ class Orm:
         user = result.scalar_one_or_none()
         if not user:
             return "Пользователь не найден."
+        if not user.password:
+            return "Для этого аккаунта не настроена смена пароля."
         ok = await asyncio.to_thread(
             pwd_context.verify, current_password, user.password
         )
@@ -793,6 +795,8 @@ class Orm:
         if not user:
             # Не раскрываем наличие/отсутствие email в системе
             return None
+        if not user.password:
+            return "Для этого аккаунта не настроен вход по паролю. Используйте VK ID."
 
         # Cooldown: не спамим письмами
         last = user.password_reset_last_sent_at
@@ -857,3 +861,115 @@ class Orm:
         user.password_reset_expires_at = None
         await session.commit()
         return None
+
+    @staticmethod
+    async def get_user_identity(
+        session: AsyncSession, provider: str, provider_user_id: str
+    ) -> Optional[UserIdentity]:
+        stmt = select(UserIdentity).where(
+            UserIdentity.provider == provider,
+            UserIdentity.provider_user_id == provider_user_id,
+        )
+        return (await session.execute(stmt)).scalar_one_or_none()
+
+    @staticmethod
+    async def get_user_by_email(
+        session: AsyncSession, email: str
+    ) -> Optional[User]:
+        if not email or not email.strip():
+            return None
+        stmt = select(User).where(User.email == email.strip().lower())
+        return (await session.execute(stmt)).scalar_one_or_none()
+
+    @staticmethod
+    async def create_vk_user(
+        session: AsyncSession,
+        *,
+        email: Optional[str],
+        first_name: Optional[str],
+        last_name: Optional[str],
+        provider: str,
+        provider_user_id: str,
+    ) -> Dict[str, Union[int, str, bool]]:
+        normalized_email = email.strip().lower() if isinstance(email, str) and email.strip() else None
+        user = User(
+            lastName=last_name,
+            firstName=first_name,
+            email=normalized_email,
+            password=None,
+            email_verified=True,
+            email_verification_token=None,
+            email_verification_expires_at=None,
+            verification_email_last_sent_at=None,
+        )
+        session.add(user)
+        await session.flush()
+        identity = UserIdentity(
+            user_id=user.id,
+            provider=provider,
+            provider_user_id=provider_user_id,
+            provider_email=normalized_email,
+        )
+        session.add(identity)
+        await session.commit()
+        await session.refresh(user)
+        return _user_auth_payload(user)
+
+    @staticmethod
+    async def link_identity_to_existing_user(
+        session: AsyncSession,
+        *,
+        user: User,
+        provider: str,
+        provider_user_id: str,
+        provider_email: Optional[str],
+        first_name: Optional[str],
+        last_name: Optional[str],
+    ) -> Dict[str, Union[int, str, bool]]:
+        existing_identity = await Orm.get_user_identity(
+            session, provider, provider_user_id
+        )
+        if existing_identity and existing_identity.user_id != user.id:
+            raise ValueError("VK account already linked")
+
+        stmt = select(UserIdentity).where(
+            UserIdentity.user_id == user.id,
+            UserIdentity.provider == provider,
+        )
+        linked_identity = (await session.execute(stmt)).scalar_one_or_none()
+        if linked_identity is None:
+            linked_identity = UserIdentity(
+                user_id=user.id,
+                provider=provider,
+                provider_user_id=provider_user_id,
+                provider_email=provider_email,
+            )
+            session.add(linked_identity)
+        else:
+            linked_identity.provider_user_id = provider_user_id
+            linked_identity.provider_email = provider_email
+
+        if first_name and not user.firstName:
+            user.firstName = first_name
+        if last_name and not user.lastName:
+            user.lastName = last_name
+        if provider_email:
+            user.email_verified = True
+
+        await session.commit()
+        await session.refresh(user)
+        return _user_auth_payload(user)
+
+    @staticmethod
+    async def verify_user_password_for_linking(
+        session: AsyncSession, email: str, password: str
+    ) -> Union[str, User]:
+        user = await Orm.get_user_by_email(session, email)
+        if not user:
+            return "Пользователь не зарегистрирован."
+        if not user.password:
+            return "Для этого аккаунта не настроен вход по паролю. Используйте VK ID."
+        ok = await asyncio.to_thread(pwd_context.verify, password, user.password)
+        if not ok:
+            return "Password confirmation failed"
+        return user

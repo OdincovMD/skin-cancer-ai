@@ -53,6 +53,12 @@ class Settings(BaseSettings):
     # Публичный URL фронта (как в браузере). В Docker через NGINX обычно :90, не :3000.
     FRONTEND_PUBLIC_URL: str = Field(default="http://localhost:90")
 
+    VK_ID_APP_ID: str = Field(default="")
+    VK_ID_REDIRECT_URI: str = Field(default="")
+    VK_ID_SCOPES: str = Field(default="vkid.personal_info email")
+    VK_ID_BASE_URL: str = Field(default="https://id.vk.ru")
+    VK_ID_TIMEOUT_SEC: int = Field(default=15)
+
     @property
     def DATABASE_URL_async(self) -> str:
         user = quote_plus(self.DB_USER)
