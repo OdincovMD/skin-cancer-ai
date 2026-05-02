@@ -4,24 +4,39 @@ import { createAsyncThunk } from "@reduxjs/toolkit"
 async function messageFromFailedResponse(response) {
   try {
     const body = await response.json()
-    const d = body?.detail
-    if (d != null) {
-      if (typeof d === "string") return d
-      if (Array.isArray(d) && d[0]?.msg != null) return String(d[0].msg)
-      return JSON.stringify(d)
-    }
-    if (body?.error != null && typeof body.error === "string") {
-      return body.error
+    if (body?.detail != null || body?.error != null) {
+      let error = null
+      const d = body?.detail
+      if (d != null) {
+        if (typeof d === "string") error = d
+        else if (Array.isArray(d) && d[0]?.msg != null) error = String(d[0].msg)
+        else error = JSON.stringify(d)
+      } else if (body?.error != null && typeof body.error === "string") {
+        error = body.error
+      }
+      return {
+        error,
+        requiresVkLink: body?.requires_vk_link === true,
+        vkLinkToken:
+          typeof body?.vk_link_token === "string" ? body.vk_link_token : null,
+        email: typeof body?.email === "string" ? body.email : null,
+      }
     }
   } catch {
   }
   const s = response.status
-  if (s === 401) return "Неверный email или пароль."
-  if (s === 403) return "Доступ запрещён."
-  if (s === 422) return "Проверьте введённые данные."
-  if (s === 503) return "Сервис временно недоступен. Попробуйте позже."
-  if (s >= 500) return "Ошибка сервера. Попробуйте позже."
-  return `Ошибка запроса (${s}). Повторите попытку.`
+  let error = `Ошибка запроса (${s}). Повторите попытку.`
+  if (s === 401) error = "Неверный email или пароль."
+  if (s === 403) error = "Доступ запрещён."
+  if (s === 422) error = "Проверьте введённые данные."
+  if (s === 503) error = "Сервис временно недоступен. Попробуйте позже."
+  if (s >= 500) error = "Ошибка сервера. Попробуйте позже."
+  return {
+    error,
+    requiresVkLink: false,
+    vkLinkToken: null,
+    email: null,
+  }
 }
 
 export const onVerify = createAsyncThunk("user/onVerify", async ({data, endpoint}) => {
@@ -32,6 +47,7 @@ export const onVerify = createAsyncThunk("user/onVerify", async ({data, endpoint
         firstName: null,
         lastName: null,
         email: null,
+        hasPassword: false,
       },
       accessToken: null,
       accessTokenExpiresAt: null,
@@ -39,6 +55,9 @@ export const onVerify = createAsyncThunk("user/onVerify", async ({data, endpoint
       requires_email_verification: false,
       emailVerified: true,
       verificationResendAfterSeconds: 0,
+      requiresVkLink: false,
+      vkLinkToken: null,
+      email: null,
     }
 
     try {
@@ -52,7 +71,13 @@ export const onVerify = createAsyncThunk("user/onVerify", async ({data, endpoint
       })
 
       if (!response.ok) {
-        requestState.error = await messageFromFailedResponse(response)
+        const failed = await messageFromFailedResponse(response)
+        requestState.error = failed.error
+        requestState.requiresVkLink = failed.requiresVkLink
+        requestState.vkLinkToken = failed.vkLinkToken
+        if (failed.email) {
+          requestState.userData.email = failed.email
+        }
         return requestState
       }
       
@@ -68,6 +93,7 @@ export const onVerify = createAsyncThunk("user/onVerify", async ({data, endpoint
         firstName: ud.firstName ?? null,
         lastName: ud.lastName ?? null,
         email: ud.email ?? null,
+        hasPassword: ud.has_password === true,
       }
       requestState.accessToken = responseJSON.access_token ?? null
       requestState.accessTokenExpiresAt =

@@ -192,7 +192,14 @@ Query: **`token`** — одноразовый токен из письма.
 
 ### `POST /uploadfile`
 
-`multipart/form-data`, поле **`file`**.
+`multipart/form-data`.
+
+Поля формы:
+
+| Поле | Тип | Обязательно | Описание |
+|------|-----|-------------|----------|
+| `file` | binary | да | Изображение для анализа |
+| `features_only` | boolean | нет | Если `true`, выполняется только основная классификация без внешнего текстового description pipeline |
 
 Успех: `{"job_id": <int>, "status": "pending"}`. Классификация выполняется в фоне (Celery).
 
@@ -225,7 +232,7 @@ Query: **`token`** — одноразовый токен из письма.
 - `important_labels` — массив значимых признаков
 - `bucketed_labels` — группированные признаки/ярлыки
 - `description_result` — сырой JSON-ответ description pipeline или `null`
-- `features_only` — `true`, если задание выполнялось в режиме получения только признаков без основной классификации
+- `features_only` — `true`, если задание выполнялось без внешнего текстового description pipeline
 
 ### `POST /gethistory`
 
@@ -291,7 +298,7 @@ X-API-Key: scai_...
 - Опрашивайте статус не чаще одного раза в 2 секунды, чтобы не упираться в rate limit.
 - Сохраняйте `job_id` и `image_token` на своей стороне, если хотите позже восстановить состояние или показать превью.
 - Обрабатывайте промежуточные состояния `pending` и `processing`.
-- Для `features_only=true` ожидайте, что `result` основной классификации может быть `null`, а полезные данные придут через `important_labels`, `bucketed_labels` и `description_result`.
+- Для `features_only=true` ожидайте обычное поле `result` с итогом классификации, но без внешнего текстового описания и связанных полей description pipeline.
 
 ### Интеграция внешнего description service (`img2txt`)
 
@@ -385,6 +392,12 @@ curl -sS -X POST "$BASE/uploadfile" \
   -H "Authorization: Bearer YOUR_JWT" \
   -F "file=@./image.jpg"
 
+# Загрузка без внешнего текстового описания
+curl -sS -X POST "$BASE/uploadfile" \
+  -H "Authorization: Bearer YOUR_JWT" \
+  -F "file=@./image.jpg" \
+  -F "features_only=true"
+
 # Опрос задания
 curl -sS "$BASE/classification-jobs/1" \
   -H "Authorization: Bearer YOUR_JWT"
@@ -393,6 +406,12 @@ curl -sS "$BASE/classification-jobs/1" \
 curl -sS -X POST "$BASE/api/v1/uploadfile" \
   -H "X-API-Key: scai_..." \
   -F "file=@./image.jpg"
+
+# API v1 без внешнего текстового описания
+curl -sS -X POST "$BASE/api/v1/uploadfile" \
+  -H "X-API-Key: scai_..." \
+  -F "file=@./image.jpg" \
+  -F "features_only=true"
 ```
 
 ---

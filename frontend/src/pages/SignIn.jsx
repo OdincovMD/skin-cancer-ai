@@ -4,9 +4,11 @@ import { Link, useNavigate } from "react-router-dom"
 import { CheckCircle2, Eye, EyeOff, LogIn, Scan } from "lucide-react"
 
 import Alert from "../components/ui/Alert"
+import VkIdButton from "../components/auth/VkIdButton"
 import Button from "../components/ui/Button"
 import { onVerify } from "../asyncActions/onVerify"
 import { FORGOT_PASSWORD, HOME, SIGN_IN, SIGN_UP } from "../imports/ENDPOINTS"
+import { isVkIdConfigured } from "../imports/vkId"
 import { mappingInfo } from "../imports/HELPERS"
 import { publishStoredSessionToOtherTabs } from "../imports/sessionSync"
 import { noError, toggleRememberMe } from "../store/userReducer"
@@ -21,6 +23,7 @@ const SignIn = () => {
   const [formState, setFormState] = useState({ email: "", password: "" })
   const [isRequestPending, setIsRequestPending] = useState(false)
   const [isPasswordVisible, setIsPasswordVisible] = useState(false)
+  const [socialError, setSocialError] = useState(null)
 
   const dispatch = useDispatch()
   const navigate = useNavigate()
@@ -43,11 +46,13 @@ const SignIn = () => {
 
   useEffect(() => {
     if (!isRequestPending && userInfo.error) dispatch(noError())
+    if (socialError) setSocialError(null)
   }, [formState])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setIsRequestPending(true)
+    setSocialError(null)
     try {
       const result = await dispatch(
         onVerify({
@@ -69,6 +74,7 @@ const SignIn = () => {
   }
 
   const canSubmit = formState.email && formState.password && !isRequestPending
+  const showVkId = isVkIdConfigured()
 
   return (
     <div className="flex md:h-[calc(100vh-3.5rem)] md:overflow-hidden items-center justify-center px-4 py-6 md:py-4">
@@ -171,9 +177,9 @@ const SignIn = () => {
                 </Link>
               </div>
 
-              {userInfo.error && (
+              {(socialError || userInfo.error) && (
                 <Alert variant="error" className="animate-slideIn">
-                  {userInfo.error}
+                  {socialError || userInfo.error}
                 </Alert>
               )}
 
@@ -190,6 +196,14 @@ const SignIn = () => {
                   </>
                 )}
               </Button>
+
+              {showVkId && (
+                <VkIdButton
+                  rememberMe={userInfo.isRememberMeChecked}
+                  onError={setSocialError}
+                  className="mt-1"
+                />
+              )}
             </form>
 
             <p className="mt-6 text-center text-sm text-gray-500">

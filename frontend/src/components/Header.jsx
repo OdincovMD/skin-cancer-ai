@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react"
 import { useDispatch, useSelector } from "react-redux"
-import { Link, useLocation } from "react-router-dom"
+import { Link, useLocation, useNavigate } from "react-router-dom"
 import {
   AlertCircle,
   CheckCircle2,
   Loader2,
   LogIn,
+  LogOut,
   Menu,
   Scan,
   User,
@@ -13,13 +14,15 @@ import {
 
 import { useAvatarObjectUrl } from "../hooks/useAvatarObjectUrl"
 import { env } from "../imports/ENV"
+import { notifyOtherTabsSessionCleared } from "../imports/sessionSync"
 import { SIGN_IN, PROFILE } from "../imports/ENDPOINTS"
-import { noError } from "../store/userReducer"
+import { defaultState, noError } from "../store/userReducer"
 
 const Header = ({ toggleSidebar }) => {
   const dispatch = useDispatch()
   const userInfo = useSelector((state) => state.user)
   const { pathname } = useLocation()
+  const navigate = useNavigate()
   const [serviceHealth, setServiceHealth] = useState({
     status: "loading",
     healthyCount: 0,
@@ -186,6 +189,12 @@ const Header = ({ toggleSidebar }) => {
     ]
   }, [mlModels, mlService])
 
+  const handleLogout = () => {
+    dispatch(defaultState())
+    notifyOtherTabsSessionCleared()
+    navigate(SIGN_IN)
+  }
+
   return (
     <header className="fixed left-0 right-0 top-0 z-50 h-14 border-b border-slate-200 bg-white/90 shadow-sm backdrop-blur-xl">
       <div className="mx-auto flex h-full max-w-screen-2xl items-center px-3 sm:px-4">
@@ -235,30 +244,40 @@ const Header = ({ toggleSidebar }) => {
           </div>
 
           {userInfo.userData?.id && userInfo.accessToken ? (
-            <Link
-              to={PROFILE}
-              className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white py-1 pl-1 pr-2 shadow-sm transition-colors hover:bg-slate-50 sm:pr-3"
-            >
-              {avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt=""
-                  className="h-8 w-8 shrink-0 rounded-md object-cover ring-1 ring-slate-200"
-                />
-              ) : (
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-teal-50 text-xs font-semibold text-med-700 ring-1 ring-teal-100">
-                  {initials || <User size={16} />}
+            <div className="flex items-center gap-2">
+              <Link
+                to={PROFILE}
+                className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white py-1 pl-1 pr-2 shadow-sm transition-colors hover:bg-slate-50 sm:pr-3"
+              >
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt=""
+                    className="h-8 w-8 shrink-0 rounded-md object-cover ring-1 ring-slate-200"
+                  />
+                ) : (
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-teal-50 text-xs font-semibold text-med-700 ring-1 ring-teal-100">
+                    {initials || <User size={16} />}
+                  </div>
+                )}
+                <div className="hidden min-w-0 leading-tight sm:block">
+                  <span className="block max-w-36 truncate text-sm font-semibold text-slate-800">
+                    {displayName || "Профиль"}
+                  </span>
+                  <span className="block text-[11px] text-slate-400">
+                    Личный кабинет
+                  </span>
                 </div>
-              )}
-              <div className="hidden min-w-0 leading-tight sm:block">
-                <span className="block max-w-36 truncate text-sm font-semibold text-slate-800">
-                  {displayName || "Профиль"}
-                </span>
-                <span className="block text-[11px] text-slate-400">
-                  Личный кабинет
-                </span>
-              </div>
-            </Link>
+              </Link>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="inline-flex h-10 items-center gap-2 rounded-lg border border-red-200 bg-white px-3 text-sm font-medium text-red-600 shadow-sm transition-colors hover:bg-red-50"
+              >
+                <LogOut size={16} />
+                <span className="hidden sm:inline">Выйти</span>
+              </button>
+            </div>
           ) : (
             <Link
               to={SIGN_IN}

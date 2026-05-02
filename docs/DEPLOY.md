@@ -99,7 +99,7 @@ ML-сервис стартует дольше всех (`start_period: 600s`) и
 | `DESCRIPTION_SERVICE_API_TOKEN` | пусто | Токен, который backend/celery отправляет во внешний description service |
 | `DESCRIPTION_CALLBACK_API_TOKEN` | пусто | Токен, который backend ожидает на callback-маршруте `/internal/description-results/{job_id}` |
 
-Если `DESCRIPTION_ENABLED=false`, основная классификация продолжит работать без внешнего сервиса описаний. Режим `features_only` при этом будет недоступен.
+Если `DESCRIPTION_ENABLED=false`, основная классификация продолжит работать без внешнего сервиса описаний. В этом случае `features_only=true` остаётся допустимым, но практически эквивалентен обычной классификации: внешний текстовый pipeline просто не запускается.
 
 Для рабочей интеграции с внешним description service нужно обеспечить двустороннюю связность:
 

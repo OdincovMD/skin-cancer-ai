@@ -9,6 +9,7 @@ const defaultUser = {
       firstName: null,
       lastName: null,
       email: null,
+      hasPassword: false,
     },
     accessToken: null,
     accessTokenExpiresAt: null,
@@ -195,6 +196,7 @@ const userSlice = createSlice({
           firstName: ud.firstName ?? null,
           lastName: ud.lastName ?? null,
           email: ud.email ?? null,
+          hasPassword: ud.has_password === true,
         }
         state.emailVerified = ud.email_verified === true
         const secMe = state.emailVerified

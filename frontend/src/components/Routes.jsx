@@ -11,6 +11,8 @@ import {
   SIGN_IN,
   PROFILE,
   VERIFY_EMAIL,
+  VK_CALLBACK,
+  VK_LINK,
 } from "../imports/ENDPOINTS.js"
 
 import Home from "../pages/Home.jsx"
@@ -23,6 +25,8 @@ import Profile from "../pages/Profile.jsx"
 import VerifyEmail from "../pages/VerifyEmail.jsx"
 import ForgotPassword from "../pages/ForgotPassword.jsx"
 import ResetPassword from "../pages/ResetPassword.jsx"
+import VkAuthCallback from "../pages/VkAuthCallback.jsx"
+import VkLinkConfirm from "../pages/VkLinkConfirm.jsx"
 
 const AppRoutes = () => {
   const userInfo = useSelector(state => state.user)
@@ -37,6 +41,8 @@ const AppRoutes = () => {
         <Route path="/about" element={<About />} />
         <Route path={API_DOCS} element={<ApiDocs />} />
         <Route path={VERIFY_EMAIL} element={<VerifyEmail />} />
+        <Route path={VK_CALLBACK} element={<VkAuthCallback />} />
+        <Route path={VK_LINK} element={<VkLinkConfirm />} />
         <Route path={FORGOT_PASSWORD} element={<ForgotPassword />} />
         <Route path={RESET_PASSWORD} element={<ResetPassword />} />
         <Route path="/profile" element={isAuthed ? <Profile /> : <Navigate to={SIGN_IN} />}/>
