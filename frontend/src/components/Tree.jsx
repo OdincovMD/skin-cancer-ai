@@ -108,23 +108,39 @@ const renderNode = ({ nodeDatum, toggleNode }) => {
         height={height - 20}
         fill={palette.accent}
       />
-      <text
-        textAnchor="middle"
-        fill={palette.text}
-        fontSize="13.2"
-        fontWeight={state === "branch" ? 430 : 340}
-        letterSpacing="-0.01em"
+      <foreignObject
+        x={-width / 2 + 20}
+        y={-height / 2 + 11}
+        width={width - 40}
+        height={height - 22}
+        pointerEvents="none"
       >
-        {lines.map((line, index) => (
-          <tspan
-            key={`${nodeDatum.name}-${index}`}
-            x="0"
-            dy={index === 0 ? `${-(lines.length - 1) * 0.52}em` : "1.12em"}
-          >
-            {line}
-          </tspan>
-        ))}
-      </text>
+        <div
+          xmlns="http://www.w3.org/1999/xhtml"
+          style={{
+            display: "flex",
+            height: "100%",
+            alignItems: "center",
+            justifyContent: "center",
+            textAlign: "center",
+            color: palette.text,
+            fontSize: "13.2px",
+            fontFamily: '"IBM Plex Sans", "Segoe UI", system-ui, sans-serif',
+            fontWeight: state === "branch" ? 400 : 500,
+            lineHeight: 1.12,
+            letterSpacing: "-0.01em",
+            fontSynthesis: "none",
+            textRendering: "geometricPrecision",
+            WebkitFontSmoothing: "antialiased",
+          }}
+        >
+          <div>
+            {lines.map((line, index) => (
+              <div key={`${nodeDatum.name}-${index}`}>{line}</div>
+            ))}
+          </div>
+        </div>
+      </foreignObject>
     </g>
   )
 }

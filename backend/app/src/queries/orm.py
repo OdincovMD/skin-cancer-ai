@@ -345,6 +345,7 @@ class Orm:
         error: Optional[str] = None,
         callback_sent: Optional[bool] = None,
     ) -> Dict[str, Any]:
+        is_worker_update = callback_sent is False
         stmt = select(DescriptionJob).where(
             DescriptionJob.classification_result_id == classification_result_id
         )
@@ -357,14 +358,27 @@ class Orm:
             )
             session.add(row)
         else:
+            if row.callback_sent and is_worker_update:
+                payload = {
+                    "classification_result_id": row.classification_result_id,
+                    "service_job_id": row.service_job_id,
+                }
+                payload.update(_description_fields(row))
+                return payload
             row.service_job_id = service_job_id
-            row.status = status
 
-        if description is not None:
+        normalized_status = status
+        if is_worker_update and status == "completed" and not bool(features_only):
+            normalized_status = "generating"
+        row.status = normalized_status
+
+        should_persist_worker_content = not is_worker_update or bool(features_only)
+
+        if should_persist_worker_content and description is not None:
             row.description = description
-        if important_labels is not None:
+        if should_persist_worker_content and important_labels is not None:
             row.important_labels = _serialize_json_value(important_labels)
-        if bucketed_labels is not None:
+        if should_persist_worker_content and bucketed_labels is not None:
             row.bucketed_labels = _serialize_json_value(bucketed_labels)
         if description_result is not None:
             row.description_result = _serialize_json_value(description_result)
@@ -372,7 +386,7 @@ class Orm:
             row.features_only = features_only
         if error is not None:
             row.error = error
-        elif status != "error":
+        elif normalized_status != "error":
             row.error = None
         if callback_sent is not None:
             row.callback_sent = callback_sent
