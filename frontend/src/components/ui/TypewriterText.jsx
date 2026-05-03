@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react"
+import React, { useEffect, useMemo, useRef, useState } from "react"
 
 function prefersReducedMotion() {
   return (
@@ -12,20 +12,42 @@ const TypewriterText = ({ text, className = "", speed = 12 }) => {
   const [visible, setVisible] = useState(() =>
     prefersReducedMotion() ? source : ""
   )
+  const [isAnimating, setIsAnimating] = useState(false)
+  const visibleRef = useRef(visible)
+
+  useEffect(() => {
+    visibleRef.current = visible
+  }, [visible])
 
   useEffect(() => {
     if (!source || prefersReducedMotion()) {
       setVisible(source)
+      setIsAnimating(false)
       return undefined
     }
 
-    setVisible("")
-    let index = 0
+    const previousVisible = visibleRef.current
+    const shouldContinue =
+      previousVisible.length > 0 && source.startsWith(previousVisible)
+
+    let index = shouldContinue ? previousVisible.length : 0
+    if (!shouldContinue && previousVisible) {
+      setVisible("")
+    }
+
+    if (index >= source.length) {
+      setVisible(source)
+      setIsAnimating(false)
+      return undefined
+    }
+
+    setIsAnimating(true)
     const step = Math.max(1, Math.ceil(source.length / 240))
     const id = window.setInterval(() => {
       index = Math.min(source.length, index + step)
       setVisible(source.slice(0, index))
       if (index >= source.length) {
+        setIsAnimating(false)
         window.clearInterval(id)
       }
     }, speed)
@@ -35,12 +57,10 @@ const TypewriterText = ({ text, className = "", speed = 12 }) => {
 
   if (!source) return null
 
-  const done = visible.length >= source.length
-
   return (
     <p className={className}>
       {visible}
-      {!done && (
+      {isAnimating && (
         <span
           aria-hidden="true"
           className="ml-0.5 inline-block h-4 w-1 translate-y-0.5 animate-pulse rounded-full bg-med-500"
