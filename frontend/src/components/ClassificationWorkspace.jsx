@@ -302,6 +302,14 @@ const ClassificationWorkspace = () => {
   const classifyButtonLabel = selectedMode.featuresOnly
     ? "Классифицировать"
     : "Выполнить полный анализ"
+  const hasDescriptionLabels =
+    descriptionState.importantLabels.length > 0 ||
+    descriptionState.bucketedLabels.length > 0
+  const shouldShowMissingDescriptionFallback =
+    descriptionState.status === "completed" &&
+    !descriptionState.text &&
+    !descriptionState.error &&
+    hasDescriptionLabels
 
   return (
     <div className="space-y-6">
@@ -618,6 +626,13 @@ const ClassificationWorkspace = () => {
                   text={descriptionState.text}
                   className="whitespace-pre-line text-sm leading-relaxed text-gray-700"
                 />
+              )}
+
+              {shouldShowMissingDescriptionFallback && (
+                <Alert variant="warning" title="Описание не сформировано">
+                  Сервис вернул признаки, но текстовое описание не сформировал.
+                  Попробуйте повторить анализ немного позже.
+                </Alert>
               )}
 
               {descriptionState.importantLabels.length > 0 && (

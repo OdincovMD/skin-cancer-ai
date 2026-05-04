@@ -68,18 +68,47 @@ def _serialize_json_value(raw: Any) -> Optional[str]:
     return json.dumps(raw, ensure_ascii=True)
 
 
+def _missing_description_error(
+    status: Optional[str],
+    description: Optional[str],
+    error: Optional[str],
+    important_labels: List[str],
+    bucketed_labels: List[str],
+) -> Optional[str]:
+    if error:
+        return error
+    if status != "completed":
+        return None
+    if isinstance(description, str) and description.strip():
+        return None
+    if important_labels or bucketed_labels:
+        return (
+            "Сервис вернул признаки, но текстовое описание не сформировал. "
+            "Попробуйте повторить анализ немного позже."
+        )
+    return None
+
+
 def _description_fields(row: Optional[DescriptionJob]) -> Dict[str, Any]:
     labels = _parse_json_value(row.important_labels) if row else None
     bucketed_labels = _parse_json_value(row.bucketed_labels) if row else None
     description_result = _parse_json_value(row.description_result) if row else None
+    parsed_labels = labels if isinstance(labels, list) else []
+    parsed_bucketed_labels = bucketed_labels if isinstance(bucketed_labels, list) else []
+    description = row.description if row else None
+    description_error = _missing_description_error(
+        row.status if row else None,
+        description,
+        row.error if row else None,
+        parsed_labels,
+        parsed_bucketed_labels,
+    )
     return {
         "description_status": row.status if row else None,
-        "description": row.description if row else None,
-        "description_error": row.error if row else None,
-        "important_labels": labels if isinstance(labels, list) else [],
-        "bucketed_labels": (
-            bucketed_labels if isinstance(bucketed_labels, list) else []
-        ),
+        "description": description,
+        "description_error": description_error,
+        "important_labels": parsed_labels,
+        "bucketed_labels": parsed_bucketed_labels,
         "description_result": (
             description_result if isinstance(description_result, dict) else None
         ),
@@ -311,25 +340,35 @@ class Orm:
             .limit(limit)
         )
         result = await session.execute(stmt)
-        return [
-            {
-                "request_date": row.request_date,
-                "file_name": row.file_name,
-                "bucket_name": row.bucket_name,
-                "status": row.status,
-                "result": row.result,
-                "description_status": row.description_status,
-                "description": row.description,
-                "important_labels": _parsed_labels(row.important_labels),
-                "bucketed_labels": _parsed_labels(row.bucketed_labels),
-                "description_result": _parsed_description_result(
-                    row.description_result
-                ),
-                "features_only": bool(row.features_only),
-                "description_error": row.description_error,
-            }
-            for row in result.all()
-        ]
+        payload = []
+        for row in result.all():
+            important_labels = _parsed_labels(row.important_labels)
+            bucketed_labels = _parsed_labels(row.bucketed_labels)
+            payload.append(
+                {
+                    "request_date": row.request_date,
+                    "file_name": row.file_name,
+                    "bucket_name": row.bucket_name,
+                    "status": row.status,
+                    "result": row.result,
+                    "description_status": row.description_status,
+                    "description": row.description,
+                    "important_labels": important_labels,
+                    "bucketed_labels": bucketed_labels,
+                    "description_result": _parsed_description_result(
+                        row.description_result
+                    ),
+                    "features_only": bool(row.features_only),
+                    "description_error": _missing_description_error(
+                        row.description_status,
+                        row.description,
+                        row.description_error,
+                        important_labels,
+                        bucketed_labels,
+                    ),
+                }
+            )
+        return payload
 
     @staticmethod
     async def upsert_description_job(
