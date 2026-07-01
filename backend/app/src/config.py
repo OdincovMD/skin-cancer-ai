@@ -28,6 +28,10 @@ class Settings(BaseSettings):
 
     # Лимит запросов к /api/v1 на пользователя (окно 60 с, Redis)
     API_V1_RATE_LIMIT_PER_MINUTE: int = Field(default=5)
+    API_V1_STATUS_RATE_LIMIT_PER_MINUTE: int = Field(default=60)
+
+    # Глобальный лимит старта ML-классификаций для всех очередей.
+    CLASSIFICATION_GLOBAL_RATE_LIMIT_PER_MINUTE: int = Field(default=5)
 
     # JWT (Authorization: Bearer) для API классификации и истории
     JWT_SECRET: str = Field(default="")
