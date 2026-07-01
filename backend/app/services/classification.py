@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional
 from botocore.exceptions import ClientError
 from fastapi import HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
+from sqlalchemy.exc import IntegrityError
 
 from core.minio_client import (
     BUCKET_NAME,
@@ -25,21 +26,18 @@ from src.queries.orm import Orm
 from workers.tasks import run_classification
 
 
-async def perform_upload(
-    session, user_id: int, file: UploadFile, features_only: bool = False
-) -> Dict[str, Any]:
-    if not await Orm.user_exists(session, user_id):
-        raise HTTPException(
-            status_code=404,
-            detail="Пользователь не найден в базе.",
-        )
-
-    if await Orm.count_user_active_classifications(session, user_id) > 0:
-        raise HTTPException(
-            status_code=429,
-            detail="Уже выполняется классификация. Дождитесь завершения или обновите статус задания.",
-        )
-
+async def _store_classification_upload(
+    session,
+    user_id: int,
+    file: UploadFile,
+    *,
+    source: str,
+    external_user_id: Optional[str] = None,
+    external_case_id: Optional[str] = None,
+    idempotency_key: Optional[str] = None,
+    callback_url: Optional[str] = None,
+    callback_token: Optional[str] = None,
+) -> Any:
     file_content = await file.read()
     object_key = unique_object_key_for_user(user_id, file.filename)
     ctype = (file.content_type or "").split(";")[0].strip() or "application/octet-stream"
@@ -84,7 +82,24 @@ async def perform_upload(
             file_id=file_id,
             status="pending",
             result=None,
+            source=source,
+            external_user_id=external_user_id,
+            external_case_id=external_case_id,
+            idempotency_key=idempotency_key,
+            callback_url=callback_url,
+            callback_token=callback_token,
         )
+    except IntegrityError:
+        try:
+            await Orm.delete_file_record_by_id(session, file_id)
+        except Exception:
+            pass
+        try:
+            s3 = get_minio_client()
+            await asyncio.to_thread(delete_object, s3, BUCKET_NAME, object_key)
+        except Exception:
+            pass
+        raise
     except Exception:
         try:
             await Orm.delete_file_record_by_id(session, file_id)
@@ -100,8 +115,149 @@ async def perform_upload(
             detail="Не удалось создать задание классификации. Повторите попытку.",
         )
 
+    return db_request
+
+
+def _required_integration_value(value: str, field: str) -> str:
+    cleaned = (value or "").strip()
+    if not cleaned:
+        raise HTTPException(status_code=400, detail=f"{field} обязателен")
+    if len(cleaned) > 255:
+        raise HTTPException(status_code=400, detail=f"{field} слишком длинный")
+    return cleaned
+
+
+def _optional_callback_url(value: Optional[str]) -> Optional[str]:
+    cleaned = (value or "").strip()
+    if not cleaned:
+        return None
+    if len(cleaned) > 2048:
+        raise HTTPException(status_code=400, detail="callback_url слишком длинный")
+    if not (cleaned.startswith("http://") or cleaned.startswith("https://")):
+        raise HTTPException(
+            status_code=400,
+            detail="callback_url должен начинаться с http:// или https://",
+        )
+    return cleaned
+
+
+def _optional_callback_token(value: Optional[str]) -> Optional[str]:
+    cleaned = (value or "").strip()
+    return cleaned or None
+
+
+def _integration_creation_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "job_id": payload["job_id"],
+        "status": payload["status"],
+        "external_user_id": payload["external_user_id"],
+        "external_case_id": payload["external_case_id"],
+        "idempotency_key": payload["idempotency_key"],
+    }
+
+
+async def perform_upload(
+    session, user_id: int, file: UploadFile, features_only: bool = False, source: str = "web"
+) -> Dict[str, Any]:
+    if not await Orm.user_exists(session, user_id):
+        raise HTTPException(
+            status_code=404,
+            detail="Пользователь не найден в базе.",
+        )
+
+    if await Orm.count_user_active_classifications(session, user_id) > 0:
+        raise HTTPException(
+            status_code=429,
+            detail="Уже выполняется классификация. Дождитесь завершения или обновите статус задания.",
+        )
+
+    db_request = await _store_classification_upload(
+        session,
+        user_id,
+        file,
+        source=source,
+    )
     run_classification.delay(db_request.id, features_only)
     return {"job_id": db_request.id, "status": "pending"}
+
+
+async def perform_integration_upload(
+    session,
+    user_id: int,
+    file: UploadFile,
+    external_user_id: str,
+    external_case_id: str,
+    idempotency_key: str,
+    features_only: bool = True,
+    callback_url: Optional[str] = None,
+    callback_token: Optional[str] = None,
+) -> Dict[str, Any]:
+    if not await Orm.user_exists(session, user_id):
+        raise HTTPException(
+            status_code=404,
+            detail="Пользователь не найден в базе.",
+        )
+
+    external_user_id = _required_integration_value(
+        external_user_id, "external_user_id"
+    )
+    external_case_id = _required_integration_value(
+        external_case_id, "external_case_id"
+    )
+    idempotency_key = _required_integration_value(
+        idempotency_key, "idempotency_key"
+    )
+    callback_url = _optional_callback_url(callback_url)
+    callback_token = _optional_callback_token(callback_token)
+
+    existing = await Orm.get_integration_job_by_idempotency_key(
+        session, user_id, idempotency_key
+    )
+    if existing:
+        return _integration_creation_payload(existing)
+
+    if await Orm.get_active_integration_classification_job(
+        session, user_id, external_user_id
+    ):
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                "Для external_user_id уже выполняется классификация. "
+                "Дождитесь завершения или запросите статус активного задания."
+            ),
+        )
+
+    try:
+        db_request = await _store_classification_upload(
+            session,
+            user_id,
+            file,
+            source="integration",
+            external_user_id=external_user_id,
+            external_case_id=external_case_id,
+            idempotency_key=idempotency_key,
+            callback_url=callback_url,
+            callback_token=callback_token,
+        )
+    except IntegrityError:
+        existing = await Orm.get_integration_job_by_idempotency_key(
+            session, user_id, idempotency_key
+        )
+        if existing:
+            return _integration_creation_payload(existing)
+        raise
+
+    run_classification.apply_async(
+        args=(db_request.id, features_only),
+        queue="classification_external",
+    )
+    return {
+        "job_id": db_request.id,
+        "status": "pending",
+        "external_user_id": external_user_id,
+        "external_case_id": external_case_id,
+        "idempotency_key": idempotency_key,
+    }
 
 
 async def active_job_payload(session, user_id: int) -> Optional[Dict[str, Any]]:
@@ -136,6 +292,23 @@ async def classification_job_payload(
     else:
         payload["image_token"] = None
     return payload
+
+
+async def active_integration_job_payload(
+    session, user_id: int, external_user_id: str
+) -> Optional[Dict[str, Any]]:
+    external_user_id = _required_integration_value(
+        external_user_id, "external_user_id"
+    )
+    return await Orm.get_active_integration_classification_job(
+        session, user_id, external_user_id
+    )
+
+
+async def integration_job_payload(
+    session, user_id: int, job_id: int
+) -> Optional[Dict[str, Any]]:
+    return await Orm.get_integration_classification_job(session, job_id, user_id)
 
 
 async def history_with_image_tokens(session, user_id: int) -> List[Dict[str, Any]]:

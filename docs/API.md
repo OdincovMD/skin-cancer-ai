@@ -234,6 +234,76 @@ Query: **`token`** — одноразовый токен из письма.
 - `description_result` — сырой JSON-ответ description pipeline или `null`
 - `features_only` — `true`, если задание выполнялось без внешнего текстового description pipeline
 
+---
+
+## Интеграционная классификация (API v1 + API-ключ)
+
+Маршруты для внешних систем, где один `X-API-Key` обслуживает несколько конечных пользователей. Все маршруты требуют заголовок:
+
+```http
+X-API-Key: <сырой_токен>
+```
+
+### `POST /api/v1/integrations/classifications`
+
+`multipart/form-data`.
+
+| Поле | Тип | Обязательно | Описание |
+|------|-----|-------------|----------|
+| `file` | binary | да | Изображение для анализа |
+| `external_user_id` | string | да | ID пользователя во внешней системе |
+| `external_case_id` | string | да | ID кейса/изображения во внешней системе |
+| `idempotency_key` | string | да | Уникальный ключ запроса внутри API-аккаунта |
+| `features_only` | boolean | нет | По умолчанию `true` |
+| `callback_url` | string | нет | URL для callback после terminal status |
+| `callback_token` | string | нет | Вернётся в callback как `X-Callback-Token` |
+
+Одновременно может быть только одна активная integration-задача на пару `API-аккаунт + external_user_id`. Повторный запрос с тем же `idempotency_key` возвращает существующее задание.
+
+Успех:
+
+```json
+{
+  "job_id": 123,
+  "status": "pending",
+  "external_user_id": "42",
+  "external_case_id": "image_777",
+  "idempotency_key": "skin_labels:image:777:user:42"
+}
+```
+
+### `GET /api/v1/integrations/classifications/active`
+
+Query:
+
+| Поле | Тип | Обязательно |
+|------|-----|-------------|
+| `external_user_id` | string | да |
+
+Возвращает активное integration-задание для конечного пользователя или `204`, если активной задачи нет.
+
+### `GET /api/v1/integrations/classifications/{job_id}`
+
+Возвращает статус и результат integration-задания. `404`, если задание не найдено, не принадлежит API-аккаунту или не является integration-задачей.
+
+### Callback
+
+Если передан `callback_url`, после `completed` или `error` backend отправит:
+
+```json
+{
+  "job_id": 123,
+  "status": "completed",
+  "external_user_id": "42",
+  "external_case_id": "image_777",
+  "idempotency_key": "skin_labels:image:777:user:42",
+  "result": {},
+  "error": null
+}
+```
+
+При ошибке callback классификация не откатывается; в статусе задания сохраняются `callback_status` и `callback_last_error`.
+
 ### `POST /gethistory`
 
 Тело: пустой объект **`{}`** (JSON).
@@ -269,6 +339,9 @@ Query: **`token`** — HMAC-токен из поля `image_token` (не пер�
 | `GET` | `/api/v1/classification-jobs/{job_id}` | Как `GET /classification-jobs/{job_id}` |
 | `POST` | `/api/v1/gethistory` | Как `POST /gethistory` |
 | `GET` | `/api/v1/history/image?token=...` | Как `GET /history/image`, плюс **дополнительная** проверка rate limit по пользователю из токена |
+| `POST` | `/api/v1/integrations/classifications` | Создать integration-задачу с `external_user_id`, idempotency и callback |
+| `GET` | `/api/v1/integrations/classifications/active` | Активная integration-задача по `external_user_id` |
+| `GET` | `/api/v1/integrations/classifications/{job_id}` | Статус и результат integration-задачи |
 
 Аутентификация: **`X-API-Key`**. При отсутствии или неверном ключе — **401**.
 
@@ -278,14 +351,12 @@ Query: **`token`** — HMAC-токен из поля `image_token` (не пер�
 
 ### Интеграция клиентских систем с Skin Cancer AI
 
-Для внешних скриптов, backend-сервисов и partner-интеграций используйте только публичный API v1:
+Для новых backend-сервисов и partner-интеграций используйте integration API:
 
 1. Пользователь подтверждает email и выпускает API-ключ в личном кабинете.
-2. Внешняя система отправляет изображение на `POST /api/v1/uploadfile`.
-3. Система получает `job_id` и периодически опрашивает:
-   - `GET /api/v1/classification-jobs/{job_id}` для статуса и результата
-   - или `GET /api/v1/classification-jobs/active`, если нужно восстановить незавершённое задание
-4. При необходимости можно получить историю через `POST /api/v1/gethistory` и изображение по `image_token` через `GET /api/v1/history/image`.
+2. Внешняя система отправляет изображение на `POST /api/v1/integrations/classifications`.
+3. В запросе передаются `external_user_id`, `external_case_id` и `idempotency_key`.
+4. Система получает `job_id`, опрашивает `GET /api/v1/integrations/classifications/{job_id}` или принимает optional callback.
 
 Для внешней интеграции не нужны JWT-cookie или браузерная сессия. Достаточно заголовка:
 
@@ -296,9 +367,10 @@ X-API-Key: scai_...
 Рекомендации для интегратора:
 
 - Опрашивайте статус не чаще одного раза в 2 секунды, чтобы не упираться в rate limit.
-- Сохраняйте `job_id` и `image_token` на своей стороне, если хотите позже восстановить состояние или показать превью.
+- Сохраняйте `job_id`, `external_case_id` и `idempotency_key` на своей стороне.
 - Обрабатывайте промежуточные состояния `pending` и `processing`.
 - Для `features_only=true` ожидайте обычное поле `result` с итогом классификации, но без внешнего текстового описания и связанных полей description pipeline.
+- Старый `POST /api/v1/uploadfile` остается для простых скриптов, где один API-ключ соответствует одному конечному пользователю.
 
 ### Интеграция внешнего description service (`img2txt`)
 

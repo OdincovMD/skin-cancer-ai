@@ -175,6 +175,12 @@ class Orm:
         file_id: int,
         status: str = "completed",
         result: str = None,
+        source: Optional[str] = None,
+        external_user_id: Optional[str] = None,
+        external_case_id: Optional[str] = None,
+        idempotency_key: Optional[str] = None,
+        callback_url: Optional[str] = None,
+        callback_token: Optional[str] = None,
     ) -> ClassificationResults:
         try:
             db_request = ClassificationResults(
@@ -182,6 +188,13 @@ class Orm:
                 file_id=file_id,
                 status=status,
                 result=result,
+                source=source,
+                external_user_id=external_user_id,
+                external_case_id=external_case_id,
+                idempotency_key=idempotency_key,
+                callback_url=callback_url,
+                callback_token=callback_token,
+                callback_status="pending" if callback_url else None,
             )
             session.add(db_request)
             await session.commit()
@@ -213,6 +226,25 @@ class Orm:
             raise
 
     @staticmethod
+    async def update_classification_callback_status(
+        session: AsyncSession,
+        job_id: int,
+        callback_status: str,
+        callback_last_error: Optional[str] = None,
+    ) -> None:
+        try:
+            row = await session.get(ClassificationResults, job_id)
+            if not row:
+                return
+            row.callback_status = callback_status
+            row.callback_last_error = callback_last_error
+            await session.commit()
+        except Exception as e:
+            await session.rollback()
+            print(f"Ошибка при обновлении callback-статуса {job_id}: {e}")
+            raise
+
+    @staticmethod
     async def get_classification_file_meta(
         session: AsyncSession, job_id: int
     ) -> Optional[Dict[str, str]]:
@@ -234,6 +266,24 @@ class Orm:
     ) -> int:
         stmt = select(func.count(ClassificationResults.id)).where(
             ClassificationResults.user_id == user_id,
+            or_(
+                ClassificationResults.source.is_(None),
+                ClassificationResults.source != "integration",
+            ),
+            ClassificationResults.status.in_(["pending", "processing"]),
+        )
+        result = await session.execute(stmt)
+        n = result.scalar_one()
+        return int(n or 0)
+
+    @staticmethod
+    async def count_integration_active_classifications(
+        session: AsyncSession, user_id: int, external_user_id: str
+    ) -> int:
+        stmt = select(func.count(ClassificationResults.id)).where(
+            ClassificationResults.user_id == user_id,
+            ClassificationResults.external_user_id == external_user_id,
+            ClassificationResults.source == "integration",
             ClassificationResults.status.in_(["pending", "processing"]),
         )
         result = await session.execute(stmt)
@@ -253,6 +303,10 @@ class Orm:
             )
             .where(
                 ClassificationResults.user_id == user_id,
+                or_(
+                    ClassificationResults.source.is_(None),
+                    ClassificationResults.source != "integration",
+                ),
                 or_(
                     ClassificationResults.status.in_(["pending", "processing"]),
                     DescriptionJob.status.in_(
@@ -296,6 +350,10 @@ class Orm:
             .where(
                 ClassificationResults.id == job_id,
                 ClassificationResults.user_id == user_id,
+                or_(
+                    ClassificationResults.source.is_(None),
+                    ClassificationResults.source != "integration",
+                ),
             )
         )
         result = await session.execute(stmt)
@@ -310,6 +368,132 @@ class Orm:
         }
         payload.update(_description_fields(description_row))
         return payload
+
+    @staticmethod
+    def _integration_payload(
+        classification_row: ClassificationResults,
+        description_row: Optional[DescriptionJob],
+    ) -> Dict[str, Any]:
+        payload = {
+            "job_id": classification_row.id,
+            "status": classification_row.status,
+            "external_user_id": classification_row.external_user_id,
+            "external_case_id": classification_row.external_case_id,
+            "idempotency_key": classification_row.idempotency_key,
+            "result": _parse_result_payload(classification_row.result),
+            "callback_status": classification_row.callback_status,
+            "callback_last_error": classification_row.callback_last_error,
+        }
+        payload.update(_description_fields(description_row))
+        return payload
+
+    @staticmethod
+    async def get_integration_classification_job(
+        session: AsyncSession, job_id: int, user_id: int
+    ) -> Optional[Dict[str, Any]]:
+        stmt = (
+            select(ClassificationResults, DescriptionJob)
+            .outerjoin(
+                DescriptionJob,
+                DescriptionJob.classification_result_id == ClassificationResults.id,
+            )
+            .where(
+                ClassificationResults.id == job_id,
+                ClassificationResults.user_id == user_id,
+                ClassificationResults.source == "integration",
+            )
+        )
+        result = await session.execute(stmt)
+        row = result.first()
+        if not row:
+            return None
+        classification_row, description_row = row
+        return Orm._integration_payload(classification_row, description_row)
+
+    @staticmethod
+    async def get_integration_job_by_idempotency_key(
+        session: AsyncSession, user_id: int, idempotency_key: str
+    ) -> Optional[Dict[str, Any]]:
+        stmt = (
+            select(ClassificationResults, DescriptionJob)
+            .outerjoin(
+                DescriptionJob,
+                DescriptionJob.classification_result_id == ClassificationResults.id,
+            )
+            .where(
+                ClassificationResults.user_id == user_id,
+                ClassificationResults.source == "integration",
+                ClassificationResults.idempotency_key == idempotency_key,
+            )
+            .order_by(ClassificationResults.request_date.desc())
+            .limit(1)
+        )
+        result = await session.execute(stmt)
+        row = result.first()
+        if not row:
+            return None
+        classification_row, description_row = row
+        return Orm._integration_payload(classification_row, description_row)
+
+    @staticmethod
+    async def get_active_integration_classification_job(
+        session: AsyncSession, user_id: int, external_user_id: str
+    ) -> Optional[Dict[str, Any]]:
+        stmt = (
+            select(ClassificationResults, DescriptionJob)
+            .outerjoin(
+                DescriptionJob,
+                DescriptionJob.classification_result_id == ClassificationResults.id,
+            )
+            .where(
+                ClassificationResults.user_id == user_id,
+                ClassificationResults.external_user_id == external_user_id,
+                ClassificationResults.source == "integration",
+                or_(
+                    ClassificationResults.status.in_(["pending", "processing"]),
+                    DescriptionJob.status.in_(
+                        [
+                            "received",
+                            "features_ready",
+                            "classification_ready",
+                            "generating",
+                            "pending",
+                        ]
+                    ),
+                ),
+            )
+            .order_by(ClassificationResults.request_date.desc())
+            .limit(1)
+        )
+        result = await session.execute(stmt)
+        row = result.first()
+        if not row:
+            return None
+        classification_row, description_row = row
+        return Orm._integration_payload(classification_row, description_row)
+
+    @staticmethod
+    async def get_integration_callback_payload(
+        session: AsyncSession, job_id: int
+    ) -> Optional[Dict[str, Any]]:
+        stmt = select(ClassificationResults).where(
+            ClassificationResults.id == job_id,
+            ClassificationResults.source == "integration",
+        )
+        result = await session.execute(stmt)
+        row = result.scalar_one_or_none()
+        if not row:
+            return None
+        return {
+            "job_id": row.id,
+            "status": row.status,
+            "external_user_id": row.external_user_id,
+            "external_case_id": row.external_case_id,
+            "idempotency_key": row.idempotency_key,
+            "result": _parse_result_payload(row.result),
+            "callback_url": row.callback_url,
+            "callback_token": row.callback_token,
+        }
 
     @staticmethod
     async def get_classification_requests(
@@ -336,6 +520,12 @@ class Orm:
                 DescriptionJob.classification_result_id == ClassificationResults.id,
             )
             .where(ClassificationResults.user_id == user_id)
+            .where(
+                or_(
+                    ClassificationResults.source.is_(None),
+                    ClassificationResults.source != "integration",
+                )
+            )
             .order_by(ClassificationResults.request_date.desc())
             .limit(limit)
         )

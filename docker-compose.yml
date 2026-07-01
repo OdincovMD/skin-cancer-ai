@@ -115,6 +115,26 @@ services:
       redis:
         condition: service_healthy
 
+  celery_external_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    command: celery -A workers worker --loglevel=info --concurrency=1 -Q classification_external
+    networks:
+      - app-network
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      ml:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   postgres:
     image: postgres:16-bookworm
     shm_size: 128mb

@@ -134,11 +134,14 @@ const ClassificationWorkspace = () => {
           ? payload.bucketedLabels
           : prev.bucketedLabels
         : prev.bucketedLabels
+      const nextError = nextText
+        ? null
+        : payload.descriptionError ?? prev.error ?? null
 
       return {
         status: payload.descriptionStatus ?? prev.status ?? null,
         text: nextText,
-        error: payload.descriptionError ?? prev.error ?? null,
+        error: nextError,
         importantLabels: nextImportantLabels,
         bucketedLabels: nextBucketedLabels,
       }

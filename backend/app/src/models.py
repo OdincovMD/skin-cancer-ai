@@ -2,11 +2,13 @@ from sqlalchemy import (
     Boolean,
     Column,
     Integer,
+    Index,
     String,
     DateTime,
     ForeignKey,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
@@ -72,6 +74,15 @@ class File(Base):
 
 class ClassificationResults(Base):
     __tablename__ = "classification_results"
+    __table_args__ = (
+        Index(
+            "ix_classification_results_user_id_idempotency_key",
+            "user_id",
+            "idempotency_key",
+            unique=True,
+            postgresql_where=text("idempotency_key IS NOT NULL"),
+        ),
+    )
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
@@ -80,6 +91,14 @@ class ClassificationResults(Base):
     request_date = Column(DateTime(timezone=True), default=func.now())
     status = Column(String, default="completed")
     result = Column(Text, nullable=True)  # Результат классификации
+    external_user_id = Column(String(255), nullable=True, index=True)
+    external_case_id = Column(String(255), nullable=True, index=True)
+    idempotency_key = Column(String(255), nullable=True)
+    source = Column(String(32), nullable=True)
+    callback_url = Column(Text, nullable=True)
+    callback_token = Column(Text, nullable=True)
+    callback_status = Column(String(64), nullable=True)
+    callback_last_error = Column(Text, nullable=True)
 
     user = relationship("User", back_populates="classification_results")
     file = relationship("File", back_populates="classification_results")

@@ -25,10 +25,10 @@ return c
 """
 
 
-def _enforce_api_v1_rate_limit(user_id: int) -> Optional[str]:
-    limit = max(1, int(settings.API_V1_RATE_LIMIT_PER_MINUTE))
+def _enforce_api_v1_rate_limit(user_id: int, limit: int, key_suffix: str = "rl") -> Optional[str]:
+    limit = max(1, int(limit))
     r = get_redis()
-    key = f"api_v1:rl:{user_id}"
+    key = f"api_v1:{key_suffix}:{user_id}"
     n = int(
         r.eval(
             _API_V1_RL_LUA,
@@ -46,6 +46,22 @@ def _enforce_api_v1_rate_limit(user_id: int) -> Optional[str]:
 
 
 async def enforce_api_v1_rate_limit(user_id: int) -> None:
-    detail = await asyncio.to_thread(_enforce_api_v1_rate_limit, user_id)
+    detail = await asyncio.to_thread(
+        _enforce_api_v1_rate_limit,
+        user_id,
+        int(settings.API_V1_RATE_LIMIT_PER_MINUTE),
+        "rl",
+    )
+    if detail:
+        raise HTTPException(status_code=429, detail=detail)
+
+
+async def enforce_api_v1_status_rate_limit(user_id: int) -> None:
+    detail = await asyncio.to_thread(
+        _enforce_api_v1_rate_limit,
+        user_id,
+        int(settings.API_V1_STATUS_RATE_LIMIT_PER_MINUTE),
+        "status_rl",
+    )
     if detail:
         raise HTTPException(status_code=429, detail=detail)

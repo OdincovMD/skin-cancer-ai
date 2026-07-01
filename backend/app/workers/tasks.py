@@ -2,9 +2,12 @@ import asyncio
 import json
 import mimetypes
 import os
+import secrets
+import time
 
 import httpx
 
+from core.redis_client import get_redis
 from core.minio_client import (
     download_file_bytes,
     get_minio_client,
@@ -125,6 +128,119 @@ def _description_response_fields(payload: object) -> dict:
     return fields
 
 
+_CLASSIFICATION_THROTTLE_LUA = """
+local key = KEYS[1]
+local now = tonumber(ARGV[1])
+local window = tonumber(ARGV[2])
+local limit = tonumber(ARGV[3])
+local member = ARGV[4]
+redis.call('ZREMRANGEBYSCORE', key, 0, now - window)
+local count = redis.call('ZCARD', key)
+if count < limit then
+  redis.call('ZADD', key, now, member)
+  redis.call('PEXPIRE', key, window)
+  return 0
+end
+local oldest = redis.call('ZRANGE', key, 0, 0, 'WITHSCORES')
+if oldest[2] == nil then
+  return 1000
+end
+return math.max(1, tonumber(oldest[2]) + window - now)
+"""
+
+
+def _classification_rate_limit_wait_ms() -> int:
+    limit = max(1, int(settings.CLASSIFICATION_GLOBAL_RATE_LIMIT_PER_MINUTE))
+    now_ms = int(time.time() * 1000)
+    window_ms = 60_000
+    member = f"{now_ms}:{secrets.token_urlsafe(8)}"
+    wait_ms = get_redis().eval(
+        _CLASSIFICATION_THROTTLE_LUA,
+        1,
+        "classification:global:start_rl",
+        now_ms,
+        window_ms,
+        limit,
+        member,
+    )
+    return int(wait_ms or 0)
+
+
+async def _wait_for_global_classification_slot() -> None:
+    while True:
+        wait_ms = await asyncio.to_thread(_classification_rate_limit_wait_ms)
+        if wait_ms <= 0:
+            return
+        await asyncio.sleep(max(wait_ms / 1000.0, 0.1))
+
+
+def _callback_error_from_result(result: object) -> object:
+    if isinstance(result, dict) and "detail" in result:
+        return result["detail"]
+    return result
+
+
+async def _send_integration_callback_if_configured(
+    session,
+    classification_id: int,
+) -> None:
+    payload = await Orm.get_integration_callback_payload(session, classification_id)
+    if not payload or not payload.get("callback_url"):
+        return
+    if payload.get("status") not in {"completed", "error"}:
+        return
+
+    result = payload.get("result")
+    body = {
+        "job_id": payload.get("job_id"),
+        "status": payload.get("status"),
+        "external_user_id": payload.get("external_user_id"),
+        "external_case_id": payload.get("external_case_id"),
+        "idempotency_key": payload.get("idempotency_key"),
+        "result": result if payload.get("status") == "completed" else None,
+        "error": None
+        if payload.get("status") == "completed"
+        else _callback_error_from_result(result),
+    }
+
+    headers = {}
+    callback_token = payload.get("callback_token")
+    if callback_token:
+        headers["X-Callback-Token"] = str(callback_token)
+
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(15.0)) as client:
+            response = await client.post(
+                str(payload["callback_url"]),
+                json=body,
+                headers=headers,
+            )
+            response.raise_for_status()
+        await Orm.update_classification_callback_status(session, classification_id, "sent")
+    except Exception as exc:
+        await Orm.update_classification_callback_status(
+            session,
+            classification_id,
+            "failed",
+            callback_last_error=str(exc)[:2000],
+        )
+
+
+async def _update_terminal_classification_status(
+    session,
+    classification_id: int,
+    status: str,
+    result: str,
+) -> None:
+    await Orm.update_classification_status(
+        session,
+        classification_id,
+        status,
+        result=result,
+    )
+    await _send_integration_callback_if_configured(session, classification_id)
+
+
 async def _request_mask(
     client: httpx.AsyncClient,
     file_name: str,
@@ -189,11 +305,11 @@ async def _run_classification_async(
 
             meta = await Orm.get_classification_file_meta(session, classification_id)
             if not meta:
-                await Orm.update_classification_status(
+                await _update_terminal_classification_status(
                     session,
                     classification_id,
                     "error",
-                    result=_error_payload("Запись классификации не найдена"),
+                    _error_payload("Запись классификации не найдена"),
                 )
                 return
 
@@ -207,11 +323,11 @@ async def _run_classification_async(
                     download_file_bytes, s3, bucket, object_key
                 )
             except Exception as exc:
-                await Orm.update_classification_status(
+                await _update_terminal_classification_status(
                     session,
                     classification_id,
                     "error",
-                    result=_error_payload(
+                    _error_payload(
                         "Не удалось получить изображение из хранилища. Повторите попытку позже."
                     ),
                 )
@@ -227,6 +343,7 @@ async def _run_classification_async(
 
             try:
                 async with httpx.AsyncClient(timeout=httpx.Timeout(600.0)) as client:
+                    await _wait_for_global_classification_slot()
                     await Orm.update_classification_status(
                         session,
                         classification_id,
@@ -245,19 +362,19 @@ async def _run_classification_async(
                             content_type,
                         )
                     except httpx.HTTPStatusError as exc:
-                        await Orm.update_classification_status(
+                        await _update_terminal_classification_status(
                             session,
                             classification_id,
                             "error",
-                            result=_error_payload(_http_error_detail(exc)),
+                            _error_payload(_http_error_detail(exc)),
                         )
                         return
                     except httpx.RequestError as exc:
-                        await Orm.update_classification_status(
+                        await _update_terminal_classification_status(
                             session,
                             classification_id,
                             "error",
-                            result=_error_payload(_ml_service_error_message(exc)),
+                            _error_payload(_ml_service_error_message(exc)),
                         )
                         return
 
@@ -331,19 +448,19 @@ async def _run_classification_async(
                             mask_bytes,
                         )
                     except httpx.HTTPStatusError as exc:
-                        await Orm.update_classification_status(
+                        await _update_terminal_classification_status(
                             session,
                             classification_id,
                             "error",
-                            result=_error_payload(_http_error_detail(exc)),
+                            _error_payload(_http_error_detail(exc)),
                         )
                         return
                     except httpx.RequestError as exc:
-                        await Orm.update_classification_status(
+                        await _update_terminal_classification_status(
                             session,
                             classification_id,
                             "error",
-                            result=_error_payload(_ml_service_error_message(exc)),
+                            _error_payload(_ml_service_error_message(exc)),
                         )
                         return
 
@@ -357,11 +474,11 @@ async def _run_classification_async(
                             "Собираем итог анализа и подготавливаем ответ.",
                         ),
                     )
-                    await Orm.update_classification_status(
+                    await _update_terminal_classification_status(
                         session,
                         classification_id,
                         "completed",
-                        result=json.dumps(result, ensure_ascii=True),
+                        json.dumps(result, ensure_ascii=True),
                     )
 
                     if description_enabled() and description_registered:
@@ -400,11 +517,11 @@ async def _run_classification_async(
                                 callback_sent=False,
                             )
             except Exception as exc:
-                await Orm.update_classification_status(
+                await _update_terminal_classification_status(
                     session,
                     classification_id,
                     "error",
-                    result=_error_payload(_unexpected_processing_error_message(exc)),
+                    _error_payload(_unexpected_processing_error_message(exc)),
                 )
     finally:
         await async_engine.dispose()
