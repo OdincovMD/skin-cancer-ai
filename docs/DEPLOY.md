@@ -161,7 +161,11 @@ ML-сервис стартует дольше всех (`start_period: 600s`) и
 
 | Переменная | По умолчанию | Описание |
 |------------|-------------|----------|
-| `API_V1_RATE_LIMIT_PER_MINUTE` | `5` | Максимум запросов на пользователя за скользящее окно 60 с |
+| `API_V1_RATE_LIMIT_PER_MINUTE` | `5` | Общий лимит API v1 и classification upload на пользователя за скользящее окно 60 с |
+| `API_V1_MASK_RATE_LIMIT_PER_MINUTE` | `30` | Лимит mask upload и скачивания mask-артефактов на пользователя за 60 с |
+| `API_V1_STATUS_RATE_LIMIT_PER_MINUTE` | `60` | Лимит polling/status маршрутов на пользователя за 60 с |
+| `CLASSIFICATION_GLOBAL_RATE_LIMIT_PER_MINUTE` | `5` | Глобальный worker-лимит запуска classification обработки |
+| `MASK_GLOBAL_RATE_LIMIT_PER_MINUTE` | `30` | Глобальный worker-лимит запуска mask-only обработки |
 | `IMAGE_ACCESS_TOKEN_TTL_SEC` | `3600` | Срок жизни HMAC-токена изображения |
 
 ## Порты
@@ -267,7 +271,7 @@ docker compose up --build -d
 
 ### `429 Too Many Requests` на API v1
 
-Лимит задан переменной `API_V1_RATE_LIMIT_PER_MINUTE`. Увеличьте, если нужно, и перезапустите backend:
+Лимиты задаются переменными `API_V1_RATE_LIMIT_PER_MINUTE`, `API_V1_MASK_RATE_LIMIT_PER_MINUTE` и `API_V1_STATUS_RATE_LIMIT_PER_MINUTE`. Для очереди обработки также есть `CLASSIFICATION_GLOBAL_RATE_LIMIT_PER_MINUTE` и `MASK_GLOBAL_RATE_LIMIT_PER_MINUTE`. Увеличьте нужную переменную и перезапустите backend/worker:
 
 ```bash
 docker compose restart backend celery_worker

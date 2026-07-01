@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from auth.deps import require_verified_email_user_id
 from services.classification import (
     active_job_payload,
+    artifact_file_stream,
     classification_job_payload,
     history_image_stream,
     history_with_image_tokens,
@@ -18,10 +19,17 @@ router = APIRouter(tags=["classification"])
 async def handle_upload(
     file: UploadFile = File(),
     features_only: bool = Form(False),
+    processing_mode: str = Form("classification"),
     session: AsyncSession = Depends(get_db),
     user_id: int = Depends(require_verified_email_user_id),
 ):
-    return await perform_upload(session, user_id, file, features_only=features_only)
+    return await perform_upload(
+        session,
+        user_id,
+        file,
+        features_only=features_only,
+        processing_mode=processing_mode,
+    )
 
 
 @router.get("/classification-jobs/active")
@@ -66,3 +74,11 @@ async def get_history_image(
     session: AsyncSession = Depends(get_db),
 ):
     return await history_image_stream(session, token)
+
+
+@router.get("/classification-artifacts/file")
+async def get_classification_artifact_file(
+    token: str,
+    session: AsyncSession = Depends(get_db),
+):
+    return await artifact_file_stream(session, token)

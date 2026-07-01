@@ -10,7 +10,10 @@ import {
   Lock,
   Mail,
   Clock,
+  Download,
   FileText,
+  FileArchive,
+  FileImage,
   ChevronDown,
   ChevronUp,
   AlertTriangle,
@@ -22,6 +25,7 @@ import {
   User,
   UserRoundCog,
   ImageIcon,
+  Layers,
   RefreshCw,
   Key,
   KeyRound,
@@ -48,6 +52,13 @@ import {
   RESEND_VERIFICATION_EMAIL,
 } from "../imports/ENDPOINTS"
 import { getValues } from "../imports/HELPERS"
+import {
+  MASK_ARTIFACT_LABELS,
+  PROCESSING_MODE_MASK,
+  artifactUrl,
+  getMaskArtifacts,
+  isMaskResult,
+} from "../imports/MASK_ARTIFACTS"
 import TreeComponent from "../components/Tree"
 import BucketLabelsDisclosure, {
   formatFeatureLabelText,
@@ -96,6 +107,40 @@ const StatusBadge = ({ tone = "slate", icon: Icon, children }) => {
   )
 }
 
+const HistoryArtifactLink = ({ artifact, artifactType, primary = false }) => {
+  const meta = MASK_ARTIFACT_LABELS[artifactType]
+  const href = artifactUrl(artifact?.token)
+  const Icon = artifactType === "archive" ? FileArchive : Download
+  const baseClass =
+    "inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors"
+  const enabledClass = primary
+    ? "border-med-600 bg-med-600 text-white hover:bg-med-700"
+    : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+
+  if (!href) {
+    return (
+      <span
+        className={`${baseClass} cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400`}
+      >
+        <Icon size={14} />
+        {meta?.filename || "Файл"}
+      </span>
+    )
+  }
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className={`${baseClass} ${enabledClass}`}
+    >
+      <Icon size={14} />
+      {meta?.filename || "Файл"}
+    </a>
+  )
+}
+
 const PASSWORD_RESET_COOLDOWN_DEFAULT_SEC = 120
 
 const Profile = () => {
@@ -105,6 +150,7 @@ const Profile = () => {
   const [history, setHistory] = useState([])
   const [historyLoading, setHistoryLoading] = useState(false)
   const [openHistoryImageKey, setOpenHistoryImageKey] = useState(null)
+  const [openMaskPreviewKey, setOpenMaskPreviewKey] = useState(null)
   const [openTreeKey, setOpenTreeKey] = useState(null)
   const [openDescriptionKey, setOpenDescriptionKey] = useState(null)
   const [resendPending, setResendPending] = useState(false)
@@ -525,6 +571,7 @@ const Profile = () => {
     setHistoryLoading(true)
     handleHistoryRequest(userInfo.accessToken).then((response) => {
       setOpenHistoryImageKey(null)
+      setOpenMaskPreviewKey(null)
       setOpenTreeKey(null)
       setHistory(Array.isArray(response) ? response : [])
       setHistoryLoading(false)
@@ -1062,24 +1109,39 @@ const Profile = () => {
             {history.map((row, idx) => {
               const result = parseResult(row.result)
               const hasDetail = Object.prototype.hasOwnProperty.call(result, "detail")
-              const hasResult = !hasDetail && Object.keys(result).length > 0
+              const isMaskRow =
+                row.processing_mode === PROCESSING_MODE_MASK || isMaskResult(result)
+              const maskArtifacts = getMaskArtifacts(result)
+              const maskPreviewSrc =
+                artifactUrl(maskArtifacts.masked_image?.token) ||
+                artifactUrl(maskArtifacts.mask?.token)
+              const hasResult =
+                !hasDetail &&
+                (isMaskRow
+                  ? row.status === "completed"
+                  : Object.keys(result).length > 0)
               const inProgress = row.status === "pending" || row.status === "processing"
               const isError = row.status === "error"
               const descriptionPending =
+                !isMaskRow &&
                 row.description_status &&
                 row.description_status !== "completed" &&
                 row.description_status !== "error"
               const descriptionReady =
+                !isMaskRow &&
                 row.description_status === "completed" && Boolean(row.description)
               const descriptionFailed =
-                row.description_status === "error" || Boolean(row.description_error)
+                !isMaskRow &&
+                (row.description_status === "error" ||
+                  Boolean(row.description_error))
               const hasDescriptionInfo =
-                row.description ||
-                row.description_error ||
-                (Array.isArray(row.important_labels) &&
-                  row.important_labels.length > 0) ||
-                (Array.isArray(row.bucketed_labels) &&
-                  row.bucketed_labels.length > 0)
+                !isMaskRow &&
+                (row.description ||
+                  row.description_error ||
+                  (Array.isArray(row.important_labels) &&
+                    row.important_labels.length > 0) ||
+                  (Array.isArray(row.bucketed_labels) &&
+                    row.bucketed_labels.length > 0))
               const rowKey = `${row.request_date}_${row.file_name}_${idx}`
               const base = env.BACKEND_URL.replace(/\/$/, "")
               const imgSrc = row.image_token
@@ -1109,8 +1171,15 @@ const Profile = () => {
                         </span>
                       )}
                       {!isError && !inProgress && hasResult && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700">
-                          <CheckCircle2 size={12} /> Готово
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                            isMaskRow
+                              ? "bg-med-50 text-med-700"
+                              : "bg-green-100 text-green-700"
+                          }`}
+                        >
+                          {isMaskRow ? <Layers size={12} /> : <CheckCircle2 size={12} />}
+                          {isMaskRow ? "Маска" : "Готово"}
                         </span>
                       )}
                       {descriptionPending && (
@@ -1133,65 +1202,134 @@ const Profile = () => {
 
                   {!isError && !inProgress && hasResult && (
                     <div className="mt-3">
-                      <div className="flex flex-wrap gap-1.5">
-                        {getValues(result).map((val, i) => (
-                          <React.Fragment key={i}>
-                            {i > 0 && <span className="self-center text-xs text-gray-300">&rarr;</span>}
-                            <span className="rounded bg-med-50 px-2 py-0.5 text-xs font-medium text-med-800">
-                              {val}
+                      {isMaskRow ? (
+                        <>
+                          <div className="flex flex-wrap gap-2">
+                            <span className="inline-flex items-center gap-1.5 rounded bg-med-50 px-2 py-0.5 text-xs font-medium text-med-800">
+                              <Layers size={13} />
+                              Маска новообразования
                             </span>
-                          </React.Fragment>
-                        ))}
-                      </div>
-
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const nk = openTreeKey === rowKey ? null : rowKey
-                            setOpenTreeKey(nk)
-                            if (nk) setTimeout(() => document.getElementById(`tree-${nk}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 50)
-                          }}
-                          className="inline-flex items-center gap-1.5 rounded-md bg-white border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
-                        >
-                          {openTreeKey === rowKey ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                          Дерево решений
-                        </button>
-                        {imgSrc && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const nk = openHistoryImageKey === rowKey ? null : rowKey
-                              setOpenHistoryImageKey(nk)
-                              if (nk) setTimeout(() => document.getElementById(`img-${nk}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 50)
-                            }}
-                            className="inline-flex items-center gap-1.5 rounded-md bg-white border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
-                          >
-                            <ImageIcon size={14} />
-                            {openHistoryImageKey === rowKey ? "Скрыть" : "Изображение"}
-                          </button>
-                        )}
-                        {hasDescriptionInfo && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const nk = openDescriptionKey === rowKey ? null : rowKey
-                              setOpenDescriptionKey(nk)
-                              if (nk) setTimeout(() => document.getElementById(`desc-${nk}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 50)
-                            }}
-                            className="inline-flex items-center gap-1.5 rounded-md bg-white border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
-                          >
-                            {openDescriptionKey === rowKey ? (
-                              <ChevronUp size={14} />
-                            ) : (
-                              <ChevronDown size={14} />
+                            {!maskArtifacts.mask && (
+                              <span className="rounded bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+                                Ч/б маска недоступна
+                              </span>
                             )}
-                            Описание
-                          </button>
-                        )}
-                      </div>
+                            {!maskArtifacts.masked_image && (
+                              <span className="rounded bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+                                Маскированное изображение недоступно
+                              </span>
+                            )}
+                            {!maskArtifacts.archive && (
+                              <span className="rounded bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+                                Архив недоступен
+                              </span>
+                            )}
+                          </div>
 
-                      {openTreeKey === rowKey && (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <HistoryArtifactLink
+                              artifact={maskArtifacts.archive}
+                              artifactType="archive"
+                              primary
+                            />
+                            <HistoryArtifactLink
+                              artifact={maskArtifacts.masked_image}
+                              artifactType="masked_image"
+                            />
+                            <HistoryArtifactLink
+                              artifact={maskArtifacts.mask}
+                              artifactType="mask"
+                            />
+                            {maskPreviewSrc && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const nk = openMaskPreviewKey === rowKey ? null : rowKey
+                                  setOpenMaskPreviewKey(nk)
+                                  if (nk) setTimeout(() => document.getElementById(`mask-${nk}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 50)
+                                }}
+                                className="inline-flex items-center gap-1.5 rounded-md bg-white border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                              >
+                                <FileImage size={14} />
+                                {openMaskPreviewKey === rowKey ? "Скрыть" : "Превью"}
+                              </button>
+                            )}
+                          </div>
+
+                          {openMaskPreviewKey === rowKey && maskPreviewSrc && (
+                            <div id={`mask-${rowKey}`} className="mt-3 animate-fadeIn">
+                              <img
+                                src={maskPreviewSrc}
+                                alt="Маска новообразования"
+                                className="max-h-80 w-auto max-w-full rounded-lg border border-gray-200 bg-slate-950 object-contain"
+                                onError={() => setOpenMaskPreviewKey(null)}
+                              />
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex flex-wrap gap-1.5">
+                            {getValues(result).map((val, i) => (
+                              <React.Fragment key={i}>
+                                {i > 0 && <span className="self-center text-xs text-gray-300">&rarr;</span>}
+                                <span className="rounded bg-med-50 px-2 py-0.5 text-xs font-medium text-med-800">
+                                  {val}
+                                </span>
+                              </React.Fragment>
+                            ))}
+                          </div>
+
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const nk = openTreeKey === rowKey ? null : rowKey
+                                setOpenTreeKey(nk)
+                                if (nk) setTimeout(() => document.getElementById(`tree-${nk}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 50)
+                              }}
+                              className="inline-flex items-center gap-1.5 rounded-md bg-white border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                            >
+                              {openTreeKey === rowKey ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                              Дерево решений
+                            </button>
+                            {imgSrc && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const nk = openHistoryImageKey === rowKey ? null : rowKey
+                                  setOpenHistoryImageKey(nk)
+                                  if (nk) setTimeout(() => document.getElementById(`img-${nk}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 50)
+                                }}
+                                className="inline-flex items-center gap-1.5 rounded-md bg-white border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                              >
+                                <ImageIcon size={14} />
+                                {openHistoryImageKey === rowKey ? "Скрыть" : "Изображение"}
+                              </button>
+                            )}
+                            {hasDescriptionInfo && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const nk = openDescriptionKey === rowKey ? null : rowKey
+                                  setOpenDescriptionKey(nk)
+                                  if (nk) setTimeout(() => document.getElementById(`desc-${nk}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 50)
+                                }}
+                                className="inline-flex items-center gap-1.5 rounded-md bg-white border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                              >
+                                {openDescriptionKey === rowKey ? (
+                                  <ChevronUp size={14} />
+                                ) : (
+                                  <ChevronDown size={14} />
+                                )}
+                                Описание
+                              </button>
+                            )}
+                          </div>
+                        </>
+                      )}
+
+                      {!isMaskRow && openTreeKey === rowKey && (
                         <div id={`tree-${rowKey}`} className="mt-3 animate-fadeIn">
                           <TreeComponent
                             classificationResult={result}
@@ -1272,7 +1410,9 @@ const Profile = () => {
 
                   {inProgress && (
                     <p className="mt-2 text-sm text-amber-700">
-                      Классификация выполняется. Обновите историю позже.
+                      {isMaskRow
+                        ? "Маска формируется. Обновите историю позже."
+                        : "Классификация выполняется. Обновите историю позже."}
                     </p>
                   )}
                 </div>

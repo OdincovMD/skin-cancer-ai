@@ -44,11 +44,13 @@ export const handleUploadImage = async ({
   fileData,
   accessToken,
   featuresOnly = false,
+  processingMode = "classification",
   onProgress,
 }) => {
   const formData = new FormData()
   formData.append("file", fileData)
   formData.append("features_only", featuresOnly ? "true" : "false")
+  formData.append("processing_mode", processingMode)
 
   const base = env.BACKEND_URL.replace(/\/$/, "")
   let lastProgress = null
@@ -62,6 +64,8 @@ export const handleUploadImage = async ({
     descriptionError: null,
     importantLabels: [],
     bucketedLabels: [],
+    maskResult: null,
+    processingMode,
   })
 
   try {
@@ -107,6 +111,8 @@ export const handleUploadImage = async ({
         return {
           error: null,
           classification: polled.classification,
+          maskResult: polled.maskResult,
+          processingMode: polled.processingMode,
           imageToken: polled.imageToken,
           stage: polled.stage,
           descriptionStatus: polled.descriptionStatus,
@@ -121,6 +127,8 @@ export const handleUploadImage = async ({
           return {
             error: String(e?.message || e),
             classification: lastProgress.classification,
+            maskResult: lastProgress.maskResult,
+            processingMode: lastProgress.processingMode,
             imageToken: lastProgress.imageToken,
             stage: lastProgress.stage,
             descriptionStatus: lastProgress.descriptionStatus,
@@ -137,6 +145,8 @@ export const handleUploadImage = async ({
     return {
       error: null,
       classification: data?.classification ?? data ?? emptyClassification(),
+      maskResult: data?.maskResult ?? null,
+      processingMode: data?.processing_mode ?? processingMode,
       imageToken: data?.image_token ?? null,
       stage: emptyStage(),
       descriptionStatus: data?.description_status ?? null,

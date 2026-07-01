@@ -19,11 +19,81 @@ from core.minio_client import (
     upload_bytes_to_minio,
 )
 from services.image_access import (
+    create_artifact_access_token,
     create_image_access_token,
+    verify_artifact_access_token,
     verify_image_access_token,
 )
 from src.queries.orm import Orm
 from workers.tasks import run_classification
+
+
+PROCESSING_MODE_CLASSIFICATION = "classification"
+PROCESSING_MODE_MASK = "mask"
+ALLOWED_PROCESSING_MODES = {PROCESSING_MODE_CLASSIFICATION, PROCESSING_MODE_MASK}
+
+ARTIFACT_FILENAMES = {
+    "mask": "mask.png",
+    "masked_image": "masked_image.png",
+    "archive": "mask_results.zip",
+}
+
+
+def normalize_processing_mode(value: Optional[str]) -> str:
+    mode = (value or PROCESSING_MODE_CLASSIFICATION).strip().lower()
+    if mode not in ALLOWED_PROCESSING_MODES:
+        raise HTTPException(
+            status_code=400,
+            detail="processing_mode должен быть classification или mask",
+        )
+    return mode
+
+
+def _artifact_response_item(user_id: int, artifact: Dict[str, Any]) -> Dict[str, Any]:
+    artifact_type = str(artifact["artifact_type"])
+    token = None
+    try:
+        token = create_artifact_access_token(user_id, int(artifact["id"]))
+    except RuntimeError:
+        token = None
+    return {
+        "token": token,
+        "filename": ARTIFACT_FILENAMES.get(
+            artifact_type,
+            artifact["file_name"].split("/")[-1],
+        ),
+        "content_type": artifact["content_type"],
+        "size_bytes": artifact["size_bytes"],
+        "checksum_sha256": artifact["checksum_sha256"],
+    }
+
+
+async def _mask_result_with_artifact_tokens(
+    session,
+    user_id: int,
+    job_id: int,
+) -> Dict[str, Any]:
+    artifacts = await Orm.list_classification_artifacts(session, job_id)
+    return {
+        "mode": PROCESSING_MODE_MASK,
+        "artifacts": {
+            str(item["artifact_type"]): _artifact_response_item(user_id, item)
+            for item in artifacts
+        },
+    }
+
+
+async def _enrich_mask_payload(session, user_id: int, payload: Dict[str, Any]) -> Dict[str, Any]:
+    if (
+        payload.get("processing_mode") == PROCESSING_MODE_MASK
+        and payload.get("status") == "completed"
+    ):
+        payload["result"] = await _mask_result_with_artifact_tokens(
+            session,
+            user_id,
+            int(payload["job_id"]),
+        )
+    return payload
 
 
 async def _store_classification_upload(
@@ -32,6 +102,7 @@ async def _store_classification_upload(
     file: UploadFile,
     *,
     source: str,
+    processing_mode: str = PROCESSING_MODE_CLASSIFICATION,
     external_user_id: Optional[str] = None,
     external_case_id: Optional[str] = None,
     idempotency_key: Optional[str] = None,
@@ -82,6 +153,7 @@ async def _store_classification_upload(
             file_id=file_id,
             status="pending",
             result=None,
+            processing_mode=processing_mode,
             source=source,
             external_user_id=external_user_id,
             external_case_id=external_case_id,
@@ -150,6 +222,7 @@ def _integration_creation_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "job_id": payload["job_id"],
         "status": payload["status"],
+        "processing_mode": payload.get("processing_mode", PROCESSING_MODE_CLASSIFICATION),
         "external_user_id": payload["external_user_id"],
         "external_case_id": payload["external_case_id"],
         "idempotency_key": payload["idempotency_key"],
@@ -157,8 +230,14 @@ def _integration_creation_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 
 async def perform_upload(
-    session, user_id: int, file: UploadFile, features_only: bool = False, source: str = "web"
+    session,
+    user_id: int,
+    file: UploadFile,
+    features_only: bool = False,
+    source: str = "web",
+    processing_mode: str = PROCESSING_MODE_CLASSIFICATION,
 ) -> Dict[str, Any]:
+    processing_mode = normalize_processing_mode(processing_mode)
     if not await Orm.user_exists(session, user_id):
         raise HTTPException(
             status_code=404,
@@ -176,9 +255,14 @@ async def perform_upload(
         user_id,
         file,
         source=source,
+        processing_mode=processing_mode,
     )
     run_classification.delay(db_request.id, features_only)
-    return {"job_id": db_request.id, "status": "pending"}
+    return {
+        "job_id": db_request.id,
+        "status": "pending",
+        "processing_mode": processing_mode,
+    }
 
 
 async def perform_integration_upload(
@@ -191,7 +275,9 @@ async def perform_integration_upload(
     features_only: bool = True,
     callback_url: Optional[str] = None,
     callback_token: Optional[str] = None,
+    processing_mode: str = PROCESSING_MODE_CLASSIFICATION,
 ) -> Dict[str, Any]:
+    processing_mode = normalize_processing_mode(processing_mode)
     if not await Orm.user_exists(session, user_id):
         raise HTTPException(
             status_code=404,
@@ -238,6 +324,7 @@ async def perform_integration_upload(
             idempotency_key=idempotency_key,
             callback_url=callback_url,
             callback_token=callback_token,
+            processing_mode=processing_mode,
         )
     except IntegrityError:
         existing = await Orm.get_integration_job_by_idempotency_key(
@@ -254,6 +341,7 @@ async def perform_integration_upload(
     return {
         "job_id": db_request.id,
         "status": "pending",
+        "processing_mode": processing_mode,
         "external_user_id": external_user_id,
         "external_case_id": external_case_id,
         "idempotency_key": idempotency_key,
@@ -264,6 +352,7 @@ async def active_job_payload(session, user_id: int) -> Optional[Dict[str, Any]]:
     payload = await Orm.get_user_active_classification_job(session, user_id)
     if not payload:
         return None
+    payload = await _enrich_mask_payload(session, user_id, payload)
     fn = payload.get("file_name")
     if fn:
         try:
@@ -282,6 +371,7 @@ async def classification_job_payload(
     payload = await Orm.get_classification_job(session, job_id, user_id)
     if not payload:
         return None
+    payload = await _enrich_mask_payload(session, user_id, payload)
     meta = await Orm.get_classification_file_meta(session, job_id)
     fn = meta.get("file_name") if meta else None
     if fn:
@@ -300,15 +390,21 @@ async def active_integration_job_payload(
     external_user_id = _required_integration_value(
         external_user_id, "external_user_id"
     )
-    return await Orm.get_active_integration_classification_job(
+    payload = await Orm.get_active_integration_classification_job(
         session, user_id, external_user_id
     )
+    if payload:
+        payload = await _enrich_mask_payload(session, user_id, payload)
+    return payload
 
 
 async def integration_job_payload(
     session, user_id: int, job_id: int
 ) -> Optional[Dict[str, Any]]:
-    return await Orm.get_integration_classification_job(session, job_id, user_id)
+    payload = await Orm.get_integration_classification_job(session, job_id, user_id)
+    if payload:
+        payload = await _enrich_mask_payload(session, user_id, payload)
+    return payload
 
 
 async def history_with_image_tokens(session, user_id: int) -> List[Dict[str, Any]]:
@@ -324,6 +420,15 @@ async def history_with_image_tokens(session, user_id: int) -> List[Dict[str, Any
                 item["image_token"] = None
         else:
             item["image_token"] = None
+        if (
+            item.get("processing_mode") == PROCESSING_MODE_MASK
+            and item.get("status") == "completed"
+        ):
+            item["result"] = await _mask_result_with_artifact_tokens(
+                session,
+                user_id,
+                int(item.get("job_id") or 0),
+            )
         out.append(item)
     return out
 
@@ -352,3 +457,41 @@ async def history_image_stream(session, token: str) -> StreamingResponse:
 
     media = mimetypes.guess_type(file_name)[0] or "application/octet-stream"
     return StreamingResponse(io.BytesIO(body), media_type=media)
+
+
+async def artifact_file_stream(session, token: str) -> StreamingResponse:
+    user_id, artifact_id = verify_artifact_access_token(token)
+    artifact = await Orm.get_artifact_for_user(session, user_id, artifact_id)
+    if not artifact:
+        raise HTTPException(status_code=404, detail="Артефакт не найден или доступ запрещён")
+    object_key = str(artifact["file_name"]).lstrip("/")
+    try:
+        s3 = get_minio_client()
+        body = await asyncio.to_thread(
+            download_file_bytes,
+            s3,
+            artifact["bucket_name"],
+            object_key,
+        )
+    except ClientError as e:
+        err = e.response.get("Error") or {}
+        code = err.get("Code") or ""
+        if code in ("NoSuchKey", "404", "NotFound"):
+            raise HTTPException(
+                status_code=404, detail="Объект в хранилище не найден"
+            ) from e
+        raise HTTPException(
+            status_code=502, detail="Ошибка чтения из хранилища"
+        ) from e
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e)) from e
+
+    return StreamingResponse(
+        io.BytesIO(body),
+        media_type=artifact["content_type"],
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="{ARTIFACT_FILENAMES.get(artifact["artifact_type"], "artifact")}"'
+            )
+        },
+    )

@@ -11,3 +11,4 @@ pydantic-settings==2.6.1
 passlib
 httpx
 python-jose[cryptography]
+Pillow

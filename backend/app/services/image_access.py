@@ -38,6 +38,25 @@ def create_image_access_token(user_id: int, file_name: str) -> str:
     return f"{body_b64}.{sig_b64}"
 
 
+def create_artifact_access_token(user_id: int, artifact_id: int) -> str:
+    secret = (settings.IMAGE_ACCESS_SIGNING_SECRET or "").strip()
+    if len(secret) < 16:
+        raise RuntimeError(
+            "IMAGE_ACCESS_SIGNING_SECRET должен быть задан в .env (не короче 16 символов)"
+        )
+    ttl = max(60, int(settings.IMAGE_ACCESS_TOKEN_TTL_SEC))
+    payload = {
+        "u": user_id,
+        "a": int(artifact_id),
+        "e": int(time.time()) + ttl,
+    }
+    body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    body_b64 = _b64url_encode(body)
+    sig = hmac.new(secret.encode("utf-8"), body_b64.encode("ascii"), hashlib.sha256).digest()
+    sig_b64 = _b64url_encode(sig)
+    return f"{body_b64}.{sig_b64}"
+
+
 def verify_image_access_token(token: str) -> Tuple[int, str]:
     secret = (settings.IMAGE_ACCESS_SIGNING_SECRET or "").strip()
     if len(secret) < 16:
@@ -57,6 +76,34 @@ def verify_image_access_token(token: str) -> Tuple[int, str]:
         if int(time.time()) > int(payload["e"]):
             raise ValueError("expired")
         return int(payload["u"]), str(payload["f"])
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(
+            status_code=403,
+            detail="Недействительная или просроченная ссылка",
+        ) from None
+
+
+def verify_artifact_access_token(token: str) -> Tuple[int, int]:
+    secret = (settings.IMAGE_ACCESS_SIGNING_SECRET or "").strip()
+    if len(secret) < 16:
+        raise HTTPException(
+            status_code=503,
+            detail="Сервер не настроен для выдачи артефактов по ссылке",
+        )
+    try:
+        body_b64, sig_b64 = token.strip().split(".", 1)
+        sig = _b64url_decode(sig_b64)
+        expected = hmac.new(
+            secret.encode("utf-8"), body_b64.encode("ascii"), hashlib.sha256
+        ).digest()
+        if not hmac.compare_digest(sig, expected):
+            raise ValueError("signature")
+        payload = json.loads(_b64url_decode(body_b64).decode("utf-8"))
+        if int(time.time()) > int(payload["e"]):
+            raise ValueError("expired")
+        return int(payload["u"]), int(payload["a"])
     except HTTPException:
         raise
     except Exception:
