@@ -1,5 +1,10 @@
 import { fetchWithAuth } from "./fetchWithAuth"
 import { env } from "../imports/ENV"
+import {
+  PROCESSING_MODE_CLASSIFICATION,
+  PROCESSING_MODE_MASK,
+  isMaskResult,
+} from "../imports/MASK_ARTIFACTS"
 
 const jobStorageKey = (userId) => `classification_job_${userId}`
 
@@ -58,6 +63,13 @@ function stagePayload(data) {
   }
 }
 
+function processingModePayload(data, result) {
+  if (data?.processing_mode === PROCESSING_MODE_MASK || isMaskResult(result)) {
+    return PROCESSING_MODE_MASK
+  }
+  return data?.processing_mode ?? PROCESSING_MODE_CLASSIFICATION
+}
+
 export async function pollClassificationJob({
   jobId,
   userId,
@@ -83,9 +95,12 @@ export async function pollClassificationJob({
     const imageToken = data.image_token ?? null
     const descriptionState = descriptionPayload(data)
     const stageState = stagePayload(data)
+    const processingMode = processingModePayload(data, data?.result)
     if (data.status === "pending" || data.status === "processing") {
       onUpdate?.({
         classification: emptyClassification(),
+        maskResult: null,
+        processingMode,
         imageToken,
         stage: stageState,
         ...descriptionState,
@@ -93,12 +108,15 @@ export async function pollClassificationJob({
     }
     if (data.status === "completed") {
       const res = data.result
+      const maskResult = isMaskResult(res) ? res : null
       const classification =
-        res !== null && res !== undefined && res !== ""
+        maskResult == null && res !== null && res !== undefined && res !== ""
           ? res
           : emptyClassification()
       const payload = {
         classification,
+        maskResult,
+        processingMode,
         imageToken,
         stage: stageState,
         ...descriptionState,
@@ -118,6 +136,8 @@ export async function pollClassificationJob({
           classification: {
             detail: typeof d === "string" ? d : JSON.stringify(d),
           },
+          maskResult: null,
+          processingMode,
           imageToken: null,
           stage: stageState,
           ...descriptionState,
@@ -127,6 +147,8 @@ export async function pollClassificationJob({
       }
       const payload = {
         classification: { detail: "Ошибка классификации" },
+        maskResult: null,
+        processingMode,
         imageToken: null,
         stage: stageState,
         ...descriptionState,

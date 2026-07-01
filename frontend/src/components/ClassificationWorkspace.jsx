@@ -4,8 +4,12 @@ import { useSelector } from "react-redux"
 import {
   AlertTriangle,
   CheckCircle2,
+  Download,
+  FileArchive,
+  FileImage,
   FileText,
   ImageIcon,
+  Layers,
   Loader2,
   Play,
   ScanSearch,
@@ -28,6 +32,13 @@ import {
   SIGN_UP,
 } from "../imports/ENDPOINTS"
 import { getValues } from "../imports/HELPERS"
+import {
+  MASK_ARTIFACT_LABELS,
+  PROCESSING_MODE_CLASSIFICATION,
+  PROCESSING_MODE_MASK,
+  artifactUrl,
+  getMaskArtifacts,
+} from "../imports/MASK_ARTIFACTS"
 import TreeComponent from "./Tree"
 import Alert from "./ui/Alert"
 import BucketLabelsDisclosure, {
@@ -69,10 +80,16 @@ const defaultStageState = () => ({
   description: null,
 })
 
-const analysisSteps = [
+const classificationAnalysisSteps = [
   { key: "preparing", label: "Подготовка" },
   { key: "mask", label: "Маска" },
   { key: "classification", label: "Анализ" },
+  { key: "finalizing", label: "Результат" },
+]
+
+const maskAnalysisSteps = [
+  { key: "preparing", label: "Подготовка" },
+  { key: "mask", label: "Маска" },
   { key: "finalizing", label: "Результат" },
 ]
 
@@ -82,13 +99,147 @@ const analysisModes = {
     label: "Полный анализ",
     description: "Классификация и клиническое описание",
     featuresOnly: false,
+    processingMode: PROCESSING_MODE_CLASSIFICATION,
+    icon: FileText,
   },
   features: {
     value: "features",
     label: "Только классификация",
     description: "Без текстового описания",
     featuresOnly: true,
+    processingMode: PROCESSING_MODE_CLASSIFICATION,
+    icon: ScanSearch,
   },
+  mask: {
+    value: "mask",
+    label: "Маска новообразования",
+    description: "Маска, masked image и ZIP-архив",
+    featuresOnly: false,
+    processingMode: PROCESSING_MODE_MASK,
+    icon: Layers,
+  },
+}
+
+const ArtifactDownload = ({ artifact, artifactType, primary = false }) => {
+  const meta = MASK_ARTIFACT_LABELS[artifactType]
+  const href = artifactUrl(artifact?.token)
+  const className = primary
+    ? ""
+    : "border-med-200 bg-white text-med-800 hover:bg-med-50"
+  const Icon = artifactType === "archive" ? FileArchive : Download
+
+  if (!href) {
+    return (
+      <button
+        type="button"
+        disabled
+        className="inline-flex cursor-not-allowed items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-400"
+      >
+        <Icon size={16} />
+        {meta?.filename || "Файл"}
+      </button>
+    )
+  }
+
+  return (
+    <Button
+      href={href}
+      external
+      variant={primary ? "primary" : "secondary"}
+      className={className}
+    >
+      <Icon size={16} />
+      {meta?.filename || "Файл"}
+    </Button>
+  )
+}
+
+const MaskPreview = ({ title, description, src, icon: Icon }) => (
+  <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+    <div className="flex items-center gap-2 border-b border-slate-100 px-3 py-2">
+      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-med-50 text-med-700">
+        <Icon size={16} />
+      </span>
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-slate-900">{title}</p>
+        <p className="truncate text-xs text-slate-500">{description}</p>
+      </div>
+    </div>
+    <div className="flex aspect-[4/3] items-center justify-center bg-slate-950/95 p-3">
+      {src ? (
+        <img
+          src={src}
+          alt={title}
+          className="max-h-full max-w-full rounded-lg object-contain"
+        />
+      ) : (
+        <div className="text-center text-sm text-slate-400">Недоступно</div>
+      )}
+    </div>
+  </div>
+)
+
+const MaskResultPanel = ({ imageSrc, maskResult }) => {
+  const artifacts = getMaskArtifacts(maskResult)
+  const maskedImageSrc = artifactUrl(artifacts.masked_image?.token)
+  const maskSrc = artifactUrl(artifacts.mask?.token)
+  const complete = Boolean(artifacts.mask && artifacts.masked_image && artifacts.archive)
+
+  return (
+    <div className="card-elevated space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-center gap-2">
+          <CheckCircle2 size={20} className="text-green-500" />
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">
+              Маска новообразования
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Сформированы маска, маскированное изображение и архив результатов.
+            </p>
+          </div>
+        </div>
+        <ArtifactDownload artifact={artifacts.archive} artifactType="archive" primary />
+      </div>
+
+      {!complete && (
+        <Alert variant="warning" title="Часть артефактов недоступна">
+          Сервер завершил обработку, но не все ссылки на файлы пришли в ответе.
+          Попробуйте обновить статус задания немного позже.
+        </Alert>
+      )}
+
+      <div className="grid gap-3 lg:grid-cols-3">
+        <MaskPreview
+          title="Исходное изображение"
+          description="Загруженный снимок"
+          src={imageSrc}
+          icon={ImageIcon}
+        />
+        <MaskPreview
+          title={MASK_ARTIFACT_LABELS.masked_image.title}
+          description={MASK_ARTIFACT_LABELS.masked_image.description}
+          src={maskedImageSrc}
+          icon={FileImage}
+        />
+        <MaskPreview
+          title={MASK_ARTIFACT_LABELS.mask.title}
+          description={MASK_ARTIFACT_LABELS.mask.description}
+          src={maskSrc}
+          icon={Layers}
+        />
+      </div>
+
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+        <ArtifactDownload artifact={artifacts.mask} artifactType="mask" />
+        <ArtifactDownload
+          artifact={artifacts.masked_image}
+          artifactType="masked_image"
+        />
+        <ArtifactDownload artifact={artifacts.archive} artifactType="archive" />
+      </div>
+    </div>
+  )
 }
 
 const ClassificationWorkspace = () => {
@@ -105,6 +256,10 @@ const ClassificationWorkspace = () => {
   const [classificationResult, setClassificationResult] = useState(
     defaultClassificationResult
   )
+  const [maskResult, setMaskResult] = useState(null)
+  const [processingMode, setProcessingMode] = useState(
+    PROCESSING_MODE_CLASSIFICATION
+  )
   const [descriptionState, setDescriptionState] = useState(defaultDescriptionState)
   const [analysisStage, setAnalysisStage] = useState(defaultStageState)
   const [analysisMode, setAnalysisMode] = useState(analysisModes.full.value)
@@ -116,36 +271,47 @@ const ClassificationWorkspace = () => {
 
   const applyPollingSnapshot = (payload) => {
     if (!payload) return
+    const nextProcessingMode =
+      payload.processingMode ?? PROCESSING_MODE_CLASSIFICATION
+    const nextMaskResult = payload.maskResult ?? null
+    setProcessingMode(nextProcessingMode)
+    setMaskResult(nextMaskResult)
     setClassificationResult(
-      payload.classification ?? defaultClassificationResult()
+      nextProcessingMode === PROCESSING_MODE_MASK
+        ? defaultClassificationResult()
+        : payload.classification ?? defaultClassificationResult()
     )
-    setDescriptionState((prev) => {
-      const nextText =
-        typeof payload.description === "string" && payload.description.length > 0
-          ? payload.description
-          : prev.text
-      const nextImportantLabels = Array.isArray(payload.importantLabels)
-        ? payload.importantLabels.length > 0
-          ? payload.importantLabels
+    if (nextProcessingMode === PROCESSING_MODE_MASK) {
+      setDescriptionState(defaultDescriptionState())
+    } else {
+      setDescriptionState((prev) => {
+        const nextText =
+          typeof payload.description === "string" && payload.description.length > 0
+            ? payload.description
+            : prev.text
+        const nextImportantLabels = Array.isArray(payload.importantLabels)
+          ? payload.importantLabels.length > 0
+            ? payload.importantLabels
+            : prev.importantLabels
           : prev.importantLabels
-        : prev.importantLabels
-      const nextBucketedLabels = Array.isArray(payload.bucketedLabels)
-        ? payload.bucketedLabels.length > 0
-          ? payload.bucketedLabels
+        const nextBucketedLabels = Array.isArray(payload.bucketedLabels)
+          ? payload.bucketedLabels.length > 0
+            ? payload.bucketedLabels
+            : prev.bucketedLabels
           : prev.bucketedLabels
-        : prev.bucketedLabels
-      const nextError = nextText
-        ? null
-        : payload.descriptionError ?? prev.error ?? null
+        const nextError = nextText
+          ? null
+          : payload.descriptionError ?? prev.error ?? null
 
-      return {
-        status: payload.descriptionStatus ?? prev.status ?? null,
-        text: nextText,
-        error: nextError,
-        importantLabels: nextImportantLabels,
-        bucketedLabels: nextBucketedLabels,
-      }
-    })
+        return {
+          status: payload.descriptionStatus ?? prev.status ?? null,
+          text: nextText,
+          error: nextError,
+          importantLabels: nextImportantLabels,
+          bucketedLabels: nextBucketedLabels,
+        }
+      })
+    }
     setAnalysisStage(payload.stage ?? defaultStageState())
     if (payload.imageToken) {
       const base = env.BACKEND_URL.replace(/\/$/, "")
@@ -154,6 +320,7 @@ const ClassificationWorkspace = () => {
       )
     }
     if (
+      nextMaskResult ||
       payload.classification?.final_class ||
       Object.prototype.hasOwnProperty.call(payload.classification ?? {}, "detail")
     ) {
@@ -179,6 +346,8 @@ const ClassificationWorkspace = () => {
         if (!active) {
           clearPendingJob(uid)
           setFileName(null)
+          setMaskResult(null)
+          setProcessingMode(PROCESSING_MODE_CLASSIFICATION)
           setDescriptionState(defaultDescriptionState())
           setAnalysisStage(defaultStageState())
           return
@@ -204,6 +373,8 @@ const ClassificationWorkspace = () => {
       } catch (e) {
         if (!cancelled && resumeEffectGen.current === gen && !sawProgress) {
           setClassificationResult(defaultClassificationResult())
+          setMaskResult(null)
+          setProcessingMode(PROCESSING_MODE_CLASSIFICATION)
           setDescriptionState(defaultDescriptionState())
           setAnalysisStage(defaultStageState())
         }
@@ -221,16 +392,21 @@ const ClassificationWorkspace = () => {
   }, [userInfo?.userData?.id, userInfo?.accessToken, userInfo?.emailVerified])
 
   useEffect(() => {
-    if (classificationResult.final_class && imageSrc && resultsRef.current) {
+    if (
+      (classificationResult.final_class || maskResult) &&
+      imageSrc &&
+      resultsRef.current
+    ) {
       resultsRef.current.scrollIntoView({ behavior: "smooth", block: "start" })
     } else if (
       imageSrc &&
       !classificationResult.final_class &&
+      !maskResult &&
       imageContainerRef.current
     ) {
       imageContainerRef.current.scrollIntoView({ behavior: "smooth", block: "start" })
     }
-  }, [classificationResult.final_class, imageSrc])
+  }, [classificationResult.final_class, imageSrc, maskResult])
 
   const processFile = (file) => {
     if (!file || !file.type.startsWith("image/")) return
@@ -248,6 +424,8 @@ const ClassificationWorkspace = () => {
     reader.onload = (e) => setImageSrc(e.target.result)
     reader.readAsDataURL(processed)
     setClassificationResult(defaultClassificationResult())
+    setMaskResult(null)
+    setProcessingMode(PROCESSING_MODE_CLASSIFICATION)
     setDescriptionState(defaultDescriptionState())
     setAnalysisStage(defaultStageState())
   }
@@ -265,6 +443,8 @@ const ClassificationWorkspace = () => {
     setIsImageLoading(true)
     setDescriptionState(defaultDescriptionState())
     const selectedMode = analysisModes[analysisMode] || analysisModes.full
+    setMaskResult(null)
+    setProcessingMode(selectedMode.processingMode)
     setAnalysisStage({
       key: "preparing",
       title: "Подготовка изображения",
@@ -275,6 +455,7 @@ const ClassificationWorkspace = () => {
       fileData,
       accessToken: userInfo.accessToken,
       featuresOnly: selectedMode.featuresOnly,
+      processingMode: selectedMode.processingMode,
       onProgress: applyPollingSnapshot,
     })
       .then((res) => {
@@ -294,6 +475,8 @@ const ClassificationWorkspace = () => {
   const resetImage = () => {
     setUploadError(null)
     setClassificationResult(defaultClassificationResult())
+    setMaskResult(null)
+    setProcessingMode(PROCESSING_MODE_CLASSIFICATION)
     setDescriptionState(defaultDescriptionState())
     setAnalysisStage(defaultStageState())
     setFileName(null)
@@ -302,9 +485,22 @@ const ClassificationWorkspace = () => {
   }
 
   const selectedMode = analysisModes[analysisMode] || analysisModes.full
-  const classifyButtonLabel = selectedMode.featuresOnly
-    ? "Классифицировать"
-    : "Выполнить полный анализ"
+  const classifyButtonLabel =
+    selectedMode.processingMode === PROCESSING_MODE_MASK
+      ? "Построить маску"
+      : selectedMode.featuresOnly
+        ? "Классифицировать"
+        : "Выполнить полный анализ"
+  const modeBadge =
+    selectedMode.processingMode === PROCESSING_MODE_MASK
+      ? "Маска и архив"
+      : selectedMode.featuresOnly
+        ? "Только признаки"
+        : "Признаки и описание"
+  const visibleAnalysisSteps =
+    processingMode === PROCESSING_MODE_MASK
+      ? maskAnalysisSteps
+      : classificationAnalysisSteps
   const hasDescriptionLabels =
     descriptionState.importantLabels.length > 0 ||
     descriptionState.bucketedLabels.length > 0
@@ -440,6 +636,7 @@ const ClassificationWorkspace = () => {
               <div className="space-y-3">
                 {!isImageLoading &&
                   !classificationResult.final_class &&
+                  !maskResult &&
                   !classificationResult.hasOwnProperty("detail") && (
                     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-[linear-gradient(180deg,#f8fafc_0%,#ffffff_100%)] shadow-[0_18px_40px_-34px_rgba(15,23,42,0.35)]">
                       <div className="flex flex-col gap-3 border-b border-slate-200 bg-white/90 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
@@ -452,16 +649,14 @@ const ClassificationWorkspace = () => {
                           </p>
                         </div>
                         <div className="inline-flex items-center self-start rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
-                          {selectedMode.featuresOnly
-                            ? "Только признаки"
-                            : "Признаки и описание"}
+                          {modeBadge}
                         </div>
                       </div>
 
-                      <div className="grid gap-3 p-3 md:grid-cols-2">
+                      <div className="grid gap-3 p-3 md:grid-cols-3">
                         {Object.values(analysisModes).map((mode) => {
                           const selected = analysisMode === mode.value
-                          const Icon = mode.featuresOnly ? ScanSearch : FileText
+                          const Icon = mode.icon
                           return (
                             <button
                               key={mode.value}
@@ -511,6 +706,7 @@ const ClassificationWorkspace = () => {
                 <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
                   {!isImageLoading &&
                     !classificationResult.final_class &&
+                    !maskResult &&
                     !classificationResult.hasOwnProperty("detail") && (
                       <Button type="button" onClick={handleClassify}>
                         <Play size={16} />
@@ -547,11 +743,13 @@ const ClassificationWorkspace = () => {
             </p>
           )}
           <div className="mt-5 flex flex-wrap justify-center gap-2">
-            {analysisSteps.map((step) => {
+            {visibleAnalysisSteps.map((step) => {
               const isActive = step.key === analysisStage.key
               const isPassed =
-                analysisSteps.findIndex((item) => item.key === analysisStage.key) >
-                analysisSteps.findIndex((item) => item.key === step.key)
+                visibleAnalysisSteps.findIndex(
+                  (item) => item.key === analysisStage.key
+                ) >
+                visibleAnalysisSteps.findIndex((item) => item.key === step.key)
               return (
                 <span
                   key={step.key}
@@ -574,7 +772,13 @@ const ClassificationWorkspace = () => {
         </div>
       )}
 
-      {classificationResult.final_class && imageSrc && (
+      {maskResult && imageSrc && (
+        <div ref={resultsRef}>
+          <MaskResultPanel imageSrc={imageSrc} maskResult={maskResult} />
+        </div>
+      )}
+
+      {classificationResult.final_class && !maskResult && imageSrc && (
         <div className="card-elevated space-y-4" ref={resultsRef}>
           <div className="flex items-center gap-2">
             <CheckCircle2 size={20} className="text-green-500" />

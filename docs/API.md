@@ -37,7 +37,7 @@ X-API-Key: <сырой_токен>
 
 Токен выпускается в личном кабинете (`POST /me/api-token` и др.) только при **подтверждённом email**. В БД хранится хэш; в ответ при создании/ротации возвращается полный секрет один раз.
 
-**Лимит:** настраивается переменной `API_V1_RATE_LIMIT_PER_MINUTE` (по умолчанию 5 запросов на пользователя за скользящее окно 60 с, Redis). При превышении — **429**.
+**Лимиты:** применяются на пользователя за скользящее окно 60 с (Redis). По умолчанию: обычные `/api/v1` действия и classification upload — `API_V1_RATE_LIMIT_PER_MINUTE=5`, mask upload и скачивание mask-артефактов — `API_V1_MASK_RATE_LIMIT_PER_MINUTE=30`, status polling — `API_V1_STATUS_RATE_LIMIT_PER_MINUTE=60`. При превышении — **429**.
 
 ---
 
@@ -200,8 +200,9 @@ Query: **`token`** — одноразовый токен из письма.
 |------|-----|-------------|----------|
 | `file` | binary | да | Изображение для анализа |
 | `features_only` | boolean | нет | Если `true`, выполняется только основная классификация без внешнего текстового description pipeline |
+| `processing_mode` | string | нет | `classification` (по умолчанию) или `mask`. В режиме `mask` строятся только маска, маскированное изображение и архив |
 
-Успех: `{"job_id": <int>, "status": "pending"}`. Классификация выполняется в фоне (Celery).
+Успех: `{"job_id": <int>, "status": "pending", "processing_mode": "classification"}`. Обработка выполняется в фоне (Celery).
 
 ### `GET /classification-jobs/active`
 
@@ -224,6 +225,7 @@ Query: **`token`** — одноразовый токен из письма.
 В ответе при успехе:
 
 - `status` — статус классификации
+- `processing_mode` — `classification` или `mask`
 - `result` — JSON классификации после завершения
 - `image_token` — токен изображения (если настроен секрет подписи)
 - `description_status` — статус генерации описания
@@ -233,6 +235,43 @@ Query: **`token`** — одноразовый токен из письма.
 - `bucketed_labels` — группированные признаки/ярлыки
 - `description_result` — сырой JSON-ответ description pipeline или `null`
 - `features_only` — `true`, если задание выполнялось без внешнего текстового description pipeline
+
+Для `processing_mode=mask` поле `result` после завершения имеет вид:
+
+```json
+{
+  "mode": "mask",
+  "artifacts": {
+    "mask": {
+      "token": "...",
+      "filename": "mask.png",
+      "content_type": "image/png",
+      "size_bytes": 123,
+      "checksum_sha256": "..."
+    },
+    "masked_image": {
+      "token": "...",
+      "filename": "masked_image.png",
+      "content_type": "image/png",
+      "size_bytes": 456,
+      "checksum_sha256": "..."
+    },
+    "archive": {
+      "token": "...",
+      "filename": "mask_results.zip",
+      "content_type": "application/zip",
+      "size_bytes": 789,
+      "checksum_sha256": "..."
+    }
+  }
+}
+```
+
+### `GET /classification-artifacts/file`
+
+Query: **`token`** — HMAC-токен из `result.artifacts.*.token`.
+
+Успех: поток байтов артефакта с `Content-Type` из метаданных. Ошибки: **403** (невалидный/просроченный токен), **404**, **502/503**.
 
 ---
 
@@ -255,6 +294,7 @@ X-API-Key: <сырой_токен>
 | `external_case_id` | string | да | ID кейса/изображения во внешней системе |
 | `idempotency_key` | string | да | Уникальный ключ запроса внутри API-аккаунта |
 | `features_only` | boolean | нет | По умолчанию `true` |
+| `processing_mode` | string | нет | `classification` (по умолчанию) или `mask`. Для `mask` поле `features_only` игнорируется |
 | `callback_url` | string | нет | URL для callback после terminal status |
 | `callback_token` | string | нет | Вернётся в callback как `X-Callback-Token` |
 
@@ -266,6 +306,7 @@ X-API-Key: <сырой_токен>
 {
   "job_id": 123,
   "status": "pending",
+  "processing_mode": "classification",
   "external_user_id": "42",
   "external_case_id": "image_777",
   "idempotency_key": "skin_labels:image:777:user:42"
@@ -294,6 +335,7 @@ Query:
 {
   "job_id": 123,
   "status": "completed",
+  "processing_mode": "classification",
   "external_user_id": "42",
   "external_case_id": "image_777",
   "idempotency_key": "skin_labels:image:777:user:42",
@@ -301,6 +343,8 @@ Query:
   "error": null
 }
 ```
+
+Для `processing_mode=mask` поле `result` в callback содержит объект с `mode: "mask"` и ссылками на `mask`, `masked_image`, `archive`, как в ответе `GET /classification-jobs/{job_id}`.
 
 При ошибке callback классификация не откатывается; в статусе задания сохраняются `callback_status` и `callback_last_error`.
 
@@ -319,12 +363,19 @@ Query:
 - `bucketed_labels`
 - `description_result`
 - `features_only`
+- `processing_mode`
 
 ### `GET /history/image`
 
 Query: **`token`** — HMAC-токен из поля `image_token` (не передавать `user_id` / `file_name` отдельно).
 
 Успех: поток байтов изображения с подходящим `Content-Type`. Ошибки: **403** (невалидный/просроченный токен), **404**, **502/503** при проблемах с хранилищем или конфигурацией.
+
+### `GET /classification-artifacts/file`
+
+Query: **`token`** — HMAC-токен артефакта из результата mask-задания.
+
+Возвращает `mask.png`, `masked_image.png` или `mask_results.zip`.
 
 ---
 
@@ -334,11 +385,12 @@ Query: **`token`** — HMAC-токен из поля `image_token` (не пер�
 
 | Метод | Путь | Описание |
 |-------|------|----------|
-| `POST` | `/api/v1/uploadfile` | Как `POST /uploadfile`, плюс опциональный `features_only=true` в `multipart/form-data` |
+| `POST` | `/api/v1/uploadfile` | Как `POST /uploadfile`, плюс опциональные `features_only=true` и `processing_mode=mask` в `multipart/form-data` |
 | `GET` | `/api/v1/classification-jobs/active` | Как `GET /classification-jobs/active` |
 | `GET` | `/api/v1/classification-jobs/{job_id}` | Как `GET /classification-jobs/{job_id}` |
 | `POST` | `/api/v1/gethistory` | Как `POST /gethistory` |
-| `GET` | `/api/v1/history/image?token=...` | Как `GET /history/image`, плюс **дополнительная** проверка rate limit по пользователю из токена |
+| `GET` | `/api/v1/history/image?token=...` | Как `GET /history/image`, плюс **дополнительная** проверка общего API rate limit по пользователю из токена |
+| `GET` | `/api/v1/classification-artifacts/file?token=...` | Как `GET /classification-artifacts/file`, плюс mask rate limit по пользователю из токена |
 | `POST` | `/api/v1/integrations/classifications` | Создать integration-задачу с `external_user_id`, idempotency и callback |
 | `GET` | `/api/v1/integrations/classifications/active` | Активная integration-задача по `external_user_id` |
 | `GET` | `/api/v1/integrations/classifications/{job_id}` | Статус и результат integration-задачи |
@@ -494,7 +546,11 @@ curl -sS -X POST "$BASE/api/v1/uploadfile" \
 |------------|------------|
 | `JWT_SECRET`, `JWT_ALGORITHM`, `JWT_EXPIRE_MINUTES` | Выдача и проверка JWT |
 | `IMAGE_ACCESS_SIGNING_SECRET`, `IMAGE_ACCESS_TOKEN_TTL_SEC` | Подпись `image_token` для `/history/image` |
-| `API_V1_RATE_LIMIT_PER_MINUTE` | Лимит для `/api/v1/*` |
+| `API_V1_RATE_LIMIT_PER_MINUTE` | Общий лимит для `/api/v1/*` и classification upload |
+| `API_V1_MASK_RATE_LIMIT_PER_MINUTE` | Лимит для `processing_mode=mask` upload и скачивания mask-артефактов |
+| `API_V1_STATUS_RATE_LIMIT_PER_MINUTE` | Лимит для polling/status маршрутов `/api/v1` |
+| `CLASSIFICATION_GLOBAL_RATE_LIMIT_PER_MINUTE` | Глобальный лимит запуска classification обработки в worker |
+| `MASK_GLOBAL_RATE_LIMIT_PER_MINUTE` | Глобальный лимит запуска mask-only обработки в worker |
 | `FRONTEND_PUBLIC_URL`, SMTP-* | Письма верификации (не HTTP API, но влияют на регистрацию) |
 
 Подробнее см. `.env.example` в корне репозитория.

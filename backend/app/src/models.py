@@ -90,6 +90,12 @@ class ClassificationResults(Base):
 
     request_date = Column(DateTime(timezone=True), default=func.now())
     status = Column(String, default="completed")
+    processing_mode = Column(
+        String(32),
+        nullable=False,
+        default="classification",
+        server_default=text("'classification'"),
+    )
     result = Column(Text, nullable=True)  # Результат классификации
     external_user_id = Column(String(255), nullable=True, index=True)
     external_case_id = Column(String(255), nullable=True, index=True)
@@ -106,6 +112,41 @@ class ClassificationResults(Base):
         "DescriptionJob",
         back_populates="classification_result",
         uselist=False,
+    )
+    artifacts = relationship(
+        "ClassificationArtifact",
+        back_populates="classification_result",
+    )
+
+
+class ClassificationArtifact(Base):
+    __tablename__ = "classification_artifacts"
+    __table_args__ = (
+        UniqueConstraint(
+            "classification_result_id",
+            "artifact_type",
+            name="uq_classification_artifacts_result_type",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    classification_result_id = Column(
+        Integer,
+        ForeignKey("classification_results.id"),
+        nullable=False,
+        index=True,
+    )
+    artifact_type = Column(String(64), nullable=False)
+    file_name = Column(String(512), nullable=False)
+    bucket_name = Column(String(255), nullable=False)
+    content_type = Column(String(255), nullable=False)
+    size_bytes = Column(Integer, nullable=False)
+    checksum_sha256 = Column(String(64), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=func.now())
+
+    classification_result = relationship(
+        "ClassificationResults",
+        back_populates="artifacts",
     )
 
 

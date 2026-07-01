@@ -56,6 +56,17 @@ async def enforce_api_v1_rate_limit(user_id: int) -> None:
         raise HTTPException(status_code=429, detail=detail)
 
 
+async def enforce_api_v1_mask_rate_limit(user_id: int) -> None:
+    detail = await asyncio.to_thread(
+        _enforce_api_v1_rate_limit,
+        user_id,
+        int(settings.API_V1_MASK_RATE_LIMIT_PER_MINUTE),
+        "mask_rl",
+    )
+    if detail:
+        raise HTTPException(status_code=429, detail=detail)
+
+
 async def enforce_api_v1_status_rate_limit(user_id: int) -> None:
     detail = await asyncio.to_thread(
         _enforce_api_v1_rate_limit,

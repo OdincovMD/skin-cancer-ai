@@ -14,7 +14,6 @@ import {
   Zap,
 } from "lucide-react"
 
-import { env } from "../imports/ENV"
 import { API_V1_PREFIX, HOME } from "../imports/ENDPOINTS"
 
 const CodeBlock = ({ children, label }) => {
@@ -143,8 +142,8 @@ const ApiDocs = () => {
                 API для разработчиков
               </h1>
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">
-                Классифицируйте дерматоскопические изображения из вашего кода за
-                три шага: получите ключ, отправьте снимок, заберите результат.
+                Классифицируйте дерматоскопические изображения или получайте
+                маску новообразования из вашего кода за три шага.
               </p>
             </div>
           </div>
@@ -196,7 +195,12 @@ const ApiDocs = () => {
                 Если нужна только разметка признаков без классификации и
                 генерации текста, добавьте{" "}
                 <InlineCode>features_only=true</InlineCode>.
+                Для режима маски передайте{" "}
+                <InlineCode>processing_mode=mask</InlineCode>.
               </P>
+              <CodeBlock label="bash — маска">
+                {`curl -X POST "${v1}/uploadfile" \\\n  -H "X-API-Key: scai_ваш_ключ" \\\n  -F "file=@photo.jpg" \\\n  -F "processing_mode=mask"`}
+              </CodeBlock>
               <CodeBlock label="ответ">{`{ "job_id": 42, "status": "pending" }`}</CodeBlock>
             </div>
           </div>
@@ -301,13 +305,19 @@ const ApiDocs = () => {
               Отправьте файл как <InlineCode>multipart/form-data</InlineCode> с
               полем <InlineCode>file</InlineCode>. Опционально передайте{" "}
               <InlineCode>features_only=true</InlineCode>, чтобы получить только
-              признаки от сервиса описания без основной классификации.
+              признаки от сервиса описания без основной классификации. Для
+              получения маски используйте{" "}
+              <InlineCode>processing_mode=mask</InlineCode>; в этом режиме{" "}
+              <InlineCode>features_only</InlineCode> игнорируется.
             </P>
             <CodeBlock label="bash">
               {`curl -X POST "${v1}/uploadfile" \\\n  -H "X-API-Key: scai_ваш_ключ" \\\n  -F "file=@image.jpg"`}
             </CodeBlock>
             <CodeBlock label="bash — только признаки">
               {`curl -X POST "${v1}/uploadfile" \\\n  -H "X-API-Key: scai_ваш_ключ" \\\n  -F "file=@image.jpg" \\\n  -F "features_only=true"`}
+            </CodeBlock>
+            <CodeBlock label="bash — маска новообразования">
+              {`curl -X POST "${v1}/uploadfile" \\\n  -H "X-API-Key: scai_ваш_ключ" \\\n  -F "file=@image.jpg" \\\n  -F "processing_mode=mask"`}
             </CodeBlock>
             <CodeBlock label="ответ">{`{ "job_id": 42, "status": "pending" }`}</CodeBlock>
             <Callout>
@@ -329,6 +339,7 @@ const ApiDocs = () => {
             <CodeBlock label="ответ — готово">
               {`{
   "status": "completed",
+  "processing_mode": "classification",
   "result": {
     "feature_type": "...",
     "structure": "...",
@@ -355,6 +366,7 @@ const ApiDocs = () => {
             <CodeBlock label="ответ — только признаки">
               {`{
   "status": "completed",
+  "processing_mode": "classification",
   "result": null,
   "image_token": "eyJ...",
   "description_status": "completed",
@@ -378,6 +390,36 @@ const ApiDocs = () => {
     "error": null
   },
   "features_only": true
+}`}
+            </CodeBlock>
+            <CodeBlock label="ответ — маска">
+              {`{
+  "status": "completed",
+  "processing_mode": "mask",
+  "result": {
+    "mode": "mask",
+    "artifacts": {
+      "mask": {
+        "token": "eyJ...",
+        "filename": "mask.png",
+        "content_type": "image/png",
+        "size_bytes": 123
+      },
+      "masked_image": {
+        "token": "eyJ...",
+        "filename": "masked_image.png",
+        "content_type": "image/png",
+        "size_bytes": 456
+      },
+      "archive": {
+        "token": "eyJ...",
+        "filename": "mask_results.zip",
+        "content_type": "application/zip",
+        "size_bytes": 789
+      }
+    }
+  },
+  "image_token": "eyJ..."
 }`}
             </CodeBlock>
             <CodeBlock label="ответ — ошибка модели">
@@ -412,7 +454,8 @@ const ApiDocs = () => {
               Тело запроса: <InlineCode>{"{}"}</InlineCode> (пустой JSON).
               Возвращает массив прошлых классификаций. У каждой записи будет{" "}
               <InlineCode>image_token</InlineCode> для загрузки превью, а также
-              поля <InlineCode>description</InlineCode>,{" "}
+              поле <InlineCode>processing_mode</InlineCode>. Для классификаций
+              дополнительно приходят поля <InlineCode>description</InlineCode>,{" "}
               <InlineCode>description_status</InlineCode>,{" "}
               <InlineCode>description_error</InlineCode> и{" "}
               <InlineCode>important_labels</InlineCode>,{" "}
@@ -473,6 +516,25 @@ const ApiDocs = () => {
               </table>
             </div>
           </Endpoint>
+
+          <Endpoint
+            method="GET"
+            path="/api/v1/classification-artifacts/file?token=..."
+            description="Скачивание артефакта маски"
+            v1={v1}
+            noAuth
+          >
+            <P>
+              Отдаёт <InlineCode>mask.png</InlineCode>,{" "}
+              <InlineCode>masked_image.png</InlineCode> или{" "}
+              <InlineCode>mask_results.zip</InlineCode>. Токен берётся из{" "}
+              <InlineCode>result.artifacts.*.token</InlineCode> в ответе
+              масочного задания.
+            </P>
+            <CodeBlock label="bash">
+              {`curl -L "${v1}/classification-artifacts/file?token=eyJ..." \\\n  -o mask_results.zip`}
+            </CodeBlock>
+          </Endpoint>
         </div>
       </Section>
 
@@ -498,8 +560,10 @@ const ApiDocs = () => {
           </li>
           <li>
             <strong className="font-medium text-slate-800">completed</strong> —
-            классификация готова в поле <InlineCode>result</InlineCode>; описание
-            может ещё догружаться через <InlineCode>description_status</InlineCode>.
+            результат готов в поле <InlineCode>result</InlineCode>. Для{" "}
+            <InlineCode>processing_mode=mask</InlineCode> это объект с
+            артефактами, для классификации описание может ещё догружаться через{" "}
+            <InlineCode>description_status</InlineCode>.
           </li>
           <li>
             <strong className="font-medium text-slate-800">error</strong> —
@@ -512,12 +576,13 @@ const ApiDocs = () => {
       {/* ---- limits ---- */}
       <Section id="limits" icon={ShieldCheck} title="Лимиты">
         <P>
-          API ограничивает количество запросов на пользователя в скользящем окне
-          60 секунд (по умолчанию <strong>5 запросов/мин</strong>, точное
-          значение зависит от инсталляции).
+          API ограничивает запросы на пользователя в скользящем окне 60 секунд:
+          обычная классификация — <strong>5 запросов/мин</strong>, маски и
+          скачивание их артефактов — <strong>30 запросов/мин</strong>, опрос
+          статуса заданий — <strong>60 запросов/мин</strong>.
         </P>
         <CodeBlock label="429 — пример ответа">
-          {`{ "detail": "Превышен лимит API: не более 5 запросов в минуту. Повторите позже." }`}
+          {`{ "detail": "Превышен лимит API: не более 30 запросов в минуту. Повторите позже." }`}
         </CodeBlock>
         <P>Просто подождите и повторите запрос.</P>
       </Section>
@@ -583,6 +648,29 @@ curl -sS -X POST "$BASE/api/v1/gethistory" \\
   -H "X-API-Key: $KEY" \\
   -H "Content-Type: application/json" \\
   -d '{}'`}
+        </CodeBlock>
+        <CodeBlock label="bash — получение маски">
+          {`BASE="${base}"
+KEY="scai_xxxxxxxxxxxxxxxx"
+
+RESP=$(curl -sS -X POST "$BASE/api/v1/uploadfile" \\
+  -H "X-API-Key: $KEY" \\
+  -F "file=@./sample.jpg" \\
+  -F "processing_mode=mask")
+
+JOB_ID=$(echo "$RESP" | grep -o '"job_id":[0-9]*' | grep -o '[0-9]*')
+
+while true; do
+  STATUS=$(curl -sS "$BASE/api/v1/classification-jobs/$JOB_ID" \\
+    -H "X-API-Key: $KEY")
+  echo "$STATUS" | grep -q '"status":"completed"' && break
+  echo "$STATUS" | grep -q '"status":"error"' && break
+  sleep 2
+done
+
+# Возьмите token из result.artifacts.archive.token
+curl -L "$BASE/api/v1/classification-artifacts/file?token=eyJ..." \\
+  -o mask_results.zip`}
         </CodeBlock>
       </section>
 

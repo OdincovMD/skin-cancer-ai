@@ -14,7 +14,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from services.mail import send_password_reset_email, send_verification_email
 from src.config import settings
-from src.models import ClassificationResults, DescriptionJob, File, User, UserIdentity
+from src.models import (
+    ClassificationArtifact,
+    ClassificationResults,
+    DescriptionJob,
+    File,
+    User,
+    UserIdentity,
+)
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -175,6 +182,7 @@ class Orm:
         file_id: int,
         status: str = "completed",
         result: str = None,
+        processing_mode: str = "classification",
         source: Optional[str] = None,
         external_user_id: Optional[str] = None,
         external_case_id: Optional[str] = None,
@@ -188,6 +196,7 @@ class Orm:
                 file_id=file_id,
                 status=status,
                 result=result,
+                processing_mode=processing_mode,
                 source=source,
                 external_user_id=external_user_id,
                 external_case_id=external_case_id,
@@ -258,7 +267,99 @@ class Orm:
         if not row:
             return None
         _cr, f = row
-        return {"file_name": f.file_name, "bucket_name": f.bucket_name}
+        return {
+            "file_name": f.file_name,
+            "bucket_name": f.bucket_name,
+            "user_id": _cr.user_id,
+            "processing_mode": _cr.processing_mode or "classification",
+        }
+
+    @staticmethod
+    async def upsert_classification_artifacts(
+        session: AsyncSession,
+        classification_result_id: int,
+        artifacts: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        saved: List[ClassificationArtifact] = []
+        for artifact in artifacts:
+            artifact_type = str(artifact["artifact_type"])
+            stmt = select(ClassificationArtifact).where(
+                ClassificationArtifact.classification_result_id
+                == classification_result_id,
+                ClassificationArtifact.artifact_type == artifact_type,
+            )
+            row = (await session.execute(stmt)).scalar_one_or_none()
+            if row is None:
+                row = ClassificationArtifact(
+                    classification_result_id=classification_result_id,
+                    artifact_type=artifact_type,
+                    file_name=str(artifact["file_name"]),
+                    bucket_name=str(artifact["bucket_name"]),
+                    content_type=str(artifact["content_type"]),
+                    size_bytes=int(artifact["size_bytes"]),
+                    checksum_sha256=str(artifact["checksum_sha256"]),
+                )
+                session.add(row)
+            else:
+                row.file_name = str(artifact["file_name"])
+                row.bucket_name = str(artifact["bucket_name"])
+                row.content_type = str(artifact["content_type"])
+                row.size_bytes = int(artifact["size_bytes"])
+                row.checksum_sha256 = str(artifact["checksum_sha256"])
+            saved.append(row)
+        await session.commit()
+        for row in saved:
+            await session.refresh(row)
+        return [Orm._artifact_row_payload(row) for row in saved]
+
+    @staticmethod
+    def _artifact_row_payload(row: ClassificationArtifact) -> Dict[str, Any]:
+        return {
+            "id": row.id,
+            "classification_result_id": row.classification_result_id,
+            "artifact_type": row.artifact_type,
+            "file_name": row.file_name,
+            "bucket_name": row.bucket_name,
+            "content_type": row.content_type,
+            "size_bytes": row.size_bytes,
+            "checksum_sha256": row.checksum_sha256,
+            "created_at": row.created_at,
+        }
+
+    @staticmethod
+    async def list_classification_artifacts(
+        session: AsyncSession, classification_result_id: int
+    ) -> List[Dict[str, Any]]:
+        stmt = (
+            select(ClassificationArtifact)
+            .where(
+                ClassificationArtifact.classification_result_id
+                == classification_result_id
+            )
+            .order_by(ClassificationArtifact.artifact_type.asc())
+        )
+        rows = (await session.execute(stmt)).scalars().all()
+        return [Orm._artifact_row_payload(row) for row in rows]
+
+    @staticmethod
+    async def get_artifact_for_user(
+        session: AsyncSession, user_id: int, artifact_id: int
+    ) -> Optional[Dict[str, Any]]:
+        stmt = (
+            select(ClassificationArtifact)
+            .join(
+                ClassificationResults,
+                ClassificationArtifact.classification_result_id
+                == ClassificationResults.id,
+            )
+            .where(
+                ClassificationArtifact.id == artifact_id,
+                ClassificationResults.user_id == user_id,
+            )
+            .limit(1)
+        )
+        row = (await session.execute(stmt)).scalar_one_or_none()
+        return Orm._artifact_row_payload(row) if row else None
 
     @staticmethod
     async def count_user_active_classifications(
@@ -332,6 +433,7 @@ class Orm:
             "job_id": cr.id,
             "status": cr.status,
             "file_name": f.file_name,
+            "processing_mode": cr.processing_mode or "classification",
             "result": _parse_result_payload(cr.result),
         }
         payload.update(_description_fields(dj))
@@ -364,6 +466,7 @@ class Orm:
         payload = {
             "job_id": classification_row.id,
             "status": classification_row.status,
+            "processing_mode": classification_row.processing_mode or "classification",
             "result": _parse_result_payload(classification_row.result),
         }
         payload.update(_description_fields(description_row))
@@ -377,6 +480,7 @@ class Orm:
         payload = {
             "job_id": classification_row.id,
             "status": classification_row.status,
+            "processing_mode": classification_row.processing_mode or "classification",
             "external_user_id": classification_row.external_user_id,
             "external_case_id": classification_row.external_case_id,
             "idempotency_key": classification_row.idempotency_key,
@@ -487,6 +591,7 @@ class Orm:
         return {
             "job_id": row.id,
             "status": row.status,
+            "processing_mode": row.processing_mode or "classification",
             "external_user_id": row.external_user_id,
             "external_case_id": row.external_case_id,
             "idempotency_key": row.idempotency_key,
@@ -501,10 +606,12 @@ class Orm:
     ) -> List[Dict[str, Union[str, datetime]]]:
         stmt = (
             select(
+                ClassificationResults.id.label("job_id"),
                 ClassificationResults.request_date,
                 File.file_name,
                 File.bucket_name,
                 ClassificationResults.status,
+                ClassificationResults.processing_mode,
                 ClassificationResults.result,
                 DescriptionJob.status.label("description_status"),
                 DescriptionJob.description,
@@ -537,9 +644,11 @@ class Orm:
             payload.append(
                 {
                     "request_date": row.request_date,
+                    "job_id": row.job_id,
                     "file_name": row.file_name,
                     "bucket_name": row.bucket_name,
                     "status": row.status,
+                    "processing_mode": row.processing_mode or "classification",
                     "result": row.result,
                     "description_status": row.description_status,
                     "description": row.description,

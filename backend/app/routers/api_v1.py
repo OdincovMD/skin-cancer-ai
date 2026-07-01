@@ -6,12 +6,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth.api_key_deps import get_user_id_from_api_key
 from auth.api_rate_limit import (
+    enforce_api_v1_mask_rate_limit,
     enforce_api_v1_rate_limit,
     enforce_api_v1_status_rate_limit,
 )
 from services.classification import (
+    PROCESSING_MODE_MASK,
     active_job_payload,
     active_integration_job_payload,
+    artifact_file_stream,
     classification_job_payload,
     history_image_stream,
     history_with_image_tokens,
@@ -19,6 +22,7 @@ from services.classification import (
     perform_integration_upload,
     perform_upload,
 )
+from services.image_access import verify_artifact_access_token
 from services.image_access import verify_image_access_token
 from src.database import get_db
 
@@ -34,6 +38,17 @@ async def api_v1_user_id_rate_limited(
     return user_id
 
 
+async def api_v1_user_id_upload_rate_limited(
+    processing_mode: str = Form("classification"),
+    user_id: int = Depends(get_user_id_from_api_key),
+) -> int:
+    if (processing_mode or "").strip().lower() == PROCESSING_MODE_MASK:
+        await enforce_api_v1_mask_rate_limit(user_id)
+    else:
+        await enforce_api_v1_rate_limit(user_id)
+    return user_id
+
+
 async def api_v1_user_id_status_rate_limited(
     user_id: int = Depends(get_user_id_from_api_key),
 ) -> int:
@@ -45,11 +60,17 @@ async def api_v1_user_id_status_rate_limited(
 async def api_upload(
     file: UploadFile = File(),
     features_only: bool = Form(False),
+    processing_mode: str = Form("classification"),
     session: AsyncSession = Depends(get_db),
-    user_id: int = Depends(api_v1_user_id_rate_limited),
+    user_id: int = Depends(api_v1_user_id_upload_rate_limited),
 ):
     return await perform_upload(
-        session, user_id, file, features_only=features_only, source="api_v1"
+        session,
+        user_id,
+        file,
+        features_only=features_only,
+        source="api_v1",
+        processing_mode=processing_mode,
     )
 
 
@@ -60,10 +81,11 @@ async def api_integration_classification_upload(
     external_case_id: str = Form(...),
     idempotency_key: str = Form(...),
     features_only: bool = Form(True),
+    processing_mode: str = Form("classification"),
     callback_url: Optional[str] = Form(None),
     callback_token: Optional[str] = Form(None),
     session: AsyncSession = Depends(get_db),
-    user_id: int = Depends(api_v1_user_id_rate_limited),
+    user_id: int = Depends(api_v1_user_id_upload_rate_limited),
 ):
     return await perform_integration_upload(
         session,
@@ -73,6 +95,7 @@ async def api_integration_classification_upload(
         external_case_id=external_case_id,
         idempotency_key=idempotency_key,
         features_only=features_only,
+        processing_mode=processing_mode,
         callback_url=callback_url,
         callback_token=callback_token,
     )
@@ -105,7 +128,7 @@ async def api_integration_classification_job(
 @router.get("/classification-jobs/active")
 async def api_active_job(
     session: AsyncSession = Depends(get_db),
-    user_id: int = Depends(api_v1_user_id_rate_limited),
+    user_id: int = Depends(api_v1_user_id_status_rate_limited),
 ):
     payload = await active_job_payload(session, user_id)
     if not payload:
@@ -117,7 +140,7 @@ async def api_active_job(
 async def api_job(
     job_id: int,
     session: AsyncSession = Depends(get_db),
-    user_id: int = Depends(api_v1_user_id_rate_limited),
+    user_id: int = Depends(api_v1_user_id_status_rate_limited),
 ):
     payload = await classification_job_payload(session, user_id, job_id)
     if not payload:
@@ -150,3 +173,13 @@ async def api_history_image(
     user_id, _ = verify_image_access_token(token)
     await enforce_api_v1_rate_limit(user_id)
     return await history_image_stream(session, token)
+
+
+@router.get("/classification-artifacts/file")
+async def api_classification_artifact_file(
+    token: str,
+    session: AsyncSession = Depends(get_db),
+):
+    user_id, _ = verify_artifact_access_token(token)
+    await enforce_api_v1_mask_rate_limit(user_id)
+    return await artifact_file_stream(session, token)

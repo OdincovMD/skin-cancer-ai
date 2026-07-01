@@ -24,6 +24,7 @@ export const RESET_PASSWORD_API = "/reset-password"
 export const UPLOAD_FILE = "/uploadfile"
 export const GET_HISTORY = "/gethistory"
 export const HISTORY_IMAGE = "/history/image"
+export const CLASSIFICATION_ARTIFACT_FILE = "/classification-artifacts/file"
 export const CLASSIFICATION_JOBS_ACTIVE = "/classification-jobs/active"
 
 export const API_V1_PREFIX = "/api/v1"
