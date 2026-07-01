@@ -15,6 +15,7 @@ import {
   ScanSearch,
   Trash2,
   Upload,
+  ZoomIn,
 } from "lucide-react"
 
 import { fetchActiveClassificationJob } from "../asyncActions/fetchActiveClassificationJob"
@@ -113,12 +114,52 @@ const analysisModes = {
   mask: {
     value: "mask",
     label: "Маска новообразования",
-    description: "Маска, masked image и ZIP-архив",
+    description: "Маска, выделенное новообразование и ZIP-архив",
     featuresOnly: false,
     processingMode: PROCESSING_MODE_MASK,
     icon: Layers,
   },
 }
+
+const workspaceCapabilities = [
+  {
+    icon: FileText,
+    title: "Полный анализ",
+    text: "Классификация, дерево решений и клиническое описание.",
+  },
+  {
+    icon: ScanSearch,
+    title: "Только классификация",
+    text: "Быстрый результат без генерации текстового описания.",
+  },
+  {
+    icon: Layers,
+    title: "Маска",
+    text: "Ч/б маска, выделенное изображение и ZIP-архив.",
+  },
+]
+
+const WorkspaceCapabilities = () => (
+  <div className="mb-5 grid gap-3 md:grid-cols-3">
+    {workspaceCapabilities.map((item) => {
+      const Icon = item.icon
+      return (
+        <div
+          key={item.title}
+          className="rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3"
+        >
+          <div className="flex items-center gap-2">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-med-700 ring-1 ring-slate-200">
+              <Icon size={16} />
+            </span>
+            <p className="text-sm font-semibold text-slate-900">{item.title}</p>
+          </div>
+          <p className="mt-2 text-xs leading-5 text-slate-500">{item.text}</p>
+        </div>
+      )
+    })}
+  </div>
+)
 
 const ArtifactDownload = ({ artifact, artifactType, primary = false }) => {
   const meta = MASK_ARTIFACT_LABELS[artifactType]
@@ -165,16 +206,98 @@ const MaskPreview = ({ title, description, src, icon: Icon }) => (
         <p className="truncate text-xs text-slate-500">{description}</p>
       </div>
     </div>
-    <div className="flex aspect-[4/3] items-center justify-center bg-slate-950/95 p-3">
+    <div className="flex aspect-[4/3] items-center justify-center bg-white p-3">
       {src ? (
         <img
           src={src}
           alt={title}
-          className="max-h-full max-w-full rounded-lg object-contain"
+          className="max-h-full max-w-full rounded-lg border border-slate-100 object-contain shadow-sm"
         />
       ) : (
         <div className="text-center text-sm text-slate-400">Недоступно</div>
       )}
+    </div>
+  </div>
+)
+
+const MagnifyHint = ({ isTouchDetected, hintTextMouse, hintTextTouch }) => (
+  <div className="absolute bottom-3 left-0 right-0 flex justify-center">
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-med-100 bg-white/95 px-3 py-1.5 text-xs font-semibold text-med-700 shadow-sm">
+      <ZoomIn size={13} />
+      {isTouchDetected ? hintTextTouch : hintTextMouse}
+    </span>
+  </div>
+)
+
+const UploadedImageReview = ({ imageSrc }) => (
+  <div className="grid gap-4 lg:grid-cols-2">
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="flex items-center gap-2 border-b border-slate-100 px-3 py-2">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-med-50 text-med-700">
+          <ImageIcon size={16} />
+        </span>
+        <div>
+          <p className="text-sm font-semibold text-slate-900">Оригинал</p>
+          <p className="text-xs text-slate-500">Наведение управляет областью зума</p>
+        </div>
+      </div>
+      <div className="flex aspect-[4/3] items-center justify-center bg-white p-3">
+        <div className="w-full overflow-hidden rounded-lg border border-slate-100 bg-white">
+          <ReactImageMagnify
+            {...{
+              smallImage: {
+                alt: "Загруженное изображение",
+                isFluidWidth: true,
+                src: imageSrc,
+              },
+              largeImage: {
+                src: imageSrc,
+                width: 2560,
+                height: 1920,
+              },
+              enlargedImagePortalId: "enlargened_image",
+              enlargedImageContainerDimensions: {
+                width: "100%",
+                height: "100%",
+              },
+              enlargedImageContainerClassName: "rounded-lg bg-white",
+              enlargedImageClassName: "bg-white",
+              isEnlargedImagePortalEnabledForTouch: true,
+              isHintEnabled: true,
+              hintTextMouse: "Наведите для зума",
+              hintTextTouch: "Коснитесь для зума",
+              hintComponent: MagnifyHint,
+              shouldHideHintAfterFirstActivation: false,
+              isActivatedOnTouch: true,
+              fadeDurationInMs: 120,
+              hoverDelayInMs: 80,
+              hoverOffDelayInMs: 80,
+              lensStyle: {
+                backgroundColor: "rgba(13, 148, 136, 0.12)",
+                border: "1px solid rgba(13, 148, 136, 0.35)",
+              },
+            }}
+          />
+        </div>
+      </div>
+    </div>
+
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="flex items-center gap-2 border-b border-slate-100 px-3 py-2">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-med-50 text-med-700">
+          <ZoomIn size={16} />
+        </span>
+        <div>
+          <p className="text-sm font-semibold text-slate-900">Зум</p>
+          <p className="text-xs text-slate-500">Увеличенный фрагмент снимка</p>
+        </div>
+      </div>
+      <div className="aspect-[4/3] bg-white p-3">
+        <div
+          id="enlargened_image"
+          className="h-full w-full overflow-hidden rounded-lg border border-slate-100 bg-white shadow-inner"
+        />
+      </div>
     </div>
   </div>
 )
@@ -559,6 +682,8 @@ const ClassificationWorkspace = () => {
             {imageSrc ? "Загруженное изображение" : "Загрузите изображение"}
           </h2>
 
+          {!imageSrc && <WorkspaceCapabilities />}
+
           {!imageSrc && (
             <label
               onDragOver={(e) => {
@@ -597,29 +722,7 @@ const ClassificationWorkspace = () => {
                 <span className="truncate">{fileName}</span>
               </div>
 
-              <div className="flex flex-col items-center gap-4 lg:flex-row lg:items-start">
-                <div className="w-full max-w-md">
-                  <ReactImageMagnify
-                    {...{
-                      smallImage: {
-                        alt: "Загруженное изображение",
-                        isFluidWidth: true,
-                        src: imageSrc,
-                      },
-                      largeImage: {
-                        src: imageSrc,
-                        width: 2560,
-                        height: 1920,
-                      },
-                      enlargedImagePortalId: "enlargened_image",
-                      isHintEnabled: true,
-                      shouldHideHintAfterFirstActivation: false,
-                      isActivatedOnTouch: true,
-                    }}
-                  />
-                </div>
-                <div id="enlargened_image" />
-              </div>
+              <UploadedImageReview imageSrc={imageSrc} />
 
               {uploadError && (
                 <Alert variant="error" title="Не удалось выполнить загрузку">

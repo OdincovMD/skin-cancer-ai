@@ -141,6 +141,29 @@ const HistoryArtifactLink = ({ artifact, artifactType, primary = false }) => {
   )
 }
 
+const apiCapabilityCards = [
+  {
+    icon: Server,
+    title: "Classification",
+    text: "POST /api/v1/uploadfile",
+  },
+  {
+    icon: Layers,
+    title: "Mask-only",
+    text: "processing_mode=mask",
+  },
+  {
+    icon: Activity,
+    title: "Лимиты",
+    text: "5/мин анализ, 30/мин маски",
+  },
+  {
+    icon: Workflow,
+    title: "Интеграции",
+    text: "idempotency, callback, history",
+  },
+]
+
 const PASSWORD_RESET_COOLDOWN_DEFAULT_SEC = 120
 
 const Profile = () => {
@@ -887,7 +910,8 @@ const Profile = () => {
               </div>
 
               <p className="max-w-2xl text-sm leading-7 text-slate-600">
-                API-ключ открывает доступ к классификации снимков через{" "}
+                API-ключ открывает доступ к классификации снимков, построению
+                масок новообразований и скачиванию результатов через{" "}
                 <Link to={API_DOCS} className="text-link">
                   HTTP API v1
                 </Link>
@@ -895,30 +919,57 @@ const Profile = () => {
                 <code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-700">
                   X-API-Key
                 </code>
-                , а лимит сервера уже защищает интеграции от перегрузки.
+                . Один ключ подходит для личных скриптов, внутренних панелей и
+                внешних интеграций с callback.
               </p>
 
-              <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                  <Server size={18} className="text-med-700" />
-                  <p className="mt-3 text-sm font-semibold text-slate-950">
-                    Endpoint
+              <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {apiCapabilityCards.map((item) => {
+                  const Icon = item.icon
+                  return (
+                    <div
+                      key={item.title}
+                      className="rounded-lg border border-slate-200 bg-slate-50 p-4"
+                    >
+                      <Icon size={18} className="text-med-700" />
+                      <p className="mt-3 text-sm font-semibold text-slate-950">
+                        {item.title}
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-slate-500">
+                        {item.text}
+                      </p>
+                    </div>
+                  )
+                })}
+              </div>
+
+              <div className="mt-5 grid gap-3 md:grid-cols-2">
+                <div className="rounded-lg border border-slate-200 bg-white p-4">
+                  <div className="flex items-center gap-2">
+                    <FileText size={16} className="text-med-700" />
+                    <p className="text-sm font-semibold text-slate-900">
+                      Анализ снимка
+                    </p>
+                  </div>
+                  <p className="mt-2 text-xs leading-5 text-slate-500">
+                    Отправьте изображение и опрашивайте job status. Полный
+                    режим возвращает дерево классификации, признаки и описание;
+                    `features_only=true` оставляет только классификационные
+                    признаки.
                   </p>
-                  <p className="mt-1 text-xs text-slate-500">/api/v1/uploadfile</p>
                 </div>
-                <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                  <Fingerprint size={18} className="text-med-700" />
-                  <p className="mt-3 text-sm font-semibold text-slate-950">
-                    Авторизация
+                <div className="rounded-lg border border-slate-200 bg-white p-4">
+                  <div className="flex items-center gap-2">
+                    <Layers size={16} className="text-med-700" />
+                    <p className="text-sm font-semibold text-slate-900">
+                      Маска новообразования
+                    </p>
+                  </div>
+                  <p className="mt-2 text-xs leading-5 text-slate-500">
+                    Передайте `processing_mode=mask`, чтобы получить `mask.png`,
+                    `masked_image.png` и `mask_results.zip`. Для масок действует
+                    отдельный лимит 30 запросов в минуту.
                   </p>
-                  <p className="mt-1 text-xs text-slate-500">X-API-Key</p>
-                </div>
-                <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                  <Activity size={18} className="text-med-700" />
-                  <p className="mt-3 text-sm font-semibold text-slate-950">
-                    Ограничение
-                  </p>
-                  <p className="mt-1 text-xs text-slate-500">5 запросов/мин</p>
                 </div>
               </div>
 
@@ -1041,21 +1092,22 @@ const Profile = () => {
                 <div className="flex items-start gap-3">
                   <Workflow size={18} className="mt-0.5 text-med-700" />
                   <p className="text-sm leading-relaxed text-slate-600">
-                    Загрузка снимка, постановка задачи и получение результата
-                    остаются в одном API-потоке.
+                    Загрузка снимка, постановка задачи, polling статуса и
+                    скачивание результата остаются в одном API-потоке.
                   </p>
                 </div>
                 <div className="flex items-start gap-3">
                   <Database size={18} className="mt-0.5 text-med-700" />
                   <p className="text-sm leading-relaxed text-slate-600">
-                    История и изображения доступны только владельцу ключа.
+                    История, исходные изображения и mask-артефакты доступны
+                    только владельцу ключа или подписанного токена.
                   </p>
                 </div>
                 <div className="flex items-start gap-3">
                   <Globe2 size={18} className="mt-0.5 text-med-700" />
                   <p className="text-sm leading-relaxed text-slate-600">
-                    Подходит для личных кабинетов, внутренних панелей и
-                    исследовательских инструментов.
+                    Integration endpoints поддерживают внешний ID пациента,
+                    idempotency key и callback после завершения обработки.
                   </p>
                 </div>
               </div>
