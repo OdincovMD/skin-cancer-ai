@@ -95,11 +95,11 @@ def classify_image(features: list, clf) -> str:
         clf: Pre-trained classifier object.
 
     Returns:
-        str: Classification result ("Коричневый" or "Черный или серый").
+        str: Classification result ("Коричневый" or "Частично серые или черные").
     """
     X = np.array(features).reshape(1, -1)
     y_pred = clf.predict(X)
-    return "Коричневый" if y_pred[0] == 0 else "Черный или серый"
+    return "Коричневый" if y_pred[0] == 0 else "Частично серые или черные"
   
 clf = load('weight/several_circles.joblib')
 
@@ -112,7 +112,7 @@ def main(img: np.ndarray, mask: np.ndarray) -> str:
         mask (np.ndarray): Binary mask defining the region of interest.
 
     Returns:
-        str: Classification result ("Коричневый" or "Черный или серый").
+        str: Classification result ("Коричневый" or "Частично серые или черные").
     """
     masked = cv2.bitwise_and(img, img, mask=mask)
     preprocessed = preprocess_image(masked)

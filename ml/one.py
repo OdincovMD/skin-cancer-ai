@@ -144,5 +144,5 @@ def main(image: np.ndarray) -> str:
     prediction = get_model()(input_image)
     predicted_index = torch.argmax(prediction, dim=1).item()
 
-    classes = {0: 'Бесструктурная область', 1: 'Комки', 2: 'Круги', 3: 'Линии', 4: 'Точки'}
+    classes = {0: 'Бесструктурная область', 1: 'Глыбки', 2: 'Круги', 3: 'Линии', 4: 'Точки'}
     return classes[predicted_index]

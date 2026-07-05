@@ -151,5 +151,5 @@ def main(image: np.ndarray) -> str:
         probabilities = nn.Softmax(dim=1)(output)
         predicted_class = torch.argmax(probabilities, dim=1).item()
 
-    classes = {0: 'Другой', 1: 'Меланин'}
+    classes = {0: 'Другой пигмент', 1: 'Меланин'}
     return classes[predicted_class]

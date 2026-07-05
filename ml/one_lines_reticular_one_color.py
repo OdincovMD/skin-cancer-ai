@@ -73,7 +73,7 @@ def predict(model: torch.nn.Module, image_tensor: torch.Tensor) -> str:
     """
     output = model(image_tensor)
     prediction = torch.sigmoid(output) >= 0.5
-    label = "Черные" if prediction else "Коричневые"
+    label = "Черные" if prediction else "Коричневые, тонкие или толстые линии"
     return label
 
 
@@ -108,7 +108,7 @@ def main(image: np.ndarray) -> str:
    ____________
        result : str
            Color of reticular lines according to classificator
-           Черные, Коричневые
+           Черные, Коричневые, тонкие или толстые линии
    """
     image_tensor = preprocess_image(image)
     result = predict(get_model(), image_tensor)

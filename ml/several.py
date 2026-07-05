@@ -51,7 +51,7 @@ def main(image_np: np.ndarray) -> str:
         Args:
             image_np (np.ndarray): Input image as a NumPy array.
         Returns:
-            str: Predicted class label as a string - one out of: ['Комки', 'Круги', 'Линии', 'Точки'].
+            str: Predicted class label as a string - one out of: ['Глыбки', 'Круги', 'Линии', 'Точки'].
     """
     image = Image.fromarray(image_np)
     transform = transforms.Compose([
@@ -64,6 +64,6 @@ def main(image_np: np.ndarray) -> str:
     with torch.no_grad():
         y_pred = CNNmodel(input_image)
     predicted_index = torch.argmax(y_pred, dim=1).item()
-    classes = {0: 'Комки', 1: 'Круги', 2: 'Линии', 3: 'Точки'}
+    classes = {0: 'Глыбки', 1: 'Круги', 2: 'Линии', 3: 'Точки'}
     predicted_class = classes[predicted_index]
     return predicted_class

@@ -5,8 +5,8 @@ from PIL import Image
 
 WEIGHT_PATH = r'weight/several_lines_parallel_furrow.pth'
 
-LABELS = {0: 'Асимметрия', 
-         1: 'Симметрия'}
+LABELS = {0: 'Асимметричный', 
+         1: 'Симметричный'}
 
 _model_several_lines_parallel_furrow = None
 
@@ -79,7 +79,7 @@ def main(img: np.ndarray, mask: np.ndarray) -> str:
         mask (np.ndarray): Mask for the image.
 
     Returns:
-        str: Classification result: "Симметрия" or "Асимметрия".
+        str: Classification result: "Симметричный" or "Асимметричный".
 """
 
     # Трансформации изображения

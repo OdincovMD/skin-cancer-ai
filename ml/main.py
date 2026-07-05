@@ -51,7 +51,7 @@ import several
 import several_lines
 import several_lines_parallel
 import several_lines_reticular
-import several_lines_radial_pereferic  # не реализуется узел выше: несколько признаков -> линни -> радиальные
+import several_lines_radial_pereferic  # не реализуется узел выше: Множественные признаки -> линни -> радиальные
 
 # Модули для обработки "several_circles"
 import several_circles
@@ -73,12 +73,12 @@ logger = log.logger
 
 class FeatureType(Enum):
     SINGLE = "Один признак"
-    MULTIPLE = "Несколько признаков"
+    MULTIPLE = "Множественные признаки"
 
 
 class Structure(Enum):
     STRUCTURELESS = "Бесструктурная область"
-    GLOBULES = "Комки"
+    GLOBULES = "Глыбки"
     LINES = "Линии"
     DOTS = "Точки"
     CIRCLES = "Круги"
@@ -89,7 +89,7 @@ class LineType(Enum):
     CURVED = "Изогнутые"
     PARALLEL = "Параллельные"
     RETICULAR = "Ретикулярные"
-    BRANCHED = "Разветвленные"
+    BRANCHED = "Разветвлённые"
 
 
 class CountColor(Enum):
@@ -103,8 +103,8 @@ class PigmentType(Enum):
 
 
 class Symmetry(Enum):
-    SYMMETRIC = "Симметричные"
-    ASYMMETRIC = "Асимметричные"
+    SYMMETRIC = "Симметричные узоры"
+    ASYMMETRIC = "Асимметричные узоры"
 
 
 @dataclass

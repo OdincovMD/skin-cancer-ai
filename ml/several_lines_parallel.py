@@ -77,7 +77,7 @@ def main(img: np.ndarray) -> str:
         img (np.ndarray): image for preprocessing.
 
     Returns:
-        str: "Борозды" or "Гребешки"
+        str: "Борозды или пересекающиеся борозды и гребешки" or "Гребешки"
     """
     model, device = get_model()
     # До этого это была функция для обработки
@@ -91,4 +91,4 @@ def main(img: np.ndarray) -> str:
     with torch.no_grad():
         prediction = model(image_transform.to(device))
 
-    return "Борозды" if torch.argmax(prediction) == 0 else "Гребешки"
+    return "Борозды или пересекающиеся борозды и гребешки" if torch.argmax(prediction) == 0 else "Гребешки"

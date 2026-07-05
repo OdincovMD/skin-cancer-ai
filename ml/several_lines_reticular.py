@@ -84,11 +84,11 @@ def main(img: np.ndarray) -> str:
         img (np.ndarray): Input image in BGR format.
 
     Returns:
-        str: "Ассиметричные" or "Симметричные".
+        str: "Асимметричные узоры" or "Симметричные структуры".
     """
     model, device = get_model()
     img = preprocess_image(img)
     img = img.to(device)
     with torch.no_grad():
         prediction = model(img)
-    return "Ассиметричные" if torch.argmax(prediction) == 0 else "Симметричные"
+    return "Асимметричные узоры" if torch.argmax(prediction) == 0 else "Симметричные структуры"

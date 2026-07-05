@@ -260,14 +260,14 @@ def main(img: np.ndarray) -> str:
     ____________
         result : str
             Type of multicolored reticular lines according to classificator
-            Пестрый и краповый, Центральная гиперпигментация, Периферическая гиперпигментация
+            Пестрый или краповый, Центральная гиперпигментация, Периферическая гиперпигментация
     """
     info_img_1 = count_characteristics1(img)
     df_1 = pd.DataFrame(info_img_1, index=[0])
     res_1 = clf_1.predict(df_1)
 
     if res_1 == 0:
-        return 'Пестрый и краповый'
+        return 'Пестрый или краповый'
     else:
         info_img_2 = count_characteristics2(img)
         df_2 = pd.DataFrame(info_img_2, index=[0])

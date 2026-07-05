@@ -126,7 +126,7 @@ def main(img_to_classify):
     ____________
         result : str
             Type of lines according to classificator
-            Ретикулярные, разветвленные, параллельные или изогнутые
+            Ретикулярные, разветвлённые, параллельные или изогнутые
     """
 
     global model_ft, input_size
@@ -138,6 +138,6 @@ def main(img_to_classify):
     input_batch = clf_input.unsqueeze(0)
     eval_res = evaluate(model_ft, input_batch)
 
-    class_map = {0: 'Ретикулярные', 1: 'Разветвленные', 2: 'Параллельные', 3: 'Изогнутые'}
+    class_map = {0: 'Ретикулярные', 1: 'Разветвлённые', 2: 'Параллельные', 3: 'Изогнутые'}
     result = class_map[eval_res]
     return result

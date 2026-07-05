@@ -89,7 +89,7 @@ def predict_symmetry(image: np.ndarray) -> str:
         image (np.ndarray): Input image as a numpy array.
 
     Returns:
-        str: Predicted label for the image, either "Асимметричные" or "Симметричные".
+        str: Predicted label for the image, either "Асимметричные узоры" or "Симметричные узоры".
     """
     transform = transforms.Compose([
         transforms.ToPILImage(),
@@ -101,7 +101,7 @@ def predict_symmetry(image: np.ndarray) -> str:
     image_tensor = image_tensor.to(DEVICE, non_blocking=True)
     output = get_model()(image_tensor.unsqueeze(0))
     prediction = torch.sigmoid(output) >= 0.5
-    return "Асимметричные" if prediction else "Симметричные"
+    return "Асимметричные узоры" if prediction else "Симметричные узоры"
 
 
 ## decode_segmentation_mask(data) удалена
@@ -115,7 +115,7 @@ def main(image: np.ndarray, mask: np.ndarray) -> str:
         mask (np.ndarray): Segmentation mask for isolating relevant image areas.
 
     Returns:
-        str: Predicted label indicating symmetry ("Асимметричные" or "Симметричные").
+        str: Predicted label indicating symmetry ("Асимметричные узоры" or "Симметричные узоры").
     """
     image = apply_mask(image, mask)
     result = predict_symmetry(image)

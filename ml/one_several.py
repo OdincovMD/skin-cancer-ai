@@ -82,7 +82,7 @@ def main(img: np.ndarray, mask: np.ndarray) -> str:
         mask (np.ndarray): Mask for the image.
 
     Returns:
-        str: Classification result: "Несколько признаков" or "Один признак".
+        str: Classification result: "Множественные признаки" or "Один признак".
     """
 
     mask = np.stack([mask] * 3, axis=-1)
@@ -129,4 +129,4 @@ def main(img: np.ndarray, mask: np.ndarray) -> str:
         avg_probs = np.mean(np.stack(fold_probs, axis=0), axis=0)
         final_pred_class = avg_probs.argmax(axis=1)[0]
 
-    return ["Несколько признаков", "Один признак"][final_pred_class]
+    return ["Множественные признаки", "Один признак"][final_pred_class]
